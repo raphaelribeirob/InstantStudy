@@ -1,1 +1,33 @@
-{"contract":{"name":"RiverThree App Shell","version":"1.0.0"},"product":{"id":"instantstudy","onboardingMode":"consumerFast"}}
+{
+  "contract": {
+    "name": "RiverThree App Shell",
+    "version": "1.0.0",
+    "designContractVersion": "4.18.0"
+  },
+  "product": {
+    "id": "instantstudy",
+    "name": "InstantStudy",
+    "category": "Education",
+    "onboardingMode": "consumerFast"
+  },
+  "identity": {
+    "intelligenceOrb": "contextual"
+  },
+  "expression": {
+    "genZ": "selective",
+    "targetRange": "20-30",
+    "preferredSurfaces": [
+      "welcome",
+      "onboarding",
+      "homeHero",
+      "resultPreview",
+      "milestone",
+      "marketing"
+    ],
+    "grain": "contextual",
+    "gradient": "contextual",
+    "editorialAsymmetry": "contextual",
+    "humanTexture": "contextual",
+    "motionPersonality": "contextual"
+  }
+}
