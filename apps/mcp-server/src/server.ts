@@ -30,7 +30,7 @@ const adapty = new AdaptyClient({
   store: process.env.ADAPTY_STORE ?? "stripe",
 });
 const openapiSpec = readFileSync(
-  new URL("../../../openapi.yaml", import.meta.url),
+  new URL("../openapi.yaml", import.meta.url),
   "utf8",
 );
 
@@ -914,8 +914,12 @@ app.all("/mcp", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(
-    `InstantStudy MCP listening on http://localhost:${PORT}/mcp`,
-  );
-});
+export default app;
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(
+      `InstantStudy MCP listening on http://localhost:${PORT}/mcp`,
+    );
+  });
+}
