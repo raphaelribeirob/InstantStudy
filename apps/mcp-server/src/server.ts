@@ -13,6 +13,7 @@ import { ContentSessionStore } from "./contentSessions.js";
 import { StudyEngine } from "./studyEngine.js";
 import { ingestFiles } from "./ingest.js";
 import { studyEntitlements, UsageLimitError } from "./entitlements.js";
+import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
 
 const PORT = Number.parseInt(process.env.PORT ?? "8000", 10);
 const DEVICE_ID = process.env.INSTANTSTUDY_DEVICE_ID ?? "dev-device";
@@ -893,6 +894,80 @@ app.post("/api/v1/study/answer", async (req, res) => {
         feedback: input.feedback,
       }),
     );
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/study/evaluate", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        studySessionId: z.string().uuid(),
+        conceptId: z.string().uuid(),
+        userAnswer: z.string().min(1).max(20000),
+        confidence: z.number().min(0).max(1).optional(),
+      })
+      .parse(req.body ?? {});
+
+    const session = await studyEngine.get(input.studySessionId);
+    if (!session) {
+      res.status(404).json({ error: "study_session_not_found" });
+      return;
+    }
+
+    const concept = session.concepts.find((item) => item.id === input.conceptId);
+    if (!concept) {
+      res.status(404).json({ error: "concept_not_found" });
+      return;
+    }
+
+    const grade = await gradeStudyAnswer({
+      conceptLabel: concept.label,
+      sourceExcerpt: concept.sourceExcerpt,
+      userAnswer: input.userAnswer,
+    });
+
+    const submission = await studyEngine.submit(
+      input.studySessionId,
+      input.conceptId,
+      {
+        correctness: grade.correctness,
+        completeness: grade.completeness,
+        confidence: input.confidence ?? grade.confidence,
+        missingConcepts: grade.missingConcepts,
+        userAnswer: input.userAnswer,
+        feedback: grade.feedback,
+      },
+    );
+
+    const next = submission.done
+      ? null
+      : await studyEngine.next(input.studySessionId);
+
+    res.json({
+      grade:
+        session.mode === "test"
+          ? { recorded: true, provider: grade.provider }
+          : grade,
+      submission,
+      next,
+    });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/ask", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        contentText: z.string().min(1).max(200000),
+        question: z.string().min(1).max(2000),
+      })
+      .parse(req.body ?? {});
+
+    res.json(await answerFromSource(input.contentText, input.question));
   } catch (error) {
     sendApiError(res, error);
   }
