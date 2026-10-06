@@ -91,6 +91,13 @@ When configured, Instant Pay resolves the active paywall server-side using
 product family. If Adapty is unavailable, checkout safely falls back to the
 server-side catalog.
 
+## InstantBible launch guard
+
+InstantBible web checkout is intentionally fail-closed until InstantBible has
+an authenticated web entitlement subject and server-side entitlement sync.
+This prevents a successful charge from ever preceding the ability to grant
+paid access. Mobile store billing through Adapty is unaffected.
+
 ## Webhook and fulfillment
 
 Configure Paddle to send notifications to:
