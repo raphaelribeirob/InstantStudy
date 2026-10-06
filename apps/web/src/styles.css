@@ -59,8 +59,7 @@ a:focus-visible {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  background: color-mix(in srgb, var(--canvas) 92%, transparent);
-  backdrop-filter: blur(18px);
+  background: rgba(253, 252, 252, 0.96);
   border-bottom: 1px solid var(--border);
 }
 
@@ -150,13 +149,13 @@ h1,
 h2 {
   color: var(--ink);
   font-weight: 300;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.02em;
 }
 
 h1 {
   margin-bottom: 24px;
-  font-size: clamp(52px, 7.4vw, 96px);
-  line-height: 0.98;
+  font-size: clamp(44px, 5vw, 56px);
+  line-height: 1.06;
 }
 
 .agent-word { color: var(--graphite); }
@@ -201,13 +200,15 @@ h1 {
 }
 
 .product-demo {
-  width: min(1180px, 100%);
+  width: min(1120px, 100%);
   margin: 66px auto 0;
   border: 1px solid var(--border);
-  border-radius: 28px;
+  border-radius: 24px;
   background: var(--surface);
   overflow: hidden;
-  box-shadow: 0 28px 100px rgba(53, 45, 37, 0.07);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.025),
+    0 2px 8px rgba(0, 0, 0, 0.025);
 }
 
 .demo-topbar {
@@ -453,8 +454,9 @@ h1 {
 .proof-copy h2,
 .final-cta h2 {
   margin-bottom: 20px;
-  font-size: clamp(38px, 5.5vw, 64px);
-  line-height: 1.02;
+  font-size: clamp(34px, 4vw, 42px);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
 }
 
 .section-heading > p:not(.eyebrow),
@@ -885,11 +887,11 @@ h1 {
 .faq-item svg.rotated { transform: rotate(180deg); }
 
 .final-cta {
-  width: min(1100px, calc(100% - 40px));
+  width: min(1040px, calc(100% - 40px));
   margin: 40px auto 120px;
   padding: 96px 30px;
-  border: 1px solid var(--border);
-  border-radius: 28px;
+  border: 0;
+  border-radius: 24px;
   background: var(--surface);
   text-align: center;
 }
