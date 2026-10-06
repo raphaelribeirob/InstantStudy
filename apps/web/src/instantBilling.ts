@@ -9,7 +9,7 @@ function env(name: string) {
 }
 
 function payBaseUrl() {
-  return (env('VITE_INSTANT_PAY_URL') || 'https://instant-pay.vercel.app').replace(/\/$/, '');
+  return (env('VITE_INSTANT_PAY_URL') || 'https://instant-pay-r3-41f9.vercel.app').replace(/\/$/, '');
 }
 
 export function instantBillingConfigured() {
