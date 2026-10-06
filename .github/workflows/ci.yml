@@ -5,12 +5,14 @@ on:
   push:
     branches:
       - main
-      - feat/chatgpt-anki-plugin
-      - feat/quizlet-funnel-refero
+
+permissions:
+  contents: read
 
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -18,7 +20,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
       - run: npm install
       - run: npm run typecheck
-      - run: npm run build:web
+      - run: npm run build
+      - name: Production dependency audit
+        run: npm run security:audit
