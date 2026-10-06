@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - feat/owasp-instantpay
   schedule:
     - cron: "17 8 * * 1"
   workflow_dispatch:
