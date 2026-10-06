@@ -87,3 +87,9 @@ button,input,textarea{font:inherit}
 .software-guide>aside b{font-size:11px;color:var(--is-orange)}
 .software-guide>aside p{margin:0;line-height:1.5;color:#514d48}
 @media(max-width:920px){.software-guide{grid-template-columns:1fr}}
+
+.software-feedback{width:100%;margin:8px 0 2px;padding:12px 14px;border-radius:11px;background:#f1efe9;border:1px solid var(--is-line);color:#3f3b36;font-size:13px;line-height:1.5}
+.software-study-stage button:disabled{opacity:.42;cursor:not-allowed}
+.software-ask-answer{margin:auto;width:min(720px,calc(100% - 40px));padding:26px;border-radius:16px;background:#f5f2ed;border:1px solid var(--is-line)}
+.software-ask-answer span{font-size:10px;letter-spacing:.13em;font-weight:700;color:var(--is-blue)}
+.software-ask-answer p{margin:10px 0 0;font-size:16px;line-height:1.7;white-space:pre-wrap}
