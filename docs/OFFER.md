@@ -229,3 +229,51 @@ adaptive study policy
 +
 cross-agent continuity
 ```
+
+
+## Funnel installed on the landing
+
+The public landing mirrors the proven Quizlet conversion sequence at the structural level:
+
+1. **Start with owned material**
+   - paste text
+   - upload files
+   - Google Drive
+   - lecture/audio context
+
+2. **Instant transformation**
+   - Learn
+   - Quiz
+   - Practice Test
+   - Review
+
+3. **Adaptive Learn**
+   - recognition
+   - recall
+   - explanation
+   - application
+   - repair weak concepts before continuing
+
+4. **Practice Test**
+   - exam-style formats
+   - optional timer
+   - score at the end
+   - weak-concept diagnosis
+
+5. **Review / retention**
+   - mastery
+   - due concepts
+   - right-time review
+
+6. **Free-value gate**
+   - user experiences the loop before paying
+   - Learn/Test usage becomes the natural upgrade trigger
+
+7. **Upgrade ladder**
+   - Free
+   - Plus
+   - Unlimited
+   - annual plan emphasizes a 7-day trial
+   - Unlimited is visually prioritized
+
+InstantStudy™ does not copy Quizlet's wording, design, logos, screenshots, social proof, or proprietary assets. The copied element is the validated conversion architecture.
