@@ -57,9 +57,31 @@ const prepareStudySchema = z
       .describe("Files supplied by the host, including ChatGPT file inputs."),
     title: z.string().min(1).max(200).optional(),
     goal: z.string().min(1).max(500).optional(),
+    learnerId: z
+      .string()
+      .min(3)
+      .max(200)
+      .optional()
+      .describe(
+        "Stable authenticated learner/profile identifier. Supply it to preserve mastery and due reviews across sessions.",
+      ),
     mode: z.enum(["learn", "review", "quiz", "test"]).default("learn"),
     targetMinutes: z.number().int().min(1).max(180).optional(),
     maxQuestions: z.number().int().min(1).max(50).default(12),
+    testDurationMinutes: z.number().int().min(1).max(180).optional(),
+    testQuestionTypes: z
+      .array(
+        z.enum([
+          "multiple_choice",
+          "true_false",
+          "short_answer",
+          "free_recall",
+          "application",
+        ]),
+      )
+      .min(1)
+      .max(5)
+      .optional(),
     concepts: z
       .array(
         z.object({
@@ -171,9 +193,12 @@ function createMcpServer() {
       files,
       title,
       goal,
+      learnerId,
       mode,
       targetMinutes,
       maxQuestions,
+      testDurationMinutes,
+      testQuestionTypes,
       concepts,
     }) => {
       const ingested = files.length ? await ingestFiles(files) : { text: "", files: [] };
@@ -190,14 +215,17 @@ function createMcpServer() {
         mode,
       });
 
-      const studySession = studyEngine.start(contentSession, {
+      const studySession = await studyEngine.start(contentSession, {
+        learnerId,
         mode,
         targetMinutes,
         maxQuestions,
+        testDurationMinutes,
+        testQuestionTypes,
         concepts,
       });
 
-      const next = studyEngine.next(studySession.id);
+      const next = await studyEngine.next(studySession.id);
 
       return toolResult({
         contentSessionId: contentSession.id,
@@ -231,7 +259,7 @@ function createMcpServer() {
       },
     },
     async ({ sessionId }) => {
-      const session = studyEngine.get(sessionId);
+      const session = await studyEngine.get(sessionId);
       if (!session) {
         throw new Error("Study session not found.");
       }
@@ -273,7 +301,7 @@ function createMcpServer() {
       },
     },
     async ({ studySessionId }) => {
-      return toolResult(studyEngine.next(studySessionId));
+      return toolResult(await studyEngine.next(studySessionId));
     },
   );
 
@@ -310,7 +338,7 @@ function createMcpServer() {
       feedback,
     }) => {
       return toolResult(
-        studyEngine.submit(studySessionId, conceptId, {
+        await studyEngine.submit(studySessionId, conceptId, {
           correctness,
           completeness,
           confidence,
@@ -338,7 +366,31 @@ function createMcpServer() {
       },
     },
     async ({ studySessionId }) => {
-      return toolResult(studyEngine.finish(studySessionId));
+      return toolResult(await studyEngine.finish(studySessionId));
+    },
+  );
+
+  server.registerTool(
+    "get_due_reviews",
+    {
+      title: "Get due InstantStudy reviews",
+      description:
+        "Return concepts that are due for retrieval practice for a stable learnerId. Use this to start short retention sessions from prior learning without requiring the learner to re-upload the original material.",
+      inputSchema: z.object({
+        learnerId: z.string().min(3).max(200),
+        before: z.string().datetime().optional(),
+        limit: z.number().int().min(1).max(100).default(20),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ learnerId, before, limit }) => {
+      return toolResult(
+        await studyEngine.dueReviews(learnerId, { before, limit }),
+      );
     },
   );
 
@@ -623,10 +675,13 @@ app.post("/api/v1/study/prepare", async (req, res) => {
       ...input,
       contentText: combinedText || undefined,
     });
-    const studySession = studyEngine.start(contentSession, {
+    const studySession = await studyEngine.start(contentSession, {
+      learnerId: input.learnerId,
       mode: input.mode,
       targetMinutes: input.targetMinutes,
       maxQuestions: input.maxQuestions,
+      testDurationMinutes: input.testDurationMinutes,
+      testQuestionTypes: input.testQuestionTypes,
       concepts: input.concepts,
     });
 
@@ -639,15 +694,15 @@ app.post("/api/v1/study/prepare", async (req, res) => {
       goal: studySession.goal,
       conceptCount: studySession.concepts.length,
       ingestion: ingested.files,
-      next: studyEngine.next(studySession.id),
+      next: await studyEngine.next(studySession.id),
     });
   } catch (error) {
     sendApiError(res, error);
   }
 });
 
-app.get("/api/v1/study/sessions/:sessionId", (req, res) => {
-  const session = studyEngine.get(req.params.sessionId);
+app.get("/api/v1/study/sessions/:sessionId", async (req, res) => {
+  const session = await studyEngine.get(req.params.sessionId);
   if (!session) {
     res.status(404).json({ error: "study_session_not_found" });
     return;
@@ -673,18 +728,18 @@ app.get("/api/v1/study/sessions/:sessionId", (req, res) => {
   });
 });
 
-app.post("/api/v1/study/next", (req, res) => {
+app.post("/api/v1/study/next", async (req, res) => {
   try {
     const input = z
       .object({ studySessionId: z.string().uuid() })
       .parse(req.body ?? {});
-    res.json(studyEngine.next(input.studySessionId));
+    res.json(await studyEngine.next(input.studySessionId));
   } catch (error) {
     sendApiError(res, error);
   }
 });
 
-app.post("/api/v1/study/answer", (req, res) => {
+app.post("/api/v1/study/answer", async (req, res) => {
   try {
     const input = z
       .object({
@@ -700,7 +755,7 @@ app.post("/api/v1/study/answer", (req, res) => {
       .parse(req.body);
 
     res.json(
-      studyEngine.submit(input.studySessionId, input.conceptId, {
+      await studyEngine.submit(input.studySessionId, input.conceptId, {
         correctness: input.correctness,
         completeness: input.completeness,
         confidence: input.confidence,
@@ -714,12 +769,33 @@ app.post("/api/v1/study/answer", (req, res) => {
   }
 });
 
-app.post("/api/v1/study/finish", (req, res) => {
+app.post("/api/v1/study/finish", async (req, res) => {
   try {
     const input = z
       .object({ studySessionId: z.string().uuid() })
       .parse(req.body ?? {});
-    res.json(studyEngine.finish(input.studySessionId));
+    res.json(await studyEngine.finish(input.studySessionId));
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.get("/api/v1/study/due", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        learnerId: z.string().min(3).max(200),
+        before: z.string().datetime().optional(),
+        limit: z.coerce.number().int().min(1).max(100).default(20),
+      })
+      .parse(req.query);
+
+    res.json(
+      await studyEngine.dueReviews(input.learnerId, {
+        before: input.before,
+        limit: input.limit,
+      }),
+    );
   } catch (error) {
     sendApiError(res, error);
   }
