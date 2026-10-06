@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { agentPresets, mcpUrl, type AgentId } from "./connection";
 import { loadOffer, type FunnelOffer } from "./offer";
+import { instantBillingConfigured, openInstantStudyCheckout } from "./instantBilling";
 
 const modes = [
   {
@@ -431,7 +432,19 @@ function Pricing() {
             <li><Check size={16} /> Persistent mastery and review queue</li>
             <li><Check size={16} /> All core study modes</li>
           </ul>
-          <a className="plan-button secondary-plan" href="#connect">
+          <a
+            className="plan-button secondary-plan"
+            href="#connect"
+            onClick={(click) => {
+              if (!instantBillingConfigured()) return;
+              click.preventDefault();
+              void openInstantStudyCheckout("plus", annual).then((handled) => {
+                if (!handled) window.location.hash = "connect";
+              }).catch(() => {
+                window.location.hash = "connect";
+              });
+            }}
+          >
             {annual ? "Start free trial" : "Choose Plus"}
           </a>
         </article>
@@ -452,13 +465,20 @@ function Pricing() {
           <a
             className="plan-button primary-plan"
             href={offer?.checkoutUrl ?? "#connect"}
-            onClick={() =>
+            onClick={(click) => {
               event("pricing_cta_clicked", {
                 billing: annual ? "annual" : "monthly",
                 plan: "unlimited",
                 variationId: offer?.variationId,
-              })
-            }
+              });
+              if (!instantBillingConfigured()) return;
+              click.preventDefault();
+              void openInstantStudyCheckout("unlimited", annual).then((handled) => {
+                if (!handled) window.location.assign(offer?.checkoutUrl ?? "#connect");
+              }).catch(() => {
+                window.location.assign(offer?.checkoutUrl ?? "#connect");
+              });
+            }}
           >
             {annual ? (offer?.cta ?? "Start 7-day free trial") : "Go Unlimited"}
             <ArrowRight size={16} />
