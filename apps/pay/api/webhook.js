@@ -45,7 +45,7 @@ function verifyPaddleSignature(rawBody, header) {
 
   const expected = crypto
     .createHmac("sha256", secret)
-    .update(\`\${timestamp}:\`, "utf8")
+    .update(`${timestamp}:`, "utf8")
     .update(rawBody, "utf8")
     .digest("hex");
 
@@ -118,7 +118,7 @@ async function notifyInstantCloser(event, customData, state) {
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     throw new Error(
-      \`instant_closer_callback_failed_\${response.status}_\${body.slice(0, 120)}\`,
+      `instant_closer_callback_failed_${response.status}_${body.slice(0, 120)}`,
     );
   }
 }
