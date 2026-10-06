@@ -1,8 +1,8 @@
-# InstantStudy
+# InstantStudy™
 
-**Drop anything. Learn it.**
+**Your AI can explain anything. InstantStudy™ makes you learn and remember it.**
 
-InstantStudy turns content inside a tool-capable LLM into an adaptive study session.
+InstantStudy™ turns material already inside a tool-capable LLM into an adaptive study session. The product combines the strongest part of Quizlet's offer—turning your own material into active practice—with an LLM-native loop that does not require leaving the conversation.
 
 Paste notes, upload a PDF, use material already in the conversation, or connect Anki. InstantStudy structures what matters, asks one question at a time, evaluates the learner's answer, adapts difficulty, tracks weak concepts, and keeps the session moving.
 
