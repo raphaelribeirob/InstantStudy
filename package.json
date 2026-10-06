@@ -8,7 +8,9 @@
   ],
   "scripts": {
     "dev": "npm --workspace apps/mcp-server run dev",
+    "dev:web": "npm --workspace apps/web run dev",
     "start": "npm --workspace apps/mcp-server run start",
-    "typecheck": "npm --workspace apps/mcp-server run typecheck"
+    "typecheck": "npm --workspace apps/mcp-server run typecheck && npm --workspace apps/web run typecheck",
+    "build:web": "npm --workspace apps/web run build"
   }
 }
