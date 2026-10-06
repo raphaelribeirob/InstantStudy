@@ -61,8 +61,8 @@ export function signInstantCloserCallback(rawBody) {
   const timestamp = Math.floor(Date.now() / 1000);
   const signature = crypto
     .createHmac("sha256", secret)
-    .update(\`\${timestamp}.\`, "utf8")
+    .update(`${timestamp}.`, "utf8")
     .update(rawBody)
     .digest("hex");
-  return \`t=\${timestamp},v1=\${signature}\`;
+  return `t=${timestamp},v1=${signature}`;
 }
