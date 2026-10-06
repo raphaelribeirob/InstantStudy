@@ -24,6 +24,8 @@ jobs:
 
       - run: npm install
       - run: npm run typecheck
+      - name: InstantPay trust tests
+        run: npm --workspace apps/pay test
       - run: npm run build
       - name: Production dependency audit
         run: npm run security:audit
