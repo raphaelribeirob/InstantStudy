@@ -41,6 +41,8 @@ Product CTA
 6. Fulfillment must happen from verified Paddle webhooks.
 7. No user identity is trusted from query parameters.
 8. DotSpeak checkout must only be linked from a guardian-controlled surface.
+9. New paid checkout is unavailable unless self-service cancellation is configured.
+10. Customers never need a support ticket to reach billing management.
 
 ## Paddle setup
 
@@ -49,6 +51,15 @@ Create one Hosted Checkout in Paddle and use its launch URL as:
 ```text
 PADDLE_HOSTED_CHECKOUT_URL
 ```
+
+Copy the Paddle customer portal sign-in URL and configure:
+
+```text
+PADDLE_CUSTOMER_PORTAL_URL
+```
+
+Instant Pay fails closed and refuses to create a new paid transaction unless
+checkout, verified-webhook, and self-service cancellation are all configured.
 
 Hosted Checkout requires Paddle approval for live use. Sandbox can be used while approval is pending.
 
