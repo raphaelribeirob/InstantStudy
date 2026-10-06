@@ -9,7 +9,7 @@ function env(name: string) {
 }
 
 function payBaseUrl() {
-  return (env('VITE_INSTANT_PAY_URL') || 'https://instant-pay.vercel.app').replace(/\/$/, '');
+  return (env('VITE_INSTANT_PAY_URL') || 'https://instant-pay-gamma.vercel.app').replace(/\/$/, '');
 }
 
 export function instantBillingConfigured() {
@@ -33,12 +33,28 @@ export function readInstantAccountSession(): InstantBillingSession | null {
 }
 
 export async function hasInstantEntitlement(
-  _entitlementKey: string,
-  _session = readInstantAccountSession(),
+  entitlementKey: string,
+  session = readInstantAccountSession(),
 ) {
-  // Entitlement verification remains server-owned. The public payment path is
-  // intentionally decoupled from product-specific billing APIs.
-  return false;
+  if (!session) return false;
+
+  try {
+    const response = await fetch(
+      `${payBaseUrl()}/v1/billing/entitlements?user_id=${encodeURIComponent(session.userId)}`,
+      {
+        headers: {
+          accept: 'application/json',
+          authorization: `Bearer ${session.accessToken}`,
+        },
+      },
+    );
+    if (!response.ok) return false;
+    const data = (await response.json()) as { entitlements?: Array<{ key?: string; active?: boolean }> };
+    return Array.isArray(data.entitlements) &&
+      data.entitlements.some(item => item?.key === entitlementKey && item?.active === true);
+  } catch {
+    return false;
+  }
 }
 
 function offerFor(plan: 'plus' | 'unlimited', annual: boolean) {
