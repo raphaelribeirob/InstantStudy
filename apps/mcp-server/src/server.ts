@@ -22,6 +22,7 @@ const bridge = new BridgeQueue(TIMEOUT_MS);
 const contentSessions = new ContentSessionStore();
 const studyEngine = new StudyEngine();
 const API_KEY = process.env.INSTANTSTUDY_API_KEY ?? "replace-me-api-key";
+const PUBLIC_URL = (process.env.INSTANTSTUDY_PUBLIC_URL ?? "").replace(/\/$/, "");
 const adapty = new AdaptyClient({
   publicApiKey: process.env.ADAPTY_PUBLIC_API_KEY,
   secretApiKey: process.env.ADAPTY_SECRET_API_KEY,
@@ -572,6 +573,26 @@ function sendApiError(res: express.Response, error: unknown) {
   const message = error instanceof Error ? error.message : "Internal server error";
   res.status(500).json({ error: "internal_error", message });
 }
+
+app.get("/connection.json", (req, res) => {
+  const origin = PUBLIC_URL || `${req.protocol}://${req.get("host")}`;
+  res.json({
+    name: "InstantStudy",
+    description: "Adaptive Study Engine for tool-capable LLM agents.",
+    transport: "streamable-http",
+    mcp: `${origin}/mcp`,
+    openapi: `${origin}/openapi.yaml`,
+    capabilities: [
+      "content-first study",
+      "learn",
+      "review",
+      "quiz",
+      "test",
+      "adaptive mastery",
+      "optional Anki",
+    ],
+  });
+});
 
 app.get("/openapi.yaml", (_req, res) => {
   res.type("application/yaml").send(openapiSpec);
