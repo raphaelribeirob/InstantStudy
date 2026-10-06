@@ -1,0 +1,138 @@
+openapi: 3.1.0
+info:
+  title: InstantStudy Study API
+  version: 0.1.0
+  description: Provider-neutral API for studying an Anki collection through any tool-capable LLM.
+servers:
+  - url: https://YOUR_INSTANTSTUDY_HOST
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/status:
+    get:
+      operationId: ankiStatus
+      summary: Check Anki connectivity
+      responses:
+        "200":
+          description: Connected Anki status
+  /api/v1/decks:
+    get:
+      operationId: listDecks
+      summary: List Anki decks
+      responses:
+        "200":
+          description: Deck names
+  /api/v1/due:
+    post:
+      operationId: getDueCards
+      summary: Get due cards
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deckName:
+                  type: string
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 50
+                  default: 10
+      responses:
+        "200":
+          description: Due cards
+  /api/v1/search:
+    post:
+      operationId: searchCards
+      summary: Search Anki cards
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 50
+                  default: 20
+      responses:
+        "200":
+          description: Matching cards
+  /api/v1/cards:
+    post:
+      operationId: createCard
+      summary: Create a Basic Anki card
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deckName, front, back]
+              properties:
+                deckName:
+                  type: string
+                front:
+                  type: string
+                back:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: Created card
+  /api/v1/reviews:
+    post:
+      operationId: recordReview
+      summary: Record an Anki review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cardId, ease]
+              properties:
+                cardId:
+                  type: integer
+                ease:
+                  type: integer
+                  minimum: 1
+                  maximum: 4
+      responses:
+        "200":
+          description: Review result
+  /api/v1/offer:
+    post:
+      operationId: getSubscriptionOffer
+      summary: Resolve the active Adapty price/paywall experiment for a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customerId]
+              properties:
+                customerId:
+                  type: string
+                locale:
+                  type: string
+                  default: en
+      responses:
+        "200":
+          description: Adapty-selected offer
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
