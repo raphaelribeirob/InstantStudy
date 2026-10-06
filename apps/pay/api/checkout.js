@@ -1,6 +1,7 @@
 import { resolveOffer } from "./_catalog.js";
 import { cleanCustomerUserId, cleanOpaqueId } from "./_adapty.js";
 import { enforceApiRequest } from "./_security.js";
+import { verifyInstantCloserHandoff } from "./_handoff.js";
 
 const LIVE_API = "https://api.paddle.com";
 const SANDBOX_API = "https://sandbox-api.paddle.com";
@@ -55,6 +56,19 @@ export default async function handler(req, res) {
   const adaptyPaywallId = cleanOpaqueId(body.adapty_paywall_id);
   const apiBase = environment === "live" ? LIVE_API : SANDBOX_API;
 
+  let trustedHandoff = null;
+  if (source === "instant_closer") {
+    try {
+      trustedHandoff = verifyInstantCloserHandoff(body.handoff, offer.key, source);
+    } catch (error) {
+      console.warn(
+        "InstantCloser payment handoff rejected",
+        error instanceof Error ? error.message : "unknown",
+      );
+      return json(res, 401, { error: "invalid_app_handoff" });
+    }
+  }
+
   const response = await fetch(`${apiBase}/transactions`, {
     method: "POST",
     headers: {
@@ -72,6 +86,12 @@ export default async function handler(req, res) {
         plan_key: offer.plan,
         billing_cadence: offer.cadence,
         source_app: source,
+        ...(trustedHandoff
+          ? {
+              instant_company_id: trustedHandoff.companyId,
+              instant_handoff_verified: "true",
+            }
+          : {}),
         ...(customerUserId ? { adapty_customer_user_id: customerUserId } : {}),
         ...(adaptyVariationId ? { adapty_variation_id: adaptyVariationId } : {}),
         ...(adaptyPaywallId ? { adapty_paywall_id: adaptyPaywallId } : {}),
