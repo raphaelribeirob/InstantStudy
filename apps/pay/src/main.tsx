@@ -19,6 +19,15 @@ function locale() {
   return browser.slice(0, 16);
 }
 
+function customerId() {
+  const key = "instant_pay_customer_id";
+  const existing = localStorage.getItem(key);
+  if (existing) return existing;
+  const created = crypto.randomUUID();
+  localStorage.setItem(key, created);
+  return created;
+}
+
 function App() {
   const offer = useMemo(currentOffer, []);
   const [busy, setBusy] = useState(false);
@@ -35,6 +44,7 @@ function App() {
           offer: offer.key,
           source: sourceApp(),
           locale: locale(),
+          customerId: customerId(),
         }),
       });
       const data = await response.json().catch(() => ({}));
