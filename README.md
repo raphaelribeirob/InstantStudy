@@ -1,8 +1,8 @@
 # InstantStudy
 
-**Study your Anki directly inside ChatGPT.**
+**Study your Anki directly inside any tool-capable LLM.**
 
-InstantStudy is a ChatGPT-native study layer for Anki. The first product goal is deliberately narrow:
+InstantStudy is an LLM-native study layer for Anki. ChatGPT is the first distribution surface, but the core is provider-neutral. The first product goal is deliberately narrow:
 
 > Ask ChatGPT to study your Anki deck, answer in the conversation, get semantic feedback, and write the review result back to Anki.
 
@@ -16,7 +16,7 @@ The V1 does **not** try to replace Anki's scheduler. It uses Anki as the source 
 
 1. User installs the InstantStudy Anki bridge.
 2. The bridge pairs with the InstantStudy backend.
-3. The ChatGPT app calls InstantStudy MCP tools.
+3. ChatGPT, Claude, another MCP client, or a REST/OpenAPI tool client calls InstantStudy.
 4. The backend dispatches commands to the paired Anki client.
 5. ChatGPT asks one question at a time.
 6. The user answers naturally.
@@ -32,13 +32,14 @@ The V1 does **not** try to replace Anki's scheduler. It uses Anki as the source 
 - `search_cards`
 - `create_card`
 - `record_review`
+- `get_subscription_offer`
 
 ## Architecture
 
 ```
-ChatGPT
+LLM client
    |
-   | MCP / Apps SDK
+   | MCP or REST/OpenAPI
    v
 InstantStudy MCP Server
    |
@@ -55,6 +56,20 @@ Anki
 ```
 
 The bridge makes an outbound connection/poll to the InstantStudy server, so the user's Anki does not need to expose a public port.
+
+## Monetization
+
+Adapty is integrated as the pricing experimentation control plane. The server resolves the active offer from the `instantstudy_main` placement, so audiences, localized offers, products, and A/B price tests can change without deploying new InstantStudy code.
+
+Stripe remains the default payment rail.
+
+## LLM compatibility
+
+- MCP clients: connect to `/mcp`.
+- Other tool-capable LLMs: use the REST API under `/api/v1`.
+- OpenAPI contract: `/openapi.yaml`.
+
+No study-domain code depends on an OpenAI, Anthropic, or Google model SDK.
 
 ## Repository
 
