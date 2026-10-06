@@ -31,10 +31,21 @@ export default async function handler(req, res) {
 
   const apiKey = String(process.env.PADDLE_API_KEY || "").trim();
   const hostedCheckout = String(process.env.PADDLE_HOSTED_CHECKOUT_URL || "").trim();
+  const customerPortal = String(process.env.PADDLE_CUSTOMER_PORTAL_URL || "").trim();
+  const webhookSecret = String(process.env.PADDLE_WEBHOOK_SECRET || "").trim();
   const environment = String(process.env.PADDLE_ENV || "sandbox").toLowerCase();
 
-  if (!apiKey || !hostedCheckout) {
+  if (!apiKey || !hostedCheckout || !customerPortal || !webhookSecret) {
     return json(res, 503, { error: "billing_not_configured" });
+  }
+
+  try {
+    const portal = new URL(customerPortal);
+    if (portal.protocol !== "https:") {
+      return json(res, 503, { error: "self_service_not_configured" });
+    }
+  } catch {
+    return json(res, 503, { error: "self_service_not_configured" });
   }
 
   let hosted;
