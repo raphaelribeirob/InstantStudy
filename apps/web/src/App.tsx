@@ -1,53 +1,75 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   BookOpenCheck,
   Brain,
   Check,
   ChevronDown,
-  Circle,
   Clipboard,
   FileText,
   FlaskConical,
   GraduationCap,
-  Link2,
+  Headphones,
+  Layers3,
+  MessageSquareText,
   Sparkles,
   TerminalSquare,
+  Timer,
 } from "lucide-react";
-import { agentPresets, mcpUrl, openApiUrl, type AgentId } from "./connection";
+import { agentPresets, mcpUrl, type AgentId } from "./connection";
 import { loadOffer, type FunnelOffer } from "./offer";
 
 const modes = [
-  { name: "Learn", icon: <Brain size={17} />, detail: "Teach → check → adapt" },
-  { name: "Review", icon: <BookOpenCheck size={17} />, detail: "Fast active recall" },
-  { name: "Quiz", icon: <FlaskConical size={17} />, detail: "Questions + feedback" },
-  { name: "Test", icon: <GraduationCap size={17} />, detail: "No hints until the end" },
+  {
+    name: "Learn",
+    icon: <Brain size={19} />,
+    eyebrow: "Adaptive practice",
+    detail: "Questions get harder when you are ready and repair weak concepts when you are not.",
+  },
+  {
+    name: "Quiz",
+    icon: <FlaskConical size={19} />,
+    eyebrow: "Fast feedback",
+    detail: "Turn the same material into focused questions and explanations in seconds.",
+  },
+  {
+    name: "Test",
+    icon: <GraduationCap size={19} />,
+    eyebrow: "Exam rehearsal",
+    detail: "Choose question styles and a timer. Feedback stays hidden until the test ends.",
+  },
+  {
+    name: "Review",
+    icon: <BookOpenCheck size={19} />,
+    eyebrow: "Right-time recall",
+    detail: "Come back to concepts when they are due instead of rereading everything.",
+  },
 ];
 
 const faq = [
   {
-    q: "What is InstantStudy™?",
-    a: "InstantStudy™ turns material already inside your AI into active study. Drop in notes, PDFs, slides, lecture content, conversation context or Anki material and keep learning through Learn, Review, Quiz and Test without leaving your agent.",
+    q: "What can I study with InstantStudy™?",
+    a: "Notes, PDFs, slides, lecture material, text already in your AI conversation and optional Anki material can all become Learn, Review, Quiz or Test sessions.",
   },
   {
-    q: "Which agents can connect?",
-    a: "Any agent that can call a remote MCP server can use the same InstantStudy endpoint. We provide ready connection patterns for Codex, Claude Code, Cursor and ChatGPT plugin packaging, plus OpenAPI for non-MCP tool callers.",
+    q: "How is this different from asking ChatGPT to quiz me?",
+    a: "A normal chat can create questions. InstantStudy™ adds the learning system around them: mastery by concept, adaptive difficulty, weak-concept repair, retesting, due reviews and a consistent next-best-question policy.",
   },
   {
-    q: "Why not just ask my AI to quiz me?",
-    a: "Your AI is good at explanation and question wording. InstantStudy™ adds the learning system generic chat lacks: persistent mastery, adaptive difficulty, weak-concept repair, retesting, study modes and a consistent next-best-question policy.",
+    q: "Do I have to create flashcards first?",
+    a: "No. InstantStudy™ is content-first. Give the AI what you are learning and start with the first question. Anki is optional if you already use it.",
   },
   {
-    q: "Do I need Anki?",
-    a: "No. Anki is optional. Connect it if you already have decks or want its mature scheduling. Content-first InstantStudy sessions work without Anki.",
+    q: "Does Test mode behave like a real practice exam?",
+    a: "Test can use multiple choice, true/false, short answer, free recall and application questions, with an optional timer and feedback released only at the end.",
   },
   {
-    q: "Can I use PDFs and files?",
-    a: "Yes. InstantStudy can ingest text and supported PDFs directly, while host LLMs can also pass extracted text or use their own vision for image-heavy and scanned files.",
+    q: "Which AI apps can use InstantStudy™?",
+    a: "The study engine is exposed through remote MCP and REST/OpenAPI, so compatible AI agents can use the same learning loop. Ready connection patterns are included for ChatGPT packaging, Claude Code, Cursor and Codex.",
   },
   {
-    q: "How does pricing work?",
-    a: "Pricing is controlled through Adapty so plans, trial length and regional experiments can change without rebuilding the product. The page displays the active offer when the backend is configured.",
+    q: "What does Unlimited unlock?",
+    a: "Unlimited removes study limits and is designed for persistent mastery, due reviews, every supported study mode, all supported AI agents and optional Anki integration.",
   },
 ];
 
@@ -63,107 +85,153 @@ function event(name: string, properties: Record<string, unknown> = {}) {
 function Logo() {
   return (
     <a className="brand" href="#top" aria-label="InstantStudy home">
-      <span className="brand-mark" aria-hidden="true">
-        <span />
+      <span className="brand-orb" aria-hidden="true">
+        <i />
+        <b />
       </span>
-      <span className="brand-word">InstantStudy<span className="tm">™</span></span>
+      <span className="brand-word">
+        InstantStudy<span className="tm">™</span>
+      </span>
     </a>
   );
 }
 
-function Orb({ small = false }: { small?: boolean }) {
+function SourceCard({
+  icon,
+  label,
+  note,
+}: {
+  icon: ReactNode;
+  label: string;
+  note: string;
+}) {
   return (
-    <span className={small ? "mini-orb" : "hero-orb"} aria-hidden="true">
-      <span className="orb-blue" />
-      <span className="orb-orange" />
-    </span>
-  );
-}
-
-function AgentRail() {
-  return (
-    <div className="agent-rail" aria-label="Supported agent examples">
-      {["ChatGPT", "Claude", "Cursor", "Codex", "Any MCP agent"].map((name, index) => (
-        <span key={name}>
-          <Circle
-            size={index === 0 ? 8 : 6}
-            fill={index === 0 ? "currentColor" : "none"}
-          />
-          {name}
-        </span>
-      ))}
+    <div className="source-card">
+      <span className="source-icon">{icon}</span>
+      <div>
+        <strong>{label}</strong>
+        <small>{note}</small>
+      </div>
     </div>
   );
 }
 
-function ProductDemo() {
+function HeroProduct() {
   return (
-    <div className="product-demo" aria-label="InstantStudy agent workflow preview">
-      <div className="demo-topbar">
-        <div className="demo-brand">
-          <Orb small />
-          <span>Biology — Cell respiration</span>
-        </div>
-        <div className="demo-status">
-          <span className="live-dot" />
-          Agent connected
-        </div>
-      </div>
-
-      <div className="demo-grid">
-        <div className="agent-panel">
-          <div className="panel-label">Agent</div>
-          <div className="message user-message">
-            <span>You</span>
-            <p>InstantStudy this chapter. I have 15 minutes.</p>
-          </div>
-          <div className="message ai-message">
-            <span>Claude</span>
-            <p>
-              I found 9 concepts. We’ll start with recall, then move into
-              explanation and application.
-            </p>
-          </div>
-          <div className="question-card">
-            <span>Question 3 / 12 · Learn</span>
-            <strong>
-              Why does the electron transport chain create a proton gradient?
-            </strong>
-            <div className="fake-input">Type your answer…</div>
-          </div>
+    <div className="hero-product" id="demo">
+      <div className="study-window">
+        <div className="study-window-top">
+          <span className="window-dots"><i /><i /><i /></span>
+          <span>Biology · Cell respiration</span>
+          <span className="study-mode-pill">Learn</span>
         </div>
 
-        <div className="state-panel">
-          <div className="panel-label">InstantStudy</div>
-          <div className="state-head">
-            <div>
-              <span>Knowledge state</span>
-              <strong>Adaptive</strong>
+        <div className="study-window-grid">
+          <aside className="study-rail">
+            <span className="rail-label">Study path</span>
+            <button className="active">01 · Learn</button>
+            <button>02 · Quiz</button>
+            <button>03 · Test</button>
+            <button>04 · Review</button>
+            <div className="rail-progress">
+              <span>Mastery</span>
+              <strong>61%</strong>
+              <i><b style={{ width: "61%" }} /></i>
             </div>
-            <Orb small />
+          </aside>
+
+          <div className="study-question">
+            <div className="question-meta">
+              <span>Question 3 of 12</span>
+              <span>Free recall</span>
+            </div>
+            <h3>Why does the electron transport chain create a proton gradient?</h3>
+            <p>Answer in your own words. InstantStudy will use your response to decide what comes next.</p>
+            <div className="answer-box">Type your answer…</div>
+            <div className="question-actions">
+              <span>Difficulty adapts after every answer</span>
+              <button>Submit answer <ArrowRight size={15} /></button>
+            </div>
           </div>
-          <div className="concept-row">
-            <span>Electron transport chain</span>
-            <strong>72%</strong>
-            <i style={{ width: "72%" }} />
-          </div>
-          <div className="concept-row">
-            <span>ATP synthase</span>
-            <strong>48%</strong>
-            <i style={{ width: "48%" }} />
-          </div>
-          <div className="concept-row">
-            <span>Chemiosmosis</span>
-            <strong>31%</strong>
-            <i style={{ width: "31%" }} />
-          </div>
-          <div className="policy-box">
-            <span>Next policy</span>
-            <strong>Repair → retest</strong>
-            <small>Missing concept: electrochemical potential</small>
-          </div>
+
+          <aside className="knowledge-panel">
+            <span className="rail-label">Knowledge state</span>
+            <div className="knowledge-score">
+              <strong>3</strong>
+              <span>concepts to strengthen</span>
+            </div>
+            {[
+              ["Electron transport chain", 72],
+              ["ATP synthase", 48],
+              ["Chemiosmosis", 31],
+            ].map(([label, value]) => (
+              <div className="concept-meter" key={label}>
+                <span><b>{label}</b><em>{value}%</em></span>
+                <i><b style={{ width: `${value}%` }} /></i>
+              </div>
+            ))}
+            <div className="next-review-card">
+              <span>Next review</span>
+              <strong>ATP synthase · tomorrow</strong>
+            </div>
+          </aside>
         </div>
       </div>
+    </div>
+  );
+}
+
+function TestPreview() {
+  return (
+    <div className="test-preview">
+      <div className="test-head">
+        <div>
+          <span>Practice test</span>
+          <strong>Cellular respiration</strong>
+        </div>
+        <div className="timer-chip"><Timer size={15} /> 24:18</div>
+      </div>
+      <div className="test-progress"><i style={{ width: "42%" }} /></div>
+      <span className="test-kicker">Question 5 of 12 · Multiple choice</span>
+      <h3>Which process directly drives ATP synthase?</h3>
+      <div className="choices">
+        <span>A <b>Movement of protons down their electrochemical gradient</b></span>
+        <span>B <b>Transfer of electrons directly to ATP</b></span>
+        <span>C <b>Breakdown of glucose in the cytosol</b></span>
+        <span>D <b>Release of carbon dioxide in glycolysis</b></span>
+      </div>
+      <div className="test-foot">
+        <span>No hints or score until the test ends.</span>
+        <button>Next question <ArrowRight size={14} /></button>
+      </div>
+    </div>
+  );
+}
+
+function RetentionPreview() {
+  return (
+    <div className="retention-preview">
+      <div className="retention-top">
+        <span>Review queue</span>
+        <strong>6 concepts due</strong>
+      </div>
+      {[
+        ["Chemiosmosis", "Due now", 31],
+        ["ATP synthase", "Today", 48],
+        ["NADH oxidation", "Tomorrow", 66],
+        ["Krebs cycle", "In 3 days", 81],
+      ].map(([label, due, mastery]) => (
+        <div className="review-row" key={label}>
+          <div>
+            <strong>{label}</strong>
+            <span>{due}</span>
+          </div>
+          <div className="review-mastery">
+            <i><b style={{ width: `${mastery}%` }} /></i>
+            <span>{mastery}%</span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -183,64 +251,40 @@ function ConnectAgent() {
   }
 
   return (
-    <section className="section connect-section" id="connect">
-      <div className="section-heading">
-        <p className="eyebrow">Works with your agent</p>
-        <h2>Connect InstantStudy™ once.</h2>
+    <section className="connect-band" id="connect">
+      <div className="connect-intro">
+        <p className="eyebrow light">Study where you already think</p>
+        <h2>Bring InstantStudy™ into your AI.</h2>
         <p>
-          Your agent keeps the conversation. InstantStudy™ adds the learning layer:
-          content ingestion, Learn, Review, Quiz, Test, mastery and optional Anki.
+          Your AI keeps the conversation. InstantStudy adds the adaptive learning
+          loop behind it.
         </p>
-      </div>
-
-      <div className="connect-shell">
-        <div className="connect-tabs" role="tablist" aria-label="Agent connectors">
+        <div className="agent-list">
           {agentPresets.map((agent) => (
             <button
-              key={agent.id}
               type="button"
+              key={agent.id}
               className={selected === agent.id ? "active" : ""}
               onClick={() => {
                 setSelected(agent.id);
                 setCopied(false);
-                event("agent_connect_selected", { agent: agent.id });
               }}
             >
-              <strong>{agent.name}</strong>
-              <small>{agent.label}</small>
+              {agent.name}
             </button>
           ))}
         </div>
+      </div>
 
-        <div className="connect-content">
-          <div className="connect-copy">
-            <p className="eyebrow">01 · Add the endpoint</p>
-            <h3>{preset.detail}</h3>
-            <p>{preset.note}</p>
-          </div>
-
-          <div className="terminal-card">
-            <div className="terminal-bar">
-              <span><TerminalSquare size={14} /> InstantStudy MCP</span>
-              <button type="button" onClick={() => void copy()}>
-                <Clipboard size={14} />
-                {copied ? "Copied" : "Copy"}
-              </button>
-            </div>
-            <pre>{snippet}</pre>
-          </div>
-
-          <div className="endpoint-grid">
-            <div>
-              <span>MCP</span>
-              <code>{endpoint}</code>
-            </div>
-            <div>
-              <span>OpenAPI fallback</span>
-              <code>{openApiUrl()}</code>
-            </div>
-          </div>
+      <div className="connect-code">
+        <div className="code-top">
+          <span><TerminalSquare size={14} /> {preset.name}</span>
+          <button type="button" onClick={() => void copy()}>
+            <Clipboard size={14} /> {copied ? "Copied" : "Copy"}
+          </button>
         </div>
+        <pre>{snippet}</pre>
+        <small>{preset.note}</small>
       </div>
     </section>
   );
@@ -254,66 +298,57 @@ function Pricing() {
     void loadOffer(navigator.language || "en").then(setOffer);
   }, []);
 
-  const price = annual
-    ? offer?.annualPrice ?? "$39.99 / year"
-    : offer?.monthlyPrice ?? "$6.99 / month";
+  const annualPrice = offer?.annualPrice ?? "$44.99 / year";
+  const monthlyPrice = offer?.monthlyPrice ?? "$6.99 / month";
 
   return (
     <section className="section pricing-section" id="pricing">
-      <div className="section-heading centered-heading">
-        <p className="eyebrow">Pricing</p>
-        <h2>Try the learning loop free. Go unlimited when it works.</h2>
-        <p>
-          Start with the complete learning loop, then remove usage limits with
-          Unlimited. Pricing and trial variants are controlled through Adapty.
-        </p>
+      <div className="section-heading pricing-heading">
+        <p className="eyebrow">Simple pricing</p>
+        <h2>Start free. Remove the limits when study becomes a habit.</h2>
+        <p>Get the learning loop first. Upgrade only when you need unlimited practice and continuity.</p>
       </div>
 
-      <div className="billing-toggle">
-        <button
-          type="button"
-          className={!annual ? "active" : ""}
-          onClick={() => setAnnual(false)}
-        >
+      <div className="billing-switch" aria-label="Billing interval">
+        <button type="button" className={!annual ? "active" : ""} onClick={() => setAnnual(false)}>
           Monthly
         </button>
-        <button
-          type="button"
-          className={annual ? "active" : ""}
-          onClick={() => setAnnual(true)}
-        >
-          Annual
+        <button type="button" className={annual ? "active" : ""} onClick={() => setAnnual(true)}>
+          Annual <span>7-day trial</span>
         </button>
       </div>
 
-      <div className="price-grid">
-        <article className="price-card">
-          <span>InstantStudy™ Free</span>
-          <h3>$0</h3>
-          <p>Experience the complete loop before paying.</p>
+      <div className="pricing-grid">
+        <article className="pricing-card free-card">
+          <div>
+            <span className="plan-name">Free</span>
+            <h3>$0</h3>
+            <p>See if active study works for you.</p>
+          </div>
           <ul>
-            <li><Check size={15} /> Turn your own material into study</li>
-            <li><Check size={15} /> Learn / Review / Quiz / Test</li>
-            <li><Check size={15} /> Limited adaptive usage</li>
+            <li><Check size={16} /> Study your own material</li>
+            <li><Check size={16} /> Learn, Review, Quiz and Test</li>
+            <li><Check size={16} /> Adaptive practice with usage limits</li>
+            <li><Check size={16} /> Connect a supported AI agent</li>
           </ul>
-          <a className="secondary full-button" href="#connect">
-            Connect your agent
-          </a>
+          <a className="plan-button secondary-plan" href="#connect">Start studying free</a>
         </article>
 
-        <article className="price-card featured">
-          <div className="popular">Most useful</div>
-          <span>InstantStudy™ Unlimited</span>
-          <h3>{price}</h3>
-          <p>{offer?.trial ?? "7 days free"} · cancel anytime.</p>
+        <article className="pricing-card unlimited-card">
+          <div className="most-popular">Best for daily study</div>
+          <div>
+            <span className="plan-name">Unlimited</span>
+            <h3>{annual ? annualPrice : monthlyPrice}</h3>
+            <p>{annual ? (offer?.trial ?? "7 days free") : "Cancel anytime"}.</p>
+          </div>
           <ul>
-            <li><Check size={15} /> Unlimited Learn / Review / Quiz / Test</li>
-            <li><Check size={15} /> Cross-session mastery + due reviews</li>
-            <li><Check size={15} /> All supported AI agents</li>
-            <li><Check size={15} /> Optional Anki memory integration</li>
+            <li><Check size={16} /> Unlimited Learn, Review, Quiz and Test</li>
+            <li><Check size={16} /> Cross-session mastery and due reviews</li>
+            <li><Check size={16} /> All supported AI agents</li>
+            <li><Check size={16} /> Optional Anki integration</li>
           </ul>
           <a
-            className="primary full-button"
+            className="plan-button primary-plan"
             href={offer?.checkoutUrl ?? "#connect"}
             onClick={() =>
               event("pricing_cta_clicked", {
@@ -322,7 +357,8 @@ function Pricing() {
               })
             }
           >
-            {offer?.cta ?? "Start free trial"} <ArrowRight size={16} />
+            {annual ? (offer?.cta ?? "Start 7-day free trial") : "Go Unlimited"}
+            <ArrowRight size={16} />
           </a>
         </article>
       </div>
@@ -337,13 +373,13 @@ function FAQ() {
     <section className="section faq-section" id="faq">
       <div className="section-heading">
         <p className="eyebrow">FAQ</p>
-        <h2>Everything your agent needs to start studying.</h2>
+        <h2>The important questions, answered.</h2>
       </div>
       <div className="faq-list">
         {faq.map((item, index) => (
           <button
-            className="faq-item"
             type="button"
+            className="faq-item"
             key={item.q}
             onClick={() => setOpen(open === index ? -1 : index)}
           >
@@ -351,10 +387,7 @@ function FAQ() {
               <strong>{item.q}</strong>
               {open === index ? <p>{item.a}</p> : null}
             </span>
-            <ChevronDown
-              size={17}
-              className={open === index ? "rotated" : ""}
-            />
+            <ChevronDown size={18} className={open === index ? "rotated" : ""} />
           </button>
         ))}
       </div>
@@ -365,190 +398,161 @@ function FAQ() {
 export function App() {
   return (
     <main id="top">
-      <header className="marketing-nav">
+      <header className="nav-shell">
         <Logo />
         <nav>
-          <a href="#how">How it works</a>
-          <a href="#connect">Connect</a>
+          <a href="#tools">Study tools</a>
+          <a href="#test">Practice tests</a>
+          <a href="#review">Review</a>
           <a href="#pricing">Pricing</a>
-          <a href="#faq">FAQ</a>
         </nav>
         <a className="nav-cta" href="#connect">
-          Connect your agent <ArrowRight size={14} />
+          Start free <ArrowRight size={14} />
         </a>
       </header>
 
       <section className="hero">
-        <div className="hero-copy">
-          <div className="launch-pill">
-            <Sparkles size={14} />
-            Active study for the AI you already use
-          </div>
-          <h1>
-            Your AI can explain anything. InstantStudy<span className="tm hero-tm">™</span> makes you learn it.
-          </h1>
-          <p>
-            Drop in notes, PDFs, slides, lecture content, your current conversation
-            or Anki. InstantStudy™ turns the material into adaptive Learn, Review,
-            Quiz and Test sessions—and remembers what you need next.
-          </p>
-          <div className="hero-actions">
-            <a className="primary hero-button" href="#connect">
-              Connect your agent <ArrowRight size={17} />
-            </a>
-            <a className="secondary hero-button" href="#how">
-              See how it works
-            </a>
-          </div>
-          <small>No deck setup. No switching apps. Keep the AI you already use.</small>
-        </div>
-
-        <ProductDemo />
-      </section>
-
-      <section className="compatibility-strip">
-        <span>Study where learning already starts</span>
-        <AgentRail />
-      </section>
-
-      <section className="section how-section" id="how">
-        <div className="section-heading">
-          <p className="eyebrow">How it works</p>
-          <h2>From raw material to real recall.</h2>
-          <p>
-            Turn the material already in your AI into active recall without a second
-            workflow: your material, practice and mastery stay in one learning loop.
-          </p>
-        </div>
-
-        <div className="steps-grid">
-          <article>
-            <span className="step-number">01</span>
-            <h3>Bring the AI you already use</h3>
+        <div className="hero-grid">
+          <div className="hero-copy">
+            <div className="hero-pill"><Sparkles size={14} /> Built for active recall</div>
+            <h1>Turn anything you’re learning into practice.</h1>
             <p>
-              Connect InstantStudy™ once to ChatGPT, Claude, Cursor, Codex or any
-              compatible MCP agent.
+              Drop in notes, PDFs, slides, lecture material or the conversation
+              already inside your AI. InstantStudy™ turns it into adaptive Learn,
+              Review, Quiz and Test sessions—without building a deck first.
             </p>
-            <div className="step-visual agent-stack">
-              <span>Claude</span>
-              <span>ChatGPT</span>
-              <span>Cursor</span>
-              <span>Codex</span>
+            <div className="hero-actions">
+              <a className="hero-primary" href="#connect">
+                Start studying free <ArrowRight size={17} />
+              </a>
+              <a className="hero-secondary" href="#demo">See a study session</a>
             </div>
-          </article>
-
-          <article>
-            <span className="step-number">02</span>
-            <h3>Drop in anything you’re learning</h3>
-            <p>
-              Notes, PDFs, slides, lectures, current chat context and Anki can
-              become study material instantly—without building a deck first.
-            </p>
-            <div className="step-visual source-stack">
-              <FileText size={22} />
-              <span>lecture.pdf</span>
-              <i>→</i>
-              <Orb small />
-            </div>
-          </article>
-
-          <article>
-            <span className="step-number">03</span>
-            <h3>Practice until it sticks</h3>
-            <p>
-              Learn adapts difficulty, Quiz gives fast feedback, Test simulates
-              exam conditions and Review returns to what is weakening.
-            </p>
-            <div className="step-visual mastery-visual">
-              <span><i style={{ width: "82%" }} /> 82%</span>
-              <span><i style={{ width: "54%" }} /> 54%</span>
-              <span><i style={{ width: "31%" }} /> 31%</span>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section className="section proof-section">
-        <div className="proof-copy">
-          <p className="eyebrow">A complete learning loop inside your AI</p>
-          <h2>Understand. Practice. Test. Remember.</h2>
-          <p>
-            The difference is continuity. Your AI can explain the concept, then
-            InstantStudy™ turns that same context into adaptive practice and keeps
-            the knowledge state for what should happen next.
-          </p>
-          <div className="proof-metrics">
-            <div><strong>4</strong><span>study modes</span></div>
-            <div><strong>1</strong><span>continuous learning loop</span></div>
-            <div><strong>0</strong><span>required handoffs</span></div>
+            <small>No deck setup · No switching apps · Your material stays in the learning loop</small>
           </div>
-        </div>
 
-        <div className="mode-grid">
-          {modes.map((mode) => (
-            <article key={mode.name}>
-              <span>{mode.icon}</span>
+          <div className="source-stack">
+            <span className="source-stack-label">Any input</span>
+            <SourceCard icon={<FileText size={20} />} label="Lecture notes" note="notes.pdf" />
+            <SourceCard icon={<Layers3 size={20} />} label="Slides" note="week-07.pptx" />
+            <SourceCard icon={<MessageSquareText size={20} />} label="AI conversation" note="current context" />
+            <SourceCard icon={<Headphones size={20} />} label="Lecture material" note="transcript or notes" />
+            <div className="source-arrow">↓</div>
+            <div className="instant-card">
+              <span className="brand-orb large" aria-hidden="true"><i /><b /></span>
               <div>
-                <strong>{mode.name}</strong>
-                <small>{mode.detail}</small>
+                <strong>InstantStudy™</strong>
+                <span>12 concepts found · ready to learn</span>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <HeroProduct />
+      </section>
+
+      <section className="trust-strip">
+        <span>One learning loop across</span>
+        <strong>ChatGPT</strong><strong>Claude</strong><strong>Cursor</strong><strong>Codex</strong><strong>Any MCP agent</strong>
+      </section>
+
+      <section className="section tools-section" id="tools">
+        <div className="section-heading wide-heading">
+          <p className="eyebrow">Study tools that work together</p>
+          <h2>Understand it once. Practice it four ways.</h2>
+          <p>
+            The same material moves through explanation, recall, testing and
+            scheduled review instead of becoming separate disconnected study assets.
+          </p>
+        </div>
+
+        <div className="mode-cards">
+          {modes.map((mode, index) => (
+            <article key={mode.name} className={index === 0 ? "featured-mode" : ""}>
+              <span className="mode-icon">{mode.icon}</span>
+              <span className="mode-eyebrow">{mode.eyebrow}</span>
+              <h3>{mode.name}</h3>
+              <p>{mode.detail}</p>
+              <span className="mode-number">0{index + 1}</span>
             </article>
           ))}
         </div>
       </section>
 
-      <ConnectAgent />
-
-      <section className="section api-section">
-        <div className="section-heading">
-          <p className="eyebrow">Two ways in</p>
-          <h2>MCP for agents. OpenAPI for everything else.</h2>
+      <section className="feature-band test-band" id="test">
+        <div className="feature-copy">
+          <p className="eyebrow light">Practice tests</p>
+          <h2>Rehearse the exam before the exam.</h2>
           <p>
-            The Study Engine is provider-neutral. Your product can call the same
-            primitives without depending on an OpenAI, Anthropic or Google SDK.
+            Build a test from your own material, mix question types, add a timer
+            and keep feedback hidden until the end.
           </p>
+          <div className="feature-points">
+            <span><Check size={15} /> Multiple choice + written responses</span>
+            <span><Check size={15} /> Optional time limit</span>
+            <span><Check size={15} /> Final score + weak concepts</span>
+          </div>
         </div>
-        <div className="api-grid">
-          <article>
-            <Link2 size={20} />
-            <strong>Remote MCP</strong>
-            <p>
-              Best for agent hosts. Discover tools once and let the agent run the
-              adaptive loop.
-            </p>
-            <code>{mcpUrl()}</code>
-          </article>
-          <article>
-            <TerminalSquare size={20} />
-            <strong>REST / OpenAPI</strong>
-            <p>
-              Best for custom products and function-calling systems that do not
-              expose MCP directly.
-            </p>
-            <code>{openApiUrl()}</code>
-          </article>
+        <TestPreview />
+      </section>
+
+      <section className="feature-band review-band" id="review">
+        <RetentionPreview />
+        <div className="feature-copy dark-copy">
+          <p className="eyebrow">Right-time review</p>
+          <h2>Study what is getting weak—not everything again.</h2>
+          <p>
+            Every answer updates mastery and schedules the next review. Weak and
+            overdue concepts return first.
+          </p>
+          <div className="feature-points dark-points">
+            <span><Check size={15} /> Mastery by concept</span>
+            <span><Check size={15} /> Due-review queue</span>
+            <span><Check size={15} /> Repair → retest loop</span>
+          </div>
         </div>
       </section>
 
+      <section className="section continuity-section">
+        <div className="continuity-copy">
+          <p className="eyebrow">Built for continuity</p>
+          <h2>Your next study session should know what happened in the last one.</h2>
+          <p>
+            InstantStudy™ is designed to carry your knowledge state forward:
+            what you know, what is fragile and what should come next.
+          </p>
+        </div>
+        <div className="continuity-visual">
+          <div className="memory-ring"><span>78%</span><small>overall mastery</small></div>
+          <div className="continuity-list">
+            <span><i className="good" /> Glycolysis <b>strong</b></span>
+            <span><i className="mid" /> Krebs cycle <b>review soon</b></span>
+            <span><i className="weak" /> Chemiosmosis <b>due now</b></span>
+          </div>
+        </div>
+      </section>
+
+      <ConnectAgent />
       <Pricing />
       <FAQ />
 
       <section className="final-cta">
-        <Orb />
-        <p className="eyebrow">InstantStudy™</p>
-        <h2>Your AI already explains. Now make it help you remember.</h2>
-        <a className="primary hero-button" href="#connect">
-          Connect your agent <ArrowRight size={17} />
+        <div>
+          <p className="eyebrow light">InstantStudy™</p>
+          <h2>Turn today’s material into tomorrow’s memory.</h2>
+          <p>Start with your own notes. Upgrade only when you want the limits gone.</p>
+        </div>
+        <a href="#connect">
+          Start studying free <ArrowRight size={17} />
         </a>
       </section>
 
-      <footer className="marketing-footer">
+      <footer>
         <Logo />
-        <span>Drop anything. Learn it.</span>
+        <span>Active study for the AI you already use.</span>
         <div>
-          <a href="#connect">Connect</a>
+          <a href="#tools">Study tools</a>
           <a href="#pricing">Pricing</a>
-          <a href="#faq">FAQ</a>
+          <a href="#connect">Connect</a>
         </div>
       </footer>
     </main>

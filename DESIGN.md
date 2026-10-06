@@ -1,194 +1,161 @@
-# InstantStudy — Design System
+# InstantStudy™ — Design System
 
-> Quiet intelligence for learning.
-> Warm paper, black ink, spacious interfaces, and small moments of color that represent memory becoming stronger.
+> Active learning should feel clear, modern, and immediately actionable.
 
-**Status:** Foundation v0.1  
-**Product:** InstantStudy  
-**Category:** Education / AI Learning  
-**Reference:** ElevenLabs visual language as documented by Refero Styles  
-**Reference URL:** https://styles.refero.design/style/031056ff-7af1-46db-8daa-115f731c5d26  
-**Compatibility:** RiverThree App Shell 1.0.0 / Design Contract 4.18.0
+**Status:** Offer-led visual system v1.0  
+**Product:** InstantStudy™  
+**Category:** AI-native learning
 
 ---
 
 ## 1. Design thesis
 
-InstantStudy should not look like a traditional LMS, productivity dashboard, or gamified flashcard app.
+InstantStudy™ should look like a modern learning product, not a developer tool and not a clone of an existing study app.
 
-It should feel like a calm workspace where intelligence is present but never visually noisy.
+The commercial flow is simple:
 
-The core experience is:
+**Bring material → Practice → Test → Review → Remember**
 
-**Learn → Capture → Recall → Strengthen → Master**
-
-The interface should make this cycle feel almost invisible.
+The design must make that loop visible.
 
 ### Principles
 
-1. **Calm over stimulation**  
-   No confetti, oversized gradients, streak obsession, neon dashboards, or visual pressure.
+1. **Learning outcome first**  
+   Lead with what the student can do, not MCP, APIs, agents, or infrastructure.
 
-2. **Editorial over SaaS chrome**  
-   Pages should feel closer to a beautifully typeset notebook than an admin panel.
+2. **One connected system**  
+   Learn, Quiz, Test, Review, and mastery should feel like states of the same product.
 
-3. **Content is the interface**  
-   Questions, explanations, concepts, and recall prompts receive more visual importance than navigation.
+3. **Serious, not academic-corporate**  
+   The product should feel credible for university and professional study without looking like an LMS.
 
-4. **One obvious action**  
-   Each screen should have one dominant next step: continue, answer, reveal, review, or finish.
+4. **Color carries learning state**  
+   Blue = active learning / primary progress.  
+   Orange = weak / due attention.  
+   Green = stable knowledge.  
+   Purple = exam / challenge context.
 
 5. **Progress without gamification theater**  
-   Show mastery, retention, and due reviews clearly. Avoid points, fake currencies, and unnecessary badges.
-
-6. **AI should feel contextual, not decorative**  
-   AI is expressed through adaptive content, memory states, and subtle generative visuals—not robot icons or glowing gradients everywhere.
+   Use mastery, review queues, and exam readiness. Avoid coins, streak pressure, confetti, or cartoon rewards.
 
 ---
 
-## 2. Visual direction
+## 2. Brand language
 
-The visual direction is inspired by ElevenLabs' warm editorial minimalism documented by Refero, adapted specifically for learning.
+The visual identity is original to InstantStudy™.
 
-### The feeling
+### Core feeling
 
-- Warm paper instead of clinical white
-- Pure black as the strongest UI contrast
-- Warm taupe surfaces instead of gray cards
-- Hairline borders instead of heavy shadows
-- Lightweight editorial headings
-- Generous whitespace
-- Fully rounded action pills
-- Saturated colors reserved for learning-state visuals
+- crisp white learning surfaces
+- cool blue-gray canvas
+- deep navy for focus states
+- electric blue for action and mastery
+- orange for due/weak concepts
+- soft lavender and mint as secondary learning signals
+- strong typography
+- rounded but not playful
+- product UI shown directly in marketing
 
 ### Avoid
 
-- Generic blue SaaS dashboards
-- Purple gradient backgrounds
-- Glassmorphism
-- Heavy card shadows
-- Dense sidebars
-- Cartoon education illustrations
-- Excessive gamification
-- Multiple competing CTA colors
-- Bright success/error colors covering large surfaces
+- copying Quizlet visual assets or exact layouts
+- ElevenLabs editorial minimalism as the main identity
+- generic black-and-white AI landing pages
+- excessive gradients
+- glass everywhere
+- neon gaming aesthetics
+- enterprise dashboards
+- decorative AI robots
 
 ---
 
 ## 3. Color system
 
-### Foundation
+```css
+:root {
+  --ink: #172036;
+  --muted: #68728a;
+  --line: #dfe4ef;
+  --paper: #ffffff;
+  --wash: #f1f4fb;
 
-| Token | Value | Role |
-|---|---|---|
-| `--color-canvas` | `#FDFCFC` | Main page background |
-| `--color-surface` | `#F5F3F1` | Cards, section bands, learning surfaces |
-| `--color-border` | `#EBE8E4` | Hairline borders and separators |
-| `--color-ink` | `#000000` | Primary text, primary buttons |
-| `--color-graphite` | `#44403B` | Strong secondary text |
-| `--color-muted` | `#777169` | Body copy and labels |
-| `--color-faint` | `#A59F97` | Tertiary metadata |
+  --blue: #3859ff;
+  --blue-dark: #2438b8;
+  --navy: #111a35;
 
-### Learning accents
+  --lavender: #dfe3ff;
+  --purple: #7a5cff;
+  --mint: #bff1dc;
+  --yellow: #ffe7a0;
+  --orange: #ff8f5c;
+}
+```
 
-Accent colors must not become general UI chrome.
+### Semantic meaning
 
-| Token | Value | Role |
-|---|---|---|
-| `--color-memory` | `#0447FF` | Memory-strength visualizations, active knowledge nodes |
-| `--color-attention` | `#FF4704` | Forgetting-risk visuals, difficult concepts, decay indicators |
-
-Use accents inside:
-
-- mastery or memory orbs
-- retention graphs
-- concept maps
-- subtle progress visualization
-- illustration details
-- selected learning-state indicators
-
-Do **not** use them as the default fill for primary buttons, top navigation, generic links, or large backgrounds.
-
-### Semantic states
-
-Semantic states should remain restrained.
-
-- **Known:** black / graphite first; memory blue as secondary signal
-- **Learning:** warm taupe with subtle memory blue detail
-- **Weak:** warm taupe with subtle orange detail
-- **Due:** black text + orange micro-indicator
-- **Missed:** do not flood the interface red; use concise copy and a small warm warning marker
+- **Blue:** active learning, mastery, primary action
+- **Orange:** due now, fragile memory, attention
+- **Green/mint:** stable concept
+- **Purple:** tests, challenge, exam simulation
+- **Navy:** focused study environments and technical connection surfaces
 
 ---
 
 ## 4. Typography
 
-InstantStudy inherits the light editorial character of the ElevenLabs reference without depending on proprietary typefaces.
+**Primary:** Inter  
+**Fallback:** system-ui
 
 ### Display
 
-**Preferred:** Inter Light 300  
-**Optional premium substitute:** Söhne Light or another restrained grotesk  
-**Fallback:** system-ui
+- weight: 700–800
+- tracking: -0.045em to -0.055em
+- line-height: 0.98–1.06
+- use for hero and core product promises
 
-Use for:
+### Product headings
 
-- hero statements
-- major page titles
-- learning-session conclusions
-- mastery milestones
+- weight: 650–750
+- tracking: -0.02em to -0.04em
 
-Rules:
+### Body
 
-- Weight: `300`
-- Letter spacing: `-0.02em`
-- Never bold display headlines
-- Prefer short headlines with strong line breaks
+- weight: 400
+- line-height: 1.5–1.65
+- muted blue-gray, not pure gray
 
-### UI and body
+### Recommended scale
 
-**Font:** Inter
-
-- Regular: `400`
-- Medium: `500`
-- Avoid `600+` unless accessibility or platform rendering requires it
-
-### Type scale
-
-| Role | Size | Weight | Line height | Tracking |
-|---|---:|---:|---:|---:|
-| Display | 48px | 300 | 1.08 | -0.02em |
-| H1 | 36px | 300 | 1.17 | -0.02em |
-| H2 | 32px | 300 | 1.13 | -0.02em |
-| Lead | 20px | 400 | 1.35 | normal |
-| Subheading | 18px | 400 | 1.55 | normal |
-| Body | 16px | 400 | 1.5 | +0.01em |
-| Body small | 14px | 400 | 1.5 | +0.01em |
-| Label | 13px | 500 | 1.4 | +0.01em |
-| Caption | 11px | 400 | 1.45 | +0.01em |
-
-Long explanations should optimize for reading comfort, not density.
+| Role | Size |
+|---|---:|
+| Hero | 48–76px |
+| Section title | 36–52px |
+| Product card title | 22–30px |
+| Lead | 16–18px |
+| Body | 13–16px |
+| UI label | 9–12px |
 
 ---
 
-## 5. Spacing and layout
+## 5. Layout
 
-**Base unit:** 4px  
-**Desktop max width:** 1280px  
-**Primary reading width:** 680–760px
+**Marketing max width:** 1180px  
+**Content max width:** 1120px  
+**Mobile gutter:** 11–16px
 
-### Spacing scale
+### Section rhythm
 
-`4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 72, 96, 128, 160`
+- hero top: 90–110px
+- standard section: 100–120px
+- feature bands: 52–72px internal padding
+- card gaps: 10–16px
 
-### Rules
+The page should alternate between:
 
-- Standard component gap: `8–16px`
-- Card padding: `24–32px`
-- Major section gap: `96–128px`
-- Learning prompt vertical breathing room: minimum `32px`
-- Do not fill desktop screens just because space exists
-- Reading and recall surfaces should remain centered and intentionally narrow
+1. open white/cool canvas
+2. strong navy feature band
+3. soft learning-state feature band
+4. white pricing/FAQ
 
 ---
 
@@ -196,472 +163,291 @@ Long explanations should optimize for reading comfort, not density.
 
 | Element | Radius |
 |---|---:|
-| Primary / secondary buttons | `9999px` |
-| Tags / filters | `9999px` |
-| Standard cards | `20px` |
-| Hero / learning cards | `24px` |
-| Inputs | `8px` |
-| Small controls | `6–10px` |
+| Nav shell | 16–20px |
+| Primary CTA | 12–14px |
+| Product cards | 20–28px |
+| Feature bands | 24–34px |
+| Small controls | 9–13px |
+| Pills / tags | 999px |
 
-Rounded forms should feel calm and tactile, not playful.
+The system is rounded, but not bubbly.
 
 ---
 
 ## 7. Elevation
 
-The product is primarily flat.
+Use shadows only to make product surfaces feel tangible.
 
-Prefer:
-
-1. surface color changes
-2. 1px warm hairline borders
-3. subtle inset separation
-4. shadow only when hierarchy truly requires elevation
-
-### Border
+### Product window
 
 ```css
-border: 1px solid #EBE8E4;
+box-shadow: 0 24px 80px rgba(35, 48, 84, .10);
 ```
 
-### Whisper shadow
-
-Use only for floating or transient surfaces such as command menus, popovers, and active recall overlays.
+### Primary blue CTA
 
 ```css
-box-shadow:
-  0 0 0 1px rgba(0,0,0,.04),
-  0 2px 8px rgba(0,0,0,.035);
+box-shadow: 0 10px 26px rgba(56, 89, 255, .20);
 ```
 
-No dramatic shadows.
+Avoid stacking multiple elevated cards inside each other.
 
 ---
 
-## 8. Core components
+## 8. Signature elements
 
-### 8.1 Primary pill button
+### 8.1 InstantStudy orb
 
-Role: one dominant action per view.
+The orb is the compact brand mark.
 
-- Fill: `#000000`
-- Text: `#FDFCFC`
-- Height: 40–44px
-- Horizontal padding: 16–20px
-- Radius: full pill
-- Font: Inter 14px / 500
+- blue lower mass = accumulated memory
+- orange upper mass = attention / forgetting risk
+- pale blue field = active learning space
 
-Examples:
+It may appear in:
+- logo
+- ingestion/result moments
+- loading / learning-state transitions
 
-- Start review
-- Continue
-- Reveal answer
-- Save to memory
+Do not repeat it as decoration in every section.
 
-### 8.2 Secondary pill button
+### 8.2 Knowledge state
 
-- Fill: canvas
-- Text: black
-- Border: 1px solid warm border
-- Same geometry as primary
+The product should always be able to show:
 
-Examples:
+- mastery %
+- weak concepts
+- next review
+- difficulty
+- what is due
 
-- Skip
-- Edit
-- View source
+The knowledge state is a product differentiator, not a decorative analytics widget.
 
-### 8.3 Learning card
+### 8.3 Study path
 
-The signature InstantStudy surface.
+Use a four-step product language:
 
-- Background: warm taupe
-- Radius: 24px
-- Padding: 24–32px mobile; 32–40px desktop
-- No default shadow
-- Minimal metadata
-- Prompt receives visual priority
+**Learn → Quiz → Test → Review**
 
-Card anatomy:
-
-1. optional context label
-2. question / concept
-3. answer interaction area
-4. optional source
-5. confidence / knowledge action
-
-### 8.4 Recall answer controls
-
-Do not replicate traditional four-button Anki grading as the main interaction.
-
-Default simple model:
-
-- **I knew it**
-- **Almost**
-- **I missed it**
-
-Advanced scheduling data can remain behind these human labels.
-
-### 8.5 Memory orb
-
-A contextual visual representation of learning state.
-
-It may use memory blue and attention orange inside the visual itself.
-
-It must never become a decorative logo repeated everywhere.
-
-Potential mappings:
-
-- size → knowledge importance
-- opacity → confidence
-- blue intensity → memory strength
-- orange edge → forgetting risk
-- motion → active consolidation
-
-### 8.6 Mastery meter
-
-Prefer calm language:
-
-- New
-- Learning
-- Stable
-- Strong
-- Mastered
-
-Avoid RPG language unless explicitly used in a future product mode.
-
-The default visualization should be a thin line, ring, or orbital state—not a giant percentage gauge.
-
-### 8.7 Input / ask box
-
-The capture box is central to InstantStudy.
-
-It should feel closer to an intelligent command surface than a school form.
-
-Possible prompts:
-
-- Paste something you want to remember
-- What are you learning?
-- Ask anything. We'll turn the important parts into memory.
-
-Style:
-
-- Canvas or taupe surface
-- 1px warm border
-- 12–16px internal padding
-- 12–16px radius where multiline
-- Black send control or understated icon action
+The current mode should be obvious, while the rest remain visibly part of the same loop.
 
 ---
 
-## 9. Core product surfaces
+## 9. Marketing page architecture
 
-### 9.1 Home
+The homepage follows the proven study-offer logic without copying another brand's design.
 
-Goal: answer one question immediately:
+### 1. Hero
 
-**What should I learn or review now?**
+Promise:
 
-Structure:
+**Turn anything you're learning into practice.**
 
-1. quiet header
-2. contextual greeting / learning state
-3. one dominant action: Continue learning / Start review
-4. compact due-review summary
-5. recent topics
-6. capture / ask surface
+Show accepted material types beside the promise.
 
-Avoid a dashboard full of analytics cards.
+Primary CTA:
+**Start studying free**
 
-### 9.2 Review session
+Secondary CTA:
+**See a study session**
 
-This is the most important product surface.
+### 2. Product demonstration
 
-The user should focus on one unit of knowledge at a time.
+Show the real loop:
 
-Desktop composition:
+- source material
+- question
+- answer surface
+- adaptive difficulty
+- mastery
+- next review
 
-- centered narrow column
-- progress metadata above the card
-- large learning card
-- answer controls below
-- optional source hidden until requested
+### 3. Study tools
 
-Navigation should disappear or become visually quiet during active recall.
+Four connected cards:
 
-### 9.3 Topic page
+- Learn
+- Quiz
+- Test
+- Review
 
-A topic is not simply a deck.
+### 4. Practice test
 
-It represents a knowledge area.
+This is a major premium-value surface.
 
 Show:
+- question format
+- timer
+- progress
+- hidden feedback
+- final score concept
 
-- topic title
-- concise mastery state
-- what is strong
-- what is weakening
-- concepts due soon
-- source material
-- recent learning activity
+### 5. Review / retention
 
-### 9.4 Memory map
+Show:
+- due concepts
+- mastery decay
+- review queue
+- strong / weak knowledge
 
-The memory map is a secondary, high-value surface.
+### 6. Continuity
 
-It visualizes relationships between concepts without becoming a sci-fi graph.
+Explain the moat:
 
-Rules:
+**The next session remembers the last one.**
 
-- warm canvas
-- black labels
-- thin neutral connectors
-- blue/orange accents only where meaningful
-- avoid hundreds of nodes by default
-- prioritize semantic clusters and actionable weak areas
+### 7. AI connection
 
-### 9.5 Session complete
+MCP belongs later in the page.
 
-No confetti.
+Consumer message:
+**Study where you already think.**
 
-The reward is clarity.
+Technical configuration is available but is not the headline.
 
-Example structure:
+### 8. Pricing
 
-**Your memory is stronger.**
+Free:
+- complete loop with limits
 
-- 12 concepts reviewed
-- 8 strengthened
-- 3 scheduled sooner
-- 1 needs a better explanation
+Unlimited:
+- unlimited study
+- cross-session mastery
+- due reviews
+- all supported agents
+- optional Anki
 
-Primary action: `Done`  
-Secondary: `Review weak concepts`
+### 9. FAQ + final CTA
 
----
-
-## 10. Navigation
-
-Navigation must be minimal.
-
-Recommended desktop structure:
-
-- Home
-- Library
-- Review
-- Search / command
-- Profile
-
-Do not introduce a permanent enterprise-style sidebar unless product complexity later justifies it.
-
-Mobile should prioritize bottom navigation only if three or more destinations are used frequently. Otherwise prefer contextual navigation.
+Close on outcome, not infrastructure.
 
 ---
 
-## 11. Motion
+## 10. Product UI
 
-Motion communicates cognitive state, not spectacle.
+### Active study surface
 
-### Timing
+During a study session:
 
-- micro interaction: `120–180ms`
-- surface transition: `180–260ms`
-- learning-state visualization: `300–600ms`
+- question occupies the visual center
+- navigation becomes quiet
+- one answer surface
+- one primary action
+- mastery remains visible but secondary
 
-### Character
+### Test mode
 
-- soft
-- deliberate
-- low amplitude
-- no bounce by default
+Test should feel stricter than Learn:
 
-### Good motion
+- timer
+- question count
+- no correctness feedback mid-test
+- exam-like whitespace
+- score only at the end
 
-- card answer revealing
-- memory orb stabilizing after a correct response
-- knowledge node softly changing state
-- progress line advancing
-- subtle content crossfade between questions
+### Review mode
 
-### Avoid
+Review should prioritize urgency:
 
-- constant floating animation
-- excessive parallax
-- elastic UI
-- celebration particles
+- due now
+- today
+- tomorrow
+- later
 
-Respect `prefers-reduced-motion` everywhere.
-
----
-
-## 12. Accessibility
-
-- Maintain WCAG AA contrast for body text and controls
-- Never encode learning state only by color
-- Keyboard navigation must cover the complete review session
-- Visible focus states are mandatory
-- Minimum interactive target: 44×44px on touch surfaces
-- Answer actions should expose keyboard shortcuts when useful
-- Motion must have reduced-motion alternatives
-- Long-form study content must support browser zoom without layout breakage
+Weak concepts use orange micro-signals, never full red screens.
 
 ---
 
-## 13. Responsive behavior
+## 11. Interaction style
+
+### Buttons
+
+Primary:
+- blue fill
+- white text
+- 12–14px radius
+- 44–50px height
+
+Secondary:
+- white fill
+- subtle border
+- dark text
+
+Dark feature bands:
+- white button or dark nested controls depending on hierarchy
+
+### Motion
+
+- 120–180ms controls
+- 180–260ms surfaces
+- no bouncing
+- no decorative infinite motion
+
+Respect `prefers-reduced-motion`.
+
+---
+
+## 12. Responsive rules
 
 ### Desktop
 
-Use whitespace aggressively.
-
-Do not stretch learning content to full width.
+Marketing can show dense product previews, but study content itself remains focused.
 
 ### Tablet
 
-Preserve reading width and card proportions. Navigation can collapse earlier than conventional SaaS layouts.
+Collapse three-column study windows to two columns.
 
 ### Mobile
 
-Mobile is a first-class learning environment.
-
 - single-column
-- 16px page gutters minimum
-- 20–24px learning-card radius
-- answer actions reachable with one thumb
-- minimal persistent chrome
-- no tiny analytics
+- hide secondary product panels before shrinking them into illegibility
+- CTAs stack vertically
+- product preview remains usable
+- pricing becomes one card per row
+- technical connection controls scroll or stack
 
-A review session should feel excellent on a phone before advanced desktop dashboards are added.
+---
+
+## 13. Accessibility
+
+- WCAG AA contrast for body text and controls
+- 44px touch targets where practical
+- learning state never encoded by color only
+- visible keyboard focus
+- reduced-motion support
+- text zoom must not break active study
 
 ---
 
 ## 14. Copy style
 
-InstantStudy speaks like an intelligent study partner.
-
-### Voice
-
-- concise
-- calm
-- specific
-- non-judgmental
-- not childish
-- not motivational by default
+InstantStudy™ speaks in outcomes.
 
 ### Prefer
 
-- `3 concepts need review.`
-- `You remembered this.`
-- `This one is weakening.`
-- `Try explaining it without looking.`
-- `Review again tomorrow.`
+- Turn your notes into practice.
+- Practice until it sticks.
+- 3 concepts need review.
+- No hints until the test ends.
+- Review this again tomorrow.
+- Your next study session remembers this one.
 
 ### Avoid
 
-- `Amazing job!!!`
-- `You're on fire 🔥`
-- `You crushed it!`
-- `Level up your brain!`
-- manipulative streak language
+- AI-powered revolutionary learning platform
+- Supercharge your brain
+- Crush every exam
+- Become unstoppable
+- MCP-first developer language in consumer sections
 
 ---
 
-## 15. Product identity
+## 15. Offer/design rule
 
-The InstantStudy brand should emerge from the product itself.
+The homepage may borrow **commercial structure** from proven study products, but never their visual identity, proprietary graphics, logos, exact wording, or page composition.
 
-### Signature elements
+The test for every section:
 
-1. warm-paper canvas
-2. lightweight black typography
-3. taupe learning surfaces
-4. black pill actions
-5. contextual memory orb
-6. restrained blue/orange cognitive signals
-7. calm spatial composition
-
-The identity should remain recognizable even with the logo removed.
-
----
-
-## 16. Implementation tokens
-
-```css
-:root {
-  --color-canvas: #fdfcfc;
-  --color-surface: #f5f3f1;
-  --color-border: #ebe8e4;
-
-  --color-ink: #000000;
-  --color-graphite: #44403b;
-  --color-muted: #777169;
-  --color-faint: #a59f97;
-
-  --color-memory: #0447ff;
-  --color-attention: #ff4704;
-
-  --radius-control: 8px;
-  --radius-card: 20px;
-  --radius-card-lg: 24px;
-  --radius-pill: 9999px;
-
-  --page-max: 1280px;
-  --reading-max: 720px;
-
-  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-```
-
----
-
-## 17. Design constraints for AI/code agents
-
-When generating InstantStudy UI:
-
-### Always
-
-- default to warm off-white, not pure white
-- keep major learning content centered and narrow
-- use black for primary actions
-- use full-pill buttons
-- use taupe cards with 20–24px radii
-- use hairline borders before shadows
-- keep headings light, never heavy
-- reserve vivid blue/orange for knowledge-state visuals
-- reduce UI chrome during active study
-- design mobile review flows deliberately
-
-### Never
-
-- create generic gradient SaaS heroes
-- use violet or orange CTA buttons by default
-- fill every section with a card
-- use thick borders or dramatic shadows
-- make dashboards denser than the learning content
-- add gamification without a product reason
-- use emojis as the core icon system
-- imitate ElevenLabs assets, illustrations, logos, or layouts literally
-
----
-
-## 18. Reference interpretation
-
-This system uses ElevenLabs on Refero as a **design-language reference**, not as a template to clone.
-
-The reference contributes:
-
-- warm editorial minimalism
-- light display typography
-- eggshell/taupe neutral hierarchy
-- black primary interaction
-- pill-shaped controls
-- large-radius cards
-- sparse use of saturated color
-- restrained elevation
-
-InstantStudy must develop its own identity around **memory, recall, mastery, and knowledge state**.
-
-The test for every screen is simple:
-
-> Does this help the learner focus on the next useful act of learning?
+> Does this make the learner understand the next useful learning action faster?
 
 If not, remove it.
