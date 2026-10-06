@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
   Brain,
@@ -74,7 +74,7 @@ function summaryFor(text: string) {
   return parts.length ? parts.join(" ") : text.slice(0, 700);
 }
 
-function navItem(view: View, active: View, icon: React.ReactNode, label: string, setView: (view: View) => void) {
+function navItem(view: View, active: View, icon: ReactNode, label: string, setView: (view: View) => void) {
   return (
     <button className={active === view ? "software-nav-item active" : "software-nav-item"} onClick={() => setView(view)}>
       {icon}<span>{label}</span>
