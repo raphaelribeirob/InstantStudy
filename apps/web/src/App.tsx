@@ -116,6 +116,108 @@ function SourceCard({
   );
 }
 
+
+function StudyGenerator() {
+  const [source, setSource] = useState<"paste" | "upload" | "drive" | "audio">("upload");
+
+  const labels = {
+    paste: "Paste text",
+    upload: "Upload files",
+    drive: "Google Drive",
+    audio: "Lecture audio",
+  };
+
+  return (
+    <section className="generator" id="generator">
+      <div className="generator-head">
+        <div>
+          <p className="eyebrow">Start with your own material</p>
+          <h2>Turn one source into a complete study loop.</h2>
+        </div>
+        <p>
+          Bring the material once. InstantStudy™ structures it into active practice
+          instead of making you rebuild the same content in separate tools.
+        </p>
+      </div>
+
+      <div className="generator-shell">
+        <div className="generator-tabs" role="tablist" aria-label="Study material source">
+          {(["paste", "upload", "drive", "audio"] as const).map((id) => (
+            <button
+              type="button"
+              key={id}
+              className={source === id ? "active" : ""}
+              onClick={() => setSource(id)}
+            >
+              {labels[id]}
+            </button>
+          ))}
+        </div>
+
+        <div className="generator-body">
+          <div className="drop-zone">
+            <span className="drop-icon"><FileText size={24} /></span>
+            <strong>
+              {source === "paste" && "Paste the material you need to learn"}
+              {source === "upload" && "Drop notes, readings or lecture slides"}
+              {source === "drive" && "Choose a document from your Drive"}
+              {source === "audio" && "Add a lecture transcript or recording notes"}
+            </strong>
+            <p>
+              PDF, DOCX, PPTX, plain text, conversation context and supported study material.
+            </p>
+            <button type="button">
+              {source === "paste" ? "Paste text" : source === "drive" ? "Choose file" : source === "audio" ? "Add lecture" : "Browse files"}
+            </button>
+          </div>
+
+          <div className="generated-stack">
+            <span className="generated-label">From this material</span>
+            <div><Brain size={17} /><span><strong>Learn</strong><small>Adaptive questions that get harder with mastery</small></span></div>
+            <div><FlaskConical size={17} /><span><strong>Quiz</strong><small>Fast recall with immediate feedback</small></span></div>
+            <div><GraduationCap size={17} /><span><strong>Practice Test</strong><small>Exam-style questions, timer and final score</small></span></div>
+            <div><BookOpenCheck size={17} /><span><strong>Review</strong><small>Return to weak concepts when they are due</small></span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AdaptiveLearnPreview() {
+  return (
+    <div className="learn-preview">
+      <div className="learn-preview-top">
+        <span>Learn session</span>
+        <strong>Progress adapts after every answer</strong>
+      </div>
+      <div className="learn-steps">
+        <div className="learn-step complete">
+          <span>01</span>
+          <div><strong>Recognition</strong><small>Multiple choice · complete</small></div>
+        </div>
+        <div className="learn-step active">
+          <span>02</span>
+          <div><strong>Recall</strong><small>Short answer · current</small></div>
+        </div>
+        <div className="learn-step">
+          <span>03</span>
+          <div><strong>Explain</strong><small>Why it works · next</small></div>
+        </div>
+        <div className="learn-step">
+          <span>04</span>
+          <div><strong>Apply</strong><small>New context · locked</small></div>
+        </div>
+      </div>
+      <div className="learn-insight">
+        <span>Weak concept detected</span>
+        <strong>Chemiosmosis</strong>
+        <p>Repair this concept, then retest it before moving on.</p>
+      </div>
+    </div>
+  );
+}
+
 function HeroProduct() {
   return (
     <div className="hero-product" id="demo">
@@ -298,15 +400,20 @@ function Pricing() {
     void loadOffer(navigator.language || "en").then(setOffer);
   }, []);
 
-  const annualPrice = offer?.annualPrice ?? "$44.99 / year";
-  const monthlyPrice = offer?.monthlyPrice ?? "$6.99 / month";
+  const unlimitedAnnual = offer?.annualPrice ?? "$44.99 / year";
+  const unlimitedMonthly = offer?.monthlyPrice ?? "$6.99 / month";
+  const plusAnnual = "$35.99 / year";
+  const plusMonthly = "$4.99 / month";
 
   return (
     <section className="section pricing-section" id="pricing">
       <div className="section-heading pricing-heading">
-        <p className="eyebrow">Start now</p>
-        <h2>The future of learning starts free.</h2>
-        <p>Experience the full learning loop first. Upgrade only when you want unlimited practice and continuity.</p>
+        <p className="eyebrow">Upgrade after you feel the value</p>
+        <h2>Start free. Pay when you want the limits gone.</h2>
+        <p>
+          The free experience gets you into the learning loop. Plus increases
+          your monthly study allowance. Unlimited removes the core Learn and Test caps.
+        </p>
       </div>
 
       <div className="billing-switch" aria-label="Billing interval">
@@ -318,33 +425,50 @@ function Pricing() {
         </button>
       </div>
 
-      <div className="pricing-grid">
+      <div className="pricing-grid quizlet-pricing-grid">
         <article className="pricing-card free-card">
           <div>
             <span className="plan-name">Free</span>
             <h3>$0</h3>
-            <p>See if active study works for you.</p>
+            <p>Start with your own material and experience the study loop.</p>
           </div>
           <ul>
-            <li><Check size={16} /> Study your own material</li>
-            <li><Check size={16} /> Learn, Review, Quiz and Test</li>
-            <li><Check size={16} /> Adaptive practice with usage limits</li>
-            <li><Check size={16} /> Connect a supported AI agent</li>
+            <li><Check size={16} /> Generate study sessions from your material</li>
+            <li><Check size={16} /> Limited Learn and Quiz rounds</li>
+            <li><Check size={16} /> Test preview before upgrade</li>
+            <li><Check size={16} /> Basic mastery state</li>
           </ul>
-          <a className="plan-button secondary-plan" href="#connect">Start studying free</a>
+          <a className="plan-button secondary-plan" href="#generator">Start free</a>
+        </article>
+
+        <article className="pricing-card plus-card">
+          <div>
+            <span className="plan-name">Plus</span>
+            <h3>{annual ? plusAnnual : plusMonthly}</h3>
+            <p>{annual ? "7-day free trial." : "Cancel anytime."}</p>
+          </div>
+          <ul>
+            <li><Check size={16} /> Higher monthly Learn allowance</li>
+            <li><Check size={16} /> More practice tests</li>
+            <li><Check size={16} /> Persistent mastery and review queue</li>
+            <li><Check size={16} /> Ad-free InstantStudy experience</li>
+          </ul>
+          <a className="plan-button secondary-plan" href="#connect">
+            {annual ? "Start free trial" : "Choose Plus"}
+          </a>
         </article>
 
         <article className="pricing-card unlimited-card">
-          <div className="most-popular">Best for daily study</div>
+          <div className="most-popular">Most popular</div>
           <div>
             <span className="plan-name">Unlimited</span>
-            <h3>{annual ? annualPrice : monthlyPrice}</h3>
+            <h3>{annual ? unlimitedAnnual : unlimitedMonthly}</h3>
             <p>{annual ? (offer?.trial ?? "7 days free") : "Cancel anytime"}.</p>
           </div>
           <ul>
             <li><Check size={16} /> Unlimited Learn, Review, Quiz and Test</li>
             <li><Check size={16} /> Cross-session mastery and due reviews</li>
-            <li><Check size={16} /> All supported AI agents</li>
+            <li><Check size={16} /> Every supported AI agent</li>
             <li><Check size={16} /> Optional Anki integration</li>
           </ul>
           <a
@@ -353,6 +477,7 @@ function Pricing() {
             onClick={() =>
               event("pricing_cta_clicked", {
                 billing: annual ? "annual" : "monthly",
+                plan: "unlimited",
                 variationId: offer?.variationId,
               })
             }
@@ -362,6 +487,11 @@ function Pricing() {
           </a>
         </article>
       </div>
+
+      <p className="pricing-disclosure">
+        Plus/Unlimited limits are the intended offer ladder. Billing and entitlement enforcement
+        activate when production checkout is connected.
+      </p>
     </section>
   );
 }
@@ -401,10 +531,10 @@ export function App() {
       <header className="nav-shell">
         <Logo />
         <nav>
-          <a href="#tools">Learn</a>
+          <a href="#generator">Create</a>
+          <a href="#learn">Learn</a>
           <a href="#test">Test</a>
-          <a href="#review">Review</a>
-          <a href="#pricing">Pricing</a>
+          <a href="#pricing">Upgrade</a>
         </nav>
         <a className="nav-cta" href="#connect">
           Try InstantStudy™ <ArrowRight size={14} />
@@ -436,25 +566,33 @@ export function App() {
           </div>
         </div>
 
-        <div className="future-materials">
-          <div className="future-material-copy">
-            <span className="source-stack-label">Any material becomes practice</span>
-            <strong>Drop it in. Start with the first question.</strong>
-          </div>
-          <div className="future-material-grid">
-            <SourceCard icon={<FileText size={20} />} label="Notes" note="PDF · text" />
-            <SourceCard icon={<Layers3 size={20} />} label="Slides" note="lecture deck" />
-            <SourceCard icon={<MessageSquareText size={20} />} label="AI context" note="current conversation" />
-            <SourceCard icon={<Headphones size={20} />} label="Lecture" note="transcript · notes" />
-          </div>
-        </div>
-
+        <StudyGenerator />
         <HeroProduct />
       </section>
 
       <section className="trust-strip future-strip">
         <span>One learning system, wherever you think.</span>
         <strong>ChatGPT</strong><strong>Claude</strong><strong>Cursor</strong><strong>Codex</strong><strong>Any MCP agent</strong>
+      </section>
+
+      <section className="feature-band learn-band" id="learn">
+        <div className="feature-copy">
+          <p className="eyebrow">Adaptive Learn</p>
+          <h2>Start easier. Finish with recall.</h2>
+          <p>
+            Learn changes question format and difficulty as your mastery improves,
+            so time goes toward what you still need instead of what you already know.
+          </p>
+          <div className="feature-points dark-points">
+            <span><Check size={15} /> Multiple choice → written recall</span>
+            <span><Check size={15} /> Weak concepts repeat until repaired</span>
+            <span><Check size={15} /> Short, actionable study rounds</span>
+          </div>
+          <a className="inline-offer-cta" href="#generator">
+            Start a Learn round <ArrowRight size={14} />
+          </a>
+        </div>
+        <AdaptiveLearnPreview />
       </section>
 
       <section className="section tools-section" id="tools">
@@ -492,6 +630,10 @@ export function App() {
             <span><Check size={15} /> Multiple choice + written responses</span>
             <span><Check size={15} /> Optional time limit</span>
             <span><Check size={15} /> Final score + weak concepts</span>
+          </div>
+          <div className="free-round-note">
+            <strong>Try Test before upgrading.</strong>
+            <span>Free access proves the loop; paid plans remove study limits.</span>
           </div>
         </div>
         <TestPreview />
