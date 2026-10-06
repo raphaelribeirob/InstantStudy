@@ -2,6 +2,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import cors from "cors";
 import express from "express";
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
+import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { BridgeQueue } from "./bridgeQueue.js";
 import { AdaptyClient } from "./adapty.js";
@@ -13,7 +16,7 @@ import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 
 const PORT = Number.parseInt(process.env.PORT ?? "8000", 10);
 const DEVICE_ID = process.env.INSTANTSTUDY_DEVICE_ID ?? "dev-device";
-const BRIDGE_TOKEN = process.env.INSTANTSTUDY_BRIDGE_TOKEN ?? "replace-me";
+const BRIDGE_TOKEN = (process.env.INSTANTSTUDY_BRIDGE_TOKEN ?? "").trim();
 const TIMEOUT_MS = Number.parseInt(
   process.env.ANKI_COMMAND_TIMEOUT_MS ?? "15000",
   10,
@@ -22,7 +25,7 @@ const TIMEOUT_MS = Number.parseInt(
 const bridge = new BridgeQueue(TIMEOUT_MS);
 const contentSessions = new ContentSessionStore();
 const studyEngine = new StudyEngine();
-const API_KEY = process.env.INSTANTSTUDY_API_KEY ?? "replace-me-api-key";
+const API_KEY = (process.env.INSTANTSTUDY_API_KEY ?? "").trim();
 const PUBLIC_URL = (process.env.INSTANTSTUDY_PUBLIC_URL ?? "").replace(/\/$/, "");
 const adapty = new AdaptyClient({
   publicApiKey: process.env.ADAPTY_PUBLIC_API_KEY,
@@ -622,17 +625,99 @@ function createMcpServer() {
 }
 
 const app = express();
-app.use(cors());
-app.use(express.json({ limit: "1mb" }));
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
+
+const allowedOrigins = new Set(
+  (process.env.INSTANTSTUDY_ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
+
+if (PUBLIC_URL) {
+  try {
+    allowedOrigins.add(new URL(PUBLIC_URL).origin);
+  } catch {
+    // Invalid public URL is ignored here; deployment health will still expose config state.
+  }
+}
+
+if (!process.env.VERCEL) {
+  allowedOrigins.add("http://localhost:5173");
+  allowedOrigins.add("http://127.0.0.1:5173");
+}
+
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: false,
+  }),
+);
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error("cors_origin_denied"));
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["authorization", "content-type", "mcp-session-id"],
+    maxAge: 600,
+  }),
+);
+app.use(express.json({ limit: "1mb", strict: true }));
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: Number.parseInt(process.env.INSTANTSTUDY_API_RATE_LIMIT ?? "240", 10),
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+});
+const mcpLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: Number.parseInt(process.env.INSTANTSTUDY_MCP_RATE_LIMIT ?? "120", 10),
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+});
+const bridgeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: Number.parseInt(process.env.INSTANTSTUDY_BRIDGE_RATE_LIMIT ?? "60", 10),
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+});
+
+app.use("/mcp", mcpLimiter);
+app.use("/bridge", bridgeLimiter);
+
+function configuredSecret(secret: string) {
+  return Boolean(secret && !secret.startsWith("replace-me"));
+}
+
+function bearerMatches(req: express.Request, expected: string) {
+  if (!configuredSecret(expected)) return false;
+  const authorization = req.header("authorization") ?? "";
+  const prefix = "Bearer ";
+  if (!authorization.startsWith(prefix)) return false;
+
+  const supplied = authorization.slice(prefix.length);
+  const suppliedBuffer = Buffer.from(supplied);
+  const expectedBuffer = Buffer.from(expected);
+  return (
+    suppliedBuffer.length === expectedBuffer.length &&
+    timingSafeEqual(suppliedBuffer, expectedBuffer)
+  );
+}
 
 function bridgeAuthorized(req: express.Request) {
-  const authorization = req.header("authorization");
-  return authorization === `Bearer ${BRIDGE_TOKEN}`;
+  return bearerMatches(req, BRIDGE_TOKEN);
 }
 
 function apiAuthorized(req: express.Request) {
-  const authorization = req.header("authorization");
-  return authorization === `Bearer ${API_KEY}`;
+  return bearerMatches(req, API_KEY);
 }
 
 function requireApiAuth(
@@ -697,7 +782,7 @@ app.get("/openapi.yaml", (req, res) => {
     );
 });
 
-app.use("/api/v1", requireApiAuth);
+app.use("/api/v1", apiLimiter, requireApiAuth);
 
 app.post("/api/v1/study/prepare", async (req, res) => {
   try {
@@ -1008,6 +1093,13 @@ app.get("/health", (_req, res) => {
       enabled: true,
       plus: { learnRoundsPerMonth: 20, practiceTestsPerMonth: 3 },
       unlimited: { learnRoundsPerMonth: null, practiceTestsPerMonth: null },
+    },
+    security: {
+      apiAuthConfigured: configuredSecret(API_KEY),
+      bridgeAuthConfigured: configuredSecret(BRIDGE_TOKEN),
+      corsAllowlistConfigured: allowedOrigins.size > 0,
+      rateLimiting: true,
+      helmet: true,
     },
     device: bridge.status(DEVICE_ID),
   });
