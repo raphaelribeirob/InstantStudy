@@ -1,100 +1,44 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
-  BookOpen,
-  BriefcaseBusiness,
-  Check,
-  ChevronLeft,
+  BookOpenCheck,
+  Brain,
+  FileText,
+  FlaskConical,
   GraduationCap,
-  Languages,
-  Link2,
-  MessageCircleMore,
-  Sparkles,
-  Target,
   Upload,
 } from "lucide-react";
-import { loadOffer, type FunnelOffer } from "./offer";
+import { prepareStudy, type PreparedStudy, type StudyMode } from "./study";
 
-type Step =
-  | "welcome"
-  | "role"
-  | "goal"
-  | "source"
-  | "paywall"
-  | "reminders"
-  | "ready";
-
-type Choice = {
-  id: string;
+const modes: Array<{
+  id: StudyMode;
   label: string;
-  detail?: string;
+  detail: string;
   icon: React.ReactNode;
-};
-
-type FunnelState = {
-  role?: string;
-  goal?: string;
-  source?: string;
-  reminders?: boolean;
-  billing?: "annual" | "monthly";
-};
-
-const STEPS: Step[] = [
-  "welcome",
-  "role",
-  "goal",
-  "source",
-  "paywall",
-  "reminders",
-  "ready",
-];
-
-const roles: Choice[] = [
-  { id: "school", label: "School", icon: <BookOpen size={20} /> },
-  { id: "university", label: "University", icon: <GraduationCap size={20} /> },
-  { id: "career", label: "Work or certification", icon: <BriefcaseBusiness size={20} /> },
-  { id: "language", label: "Language learning", icon: <Languages size={20} /> },
-];
-
-const goals: Choice[] = [
+}> = [
   {
-    id: "remember",
-    label: "Remember what I study",
-    detail: "Turn learning into durable recall.",
-    icon: <Sparkles size={20} />,
+    id: "learn",
+    label: "Learn",
+    detail: "Teach, check, adapt.",
+    icon: <Brain size={18} />,
   },
   {
-    id: "exam",
-    label: "Prepare for an exam",
-    detail: "Practice the ideas most likely to break.",
-    icon: <Target size={20} />,
+    id: "review",
+    label: "Review",
+    detail: "Fast active recall.",
+    icon: <BookOpenCheck size={18} />,
   },
   {
-    id: "anki",
-    label: "Study my Anki with AI",
-    detail: "Keep your decks and scheduling.",
-    icon: <Link2 size={20} />,
+    id: "quiz",
+    label: "Quiz",
+    detail: "Questions + feedback.",
+    icon: <FlaskConical size={18} />,
   },
   {
-    id: "understand",
-    label: "Understand difficult concepts",
-    detail: "Explain, test, then retest.",
-    icon: <MessageCircleMore size={20} />,
-  },
-];
-
-const sources: Choice[] = [
-  {
-    id: "anki",
-    label: "Connect Anki",
-    detail: "Bring your decks, due cards, and review history.",
-    icon: <Link2 size={20} />,
-  },
-  {
-    id: "material",
-    label: "Start with study material",
-    detail: "Paste or upload notes later from your LLM.",
-    icon: <Upload size={20} />,
+    id: "test",
+    label: "Test",
+    detail: "No hints until the end.",
+    icon: <GraduationCap size={18} />,
   },
 ];
 
@@ -102,9 +46,11 @@ function event(name: string, properties: Record<string, unknown> = {}) {
   const detail = { name, properties, at: new Date().toISOString() };
   window.dispatchEvent(new CustomEvent("instantstudy:funnel", { detail }));
 
-  const dataLayer = (window as typeof window & {
-    dataLayer?: Array<Record<string, unknown>>;
-  }).dataLayer;
+  const dataLayer = (
+    window as typeof window & {
+      dataLayer?: Array<Record<string, unknown>>;
+    }
+  ).dataLayer;
   dataLayer?.push({ event: name, ...properties });
 }
 
@@ -130,343 +76,239 @@ function Orb() {
   );
 }
 
-function Progress({ index }: { index: number }) {
-  const usable = STEPS.length - 1;
-  const progress = Math.max(0, Math.min(1, index / usable));
-  return (
-    <div className="progress" aria-label={`Onboarding step ${index + 1} of ${STEPS.length}`}>
-      <span style={{ width: `${progress * 100}%` }} />
-    </div>
-  );
-}
-
-function ChoiceList({
-  options,
-  value,
-  onChange,
-}: {
-  options: Choice[];
-  value?: string;
-  onChange: (id: string) => void;
-}) {
-  return (
-    <div className="choice-list">
-      {options.map((option) => {
-        const selected = option.id === value;
-        return (
-          <button
-            className={`choice ${selected ? "selected" : ""}`}
-            key={option.id}
-            onClick={() => onChange(option.id)}
-            type="button"
-          >
-            <span className="choice-icon">{option.icon}</span>
-            <span className="choice-copy">
-              <strong>{option.label}</strong>
-              {option.detail ? <small>{option.detail}</small> : null}
-            </span>
-            <span className="choice-check" aria-hidden="true">
-              {selected ? <Check size={16} /> : null}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 export function App() {
-  const [step, setStep] = useState<Step>("welcome");
-  const [state, setState] = useState<FunnelState>({ billing: "annual" });
-  const [offer, setOffer] = useState<FunnelOffer | null>(null);
-  const index = STEPS.indexOf(step);
+  const [content, setContent] = useState("");
+  const [mode, setMode] = useState<StudyMode>("learn");
+  const [fileName, setFileName] = useState<string>();
+  const [prepared, setPrepared] = useState<PreparedStudy>();
+  const [error, setError] = useState<string>();
+  const [loading, setLoading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    void loadOffer(navigator.language || "en").then(setOffer);
-  }, []);
+  const canStart = content.trim().length >= 12 && !loading;
 
-  useEffect(() => {
-    event("funnel_step_viewed", { step, stepIndex: index });
-  }, [step, index]);
-
-  const roleName = useMemo(
-    () => roles.find((item) => item.id === state.role)?.label,
-    [state.role],
+  const selectedMode = useMemo(
+    () => modes.find((item) => item.id === mode)!,
+    [mode],
   );
 
-  const goalName = useMemo(
-    () => goals.find((item) => item.id === state.goal)?.label,
-    [state.goal],
-  );
+  async function onFile(file?: File) {
+    if (!file) return;
+    setFileName(file.name);
 
-  function next() {
-    const nextStep = STEPS[index + 1];
-    if (nextStep) setStep(nextStep);
-  }
+    const textLike =
+      file.type.startsWith("text/") ||
+      /\.(txt|md|csv|json|html?|xml)$/i.test(file.name);
 
-  function back() {
-    const previous = STEPS[index - 1];
-    if (previous) setStep(previous);
-  }
-
-  function choose<K extends keyof FunnelState>(key: K, value: FunnelState[K]) {
-    setState((current) => ({ ...current, [key]: value }));
-    event("funnel_choice", { step, key, value });
-  }
-
-  function startTrial() {
-    event("paywall_cta_clicked", {
-      billing: state.billing,
-      variationId: offer?.variationId,
-    });
-
-    if (offer?.checkoutUrl) {
-      window.location.assign(offer.checkoutUrl);
+    if (!textLike) {
+      setError(
+        "For PDFs, slides and images, send the file directly to InstantStudy inside your LLM. This web starter currently reads text files locally.",
+      );
       return;
     }
 
-    next();
+    setError(undefined);
+    setContent((await file.text()).slice(0, 200_000));
+    event("content_added", { source: "file", fileType: file.type || "unknown" });
+  }
+
+  async function start() {
+    if (!canStart) return;
+    setLoading(true);
+    setError(undefined);
+    event("study_prepare_started", {
+      mode,
+      source: fileName ? "file" : "paste",
+    });
+
+    try {
+      const result = await prepareStudy({
+        contentText: content,
+        mode,
+        title: fileName,
+      });
+      setPrepared(result);
+      event("first_study_value_reached", {
+        mode,
+        conceptCount: result.conceptCount,
+        fallback: result.localFallback,
+      });
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Could not prepare this material.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (prepared) {
+    return (
+      <main className="app-shell">
+        <header className="topbar">
+          <Logo />
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => setPrepared(undefined)}
+          >
+            Study something else
+          </button>
+        </header>
+
+        <div className="progress">
+          <span style={{ width: "100%" }} />
+        </div>
+
+        <section className="funnel-stage">
+          <div className="screen ready-screen">
+            <Orb />
+            <p className="eyebrow">{selectedMode.label} session ready</p>
+            <h2>Your material is already in study mode.</h2>
+
+            <div className="summary-card">
+              <div>
+                <span>Mode</span>
+                <strong>{selectedMode.label}</strong>
+              </div>
+              <div>
+                <span>First target</span>
+                <strong>
+                  {prepared.next?.concept?.label ?? "Start with the core ideas"}
+                </strong>
+              </div>
+              <div>
+                <span>Concepts</span>
+                <strong>{prepared.conceptCount ?? "Adaptive"}</strong>
+              </div>
+            </div>
+
+            <div className="handoff">
+              <span>Inside your LLM</span>
+              <p>“InstantStudy, study this with me.”</p>
+            </div>
+
+            <button
+              className="primary full"
+              type="button"
+              onClick={() =>
+                event("continue_in_llm_clicked", {
+                  studySessionId: prepared.studySessionId,
+                  mode,
+                })
+              }
+            >
+              Continue in InstantStudy <ArrowRight size={17} />
+            </button>
+
+            <p className="fineprint centered-copy">
+              No deck creation required. Connect Anki later only if you want its
+              scheduling and existing memory.
+            </p>
+          </div>
+        </section>
+
+        <footer className="footer">
+          <span>Drop anything. Learn it.</span>
+          <span>InstantStudy</span>
+        </footer>
+      </main>
+    );
   }
 
   return (
     <main className="app-shell">
       <header className="topbar">
         <Logo />
-        {step !== "welcome" && step !== "ready" ? (
-          <button className="text-button" type="button" onClick={back}>
-            <ChevronLeft size={16} /> Back
-          </button>
-        ) : (
-          <span />
-        )}
+        <span className="top-note">Quizlet-style study, native to LLMs.</span>
       </header>
 
-      <Progress index={index} />
+      <div className="progress">
+        <span style={{ width: "18%" }} />
+      </div>
 
       <section className="funnel-stage">
-        {step === "welcome" && (
-          <div className="screen hero-screen">
-            <Orb />
-            <p className="eyebrow">Adaptive study for your existing memory</p>
-            <h1>Study where you already think.</h1>
-            <p className="lead">
-              Bring Anki and your study material into the LLM you already use.
-              InstantStudy remembers what you know, tests what is weakening, and
-              keeps the review loop moving.
-            </p>
+        <div className="screen hero-screen content-first">
+          <Orb />
+          <p className="eyebrow">Adaptive study from anything</p>
+          <h1>Drop anything. Learn it.</h1>
+          <p className="lead">
+            Paste notes here—or send a PDF, slide deck, image, document or Anki
+            material directly to InstantStudy inside your LLM. We turn it into an
+            adaptive study session immediately.
+          </p>
 
-            <div className="auth-stack">
+          <div className="mode-picker" aria-label="Study mode">
+            {modes.map((item) => (
               <button
-                className="primary"
+                key={item.id}
                 type="button"
+                className={`mode-pill ${mode === item.id ? "selected" : ""}`}
                 onClick={() => {
-                  event("signup_started", { provider: "google" });
-                  next();
+                  setMode(item.id);
+                  event("study_mode_selected", { mode: item.id });
                 }}
               >
-                Continue with Google <ArrowRight size={17} />
+                {item.icon}
+                <span>
+                  <strong>{item.label}</strong>
+                  <small>{item.detail}</small>
+                </span>
               </button>
+            ))}
+          </div>
+
+          <div className="content-box">
+            <textarea
+              value={content}
+              onChange={(event) => {
+                setContent(event.target.value);
+                setFileName(undefined);
+              }}
+              placeholder="Paste notes, a chapter, lecture transcript, study guide, or anything you want to learn…"
+              aria-label="Study material"
+            />
+            <div className="content-actions">
+              <input
+                ref={fileRef}
+                type="file"
+                hidden
+                onChange={(event) => void onFile(event.target.files?.[0])}
+              />
               <button
+                type="button"
                 className="secondary"
-                type="button"
-                onClick={() => {
-                  event("signup_started", { provider: "email" });
-                  next();
-                }}
+                onClick={() => fileRef.current?.click()}
               >
-                Continue with email
+                <Upload size={16} />
+                {fileName ?? "Add text file"}
               </button>
+              <span className="content-hint">
+                <FileText size={14} /> PDF & images work directly inside your LLM
+              </span>
             </div>
-            <p className="fineprint">
-              By continuing, you agree to the Terms and Privacy Policy.
+          </div>
+
+          {error ? <p className="inline-error">{error}</p> : null}
+
+          <button
+            className="primary start-button"
+            type="button"
+            disabled={!canStart}
+            onClick={() => void start()}
+          >
+            {loading ? "Preparing…" : `Start ${selectedMode.label}`}
+            {!loading ? <ArrowRight size={17} /> : null}
+          </button>
+
+          <div className="post-value-note">
+            <span>First value before signup.</span>
+            <p>
+              Account, Anki connection, reminders and Pro appear only after the
+              learner has started studying.
             </p>
           </div>
-        )}
-
-        {step === "role" && (
-          <div className="screen">
-            <p className="eyebrow">A little context</p>
-            <h2>What are you learning for?</h2>
-            <p className="body-copy">
-              We use this to shape the first study session—not to build a noisy profile.
-            </p>
-            <ChoiceList
-              options={roles}
-              value={state.role}
-              onChange={(value) => choose("role", value)}
-            />
-            <button className="primary full" disabled={!state.role} onClick={next}>
-              Continue <ArrowRight size={17} />
-            </button>
-          </div>
-        )}
-
-        {step === "goal" && (
-          <div className="screen">
-            <p className="eyebrow">Your first outcome</p>
-            <h2>What should InstantStudy help with first?</h2>
-            <ChoiceList
-              options={goals}
-              value={state.goal}
-              onChange={(value) => choose("goal", value)}
-            />
-            <button className="primary full" disabled={!state.goal} onClick={next}>
-              Continue <ArrowRight size={17} />
-            </button>
-          </div>
-        )}
-
-        {step === "source" && (
-          <div className="screen">
-            <p className="eyebrow">Bring your context</p>
-            <h2>Your memory should travel with you.</h2>
-            <p className="body-copy">
-              InstantStudy can use Anki as the source of truth, or start from new
-              material and connect Anki later.
-            </p>
-            <ChoiceList
-              options={sources}
-              value={state.source}
-              onChange={(value) => choose("source", value)}
-            />
-            <div className="trust-note">
-              <span className="trust-dot" />
-              Anki remains yours. InstantStudy does not replace your scheduler.
-            </div>
-            <button className="primary full" disabled={!state.source} onClick={next}>
-              Continue <ArrowRight size={17} />
-            </button>
-          </div>
-        )}
-
-        {step === "paywall" && (
-          <div className="screen paywall-screen">
-            <div className="paywall-orb"><Orb /></div>
-            <p className="eyebrow">InstantStudy Pro</p>
-            <h2>{offer?.headline ?? "Make every study session remember what came before."}</h2>
-
-            <div className="benefits">
-              <div><Check size={16} /> Adaptive recall and semantic grading</div>
-              <div><Check size={16} /> Study your Anki from any supported LLM</div>
-              <div><Check size={16} /> Weak-concept retesting and exam practice</div>
-            </div>
-
-            <div className="plans" role="radiogroup" aria-label="Billing period">
-              <button
-                className={`plan ${state.billing === "annual" ? "selected" : ""}`}
-                onClick={() => choose("billing", "annual")}
-                type="button"
-                role="radio"
-                aria-checked={state.billing === "annual"}
-              >
-                <span>
-                  <strong>Annual</strong>
-                  <small>{offer?.trial ?? "7 days free"}</small>
-                </span>
-                <span className="plan-price">{offer?.annualPrice ?? "$39.99 / year"}</span>
-              </button>
-              <button
-                className={`plan ${state.billing === "monthly" ? "selected" : ""}`}
-                onClick={() => choose("billing", "monthly")}
-                type="button"
-                role="radio"
-                aria-checked={state.billing === "monthly"}
-              >
-                <span>
-                  <strong>Monthly</strong>
-                  <small>Cancel anytime</small>
-                </span>
-                <span className="plan-price">{offer?.monthlyPrice ?? "$6.99 / month"}</span>
-              </button>
-            </div>
-
-            <button className="primary full" type="button" onClick={startTrial}>
-              {offer?.cta ?? "Start 7-day free trial"} <ArrowRight size={17} />
-            </button>
-            <button className="text-button centered" type="button" onClick={next}>
-              Continue with limited access
-            </button>
-            <p className="fineprint centered-copy">
-              Annual trial converts to the selected plan unless cancelled. Pricing
-              may vary by experiment and region.
-            </p>
-          </div>
-        )}
-
-        {step === "reminders" && (
-          <div className="screen">
-            <div className="mini-visual">
-              <span className="due-dot" />
-              <span className="due-line" />
-              <span className="due-dot memory" />
-            </div>
-            <p className="eyebrow">Keep the loop alive</p>
-            <h2>Want a reminder when memory is due?</h2>
-            <p className="body-copy">
-              One useful reminder beats a streak. We only surface review when it can
-              change what you remember.
-            </p>
-            <button
-              className="primary full"
-              type="button"
-              onClick={() => {
-                choose("reminders", true);
-                next();
-              }}
-            >
-              Turn on study reminders
-            </button>
-            <button
-              className="text-button centered"
-              type="button"
-              onClick={() => {
-                choose("reminders", false);
-                next();
-              }}
-            >
-              Not now
-            </button>
-          </div>
-        )}
-
-        {step === "ready" && (
-          <div className="screen ready-screen">
-            <Orb />
-            <p className="eyebrow">Ready to study</p>
-            <h2>Your first session already has a direction.</h2>
-            <div className="summary-card">
-              <div>
-                <span>Context</span>
-                <strong>{roleName ?? "Learning"}</strong>
-              </div>
-              <div>
-                <span>Goal</span>
-                <strong>{goalName ?? "Build durable memory"}</strong>
-              </div>
-              <div>
-                <span>Source</span>
-                <strong>{state.source === "anki" ? "Anki" : "Study material"}</strong>
-              </div>
-            </div>
-            <div className="handoff">
-              <span>Try this in your LLM</span>
-              <p>“InstantStudy, let’s study for 10 minutes.”</p>
-            </div>
-            <button
-              className="primary full"
-              type="button"
-              onClick={() =>
-                event("first_session_started", {
-                  role: state.role,
-                  goal: state.goal,
-                  source: state.source,
-                })
-              }
-            >
-              Start first session <ArrowRight size={17} />
-            </button>
-          </div>
-        )}
+        </div>
       </section>
 
       <footer className="footer">
