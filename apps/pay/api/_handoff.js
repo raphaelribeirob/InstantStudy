@@ -10,7 +10,7 @@ function safeEqualHex(left, right) {
   }
 }
 
-export function verifyInstantCloserHandoff(token, expectedOffer, expectedSource = "instant_closer") {
+export function verifyInstantCloserHandoff(token, expectedSource = "instant_closer") {
   const secret = String(process.env.INSTANT_CLOSER_SHARED_SECRET || "").trim();
   if (!secret) throw new Error("instant_closer_secret_missing");
 
@@ -40,7 +40,7 @@ export function verifyInstantCloserHandoff(token, expectedOffer, expectedSource 
   if (
     !payload ||
     Number(payload.company_id) <= 0 ||
-    String(payload.offer || "") !== String(expectedOffer || "") ||
+    !String(payload.offer || "").trim() ||
     String(payload.source || "") !== String(expectedSource || "") ||
     Number(payload.iat) > now + 30 ||
     Number(payload.exp) < now
