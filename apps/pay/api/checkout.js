@@ -62,6 +62,44 @@ export default async function handler(req, res) {
   const requestedOffer = resolveOffer(body.offer);
   if (!requestedOffer) return json(res, 400, { error: "offer_unavailable" });
 
+  // Never accept money for a product whose server-side entitlement path is
+  // not ready. This prevents the highest-trust failure: charge succeeded but
+  // access could not be granted.
+  const productEntitlementReady = {
+    instant_study: Boolean(
+      process.env.INSTANTSTUDY_ENTITLEMENT_SYNC_URL &&
+      process.env.INSTANTSTUDY_ENTITLEMENT_SYNC_TOKEN
+    ),
+    instant_bible: Boolean(
+      process.env.INSTANT_BIBLE_ENTITLEMENT_SYNC_URL &&
+      process.env.INSTANT_BIBLE_ENTITLEMENT_SYNC_TOKEN
+    ),
+    instant_speak: Boolean(
+      process.env.INSTANT_SPEAK_ENTITLEMENT_SYNC_URL &&
+      process.env.INSTANT_SPEAK_ENTITLEMENT_SYNC_TOKEN
+    ),
+    instant_vest: Boolean(
+      process.env.INSTANT_VEST_ENTITLEMENT_SYNC_URL &&
+      process.env.INSTANT_VEST_ENTITLEMENT_SYNC_TOKEN
+    ),
+    instant_closer: Boolean(
+      process.env.INSTANT_CLOSER_ENTITLEMENT_SYNC_URL &&
+      process.env.INSTANT_CLOSER_ENTITLEMENT_SYNC_TOKEN
+    ),
+    dotspeak: Boolean(
+      process.env.DOTSPEAK_ENTITLEMENT_SYNC_URL &&
+      process.env.DOTSPEAK_ENTITLEMENT_SYNC_TOKEN
+    ),
+    instant_one: Boolean(
+      process.env.INSTANT_ONE_ENTITLEMENT_SYNC_URL &&
+      process.env.INSTANT_ONE_ENTITLEMENT_SYNC_TOKEN
+    ),
+  };
+
+  if (!productEntitlementReady[requestedOffer.product]) {
+    return json(res, 503, { error: "entitlement_not_configured" });
+  }
+
   const source = cleanSource(body.source);
   const locale = cleanLocale(body.locale);
   const customerId = cleanCustomerId(body.customerId);
