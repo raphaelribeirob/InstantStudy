@@ -594,8 +594,16 @@ app.get("/connection.json", (req, res) => {
   });
 });
 
-app.get("/openapi.yaml", (_req, res) => {
-  res.type("application/yaml").send(openapiSpec);
+app.get("/openapi.yaml", (req, res) => {
+  const origin = PUBLIC_URL || `${req.protocol}://${req.get("host")}`;
+  res
+    .type("application/yaml")
+    .send(
+      openapiSpec.replaceAll(
+        "https://YOUR_INSTANTSTUDY_HOST",
+        origin,
+      ),
+    );
 });
 
 app.use("/api/v1", requireApiAuth);
