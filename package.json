@@ -10,7 +10,9 @@
     "dev": "npm --workspace apps/mcp-server run dev",
     "dev:web": "npm --workspace apps/web run dev",
     "start": "npm --workspace apps/mcp-server run start",
-    "typecheck": "npm --workspace apps/mcp-server run typecheck && npm --workspace apps/web run typecheck",
-    "build:web": "npm --workspace apps/web run build"
+    "typecheck": "npm --workspace apps/mcp-server run typecheck && npm --workspace apps/web run typecheck && npm --workspace apps/pay run typecheck",
+    "build:web": "npm --workspace apps/web run build",
+    "dev:pay": "npm --workspace apps/pay run dev",
+    "build:pay": "npm --workspace apps/pay run build"
   }
 }
