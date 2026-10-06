@@ -878,3 +878,239 @@ footer > span { justify-self: center; }
     transition-duration: 1ms !important;
   }
 }
+
+
+/* Quizlet-validated funnel mechanics, rendered in InstantStudy's own visual language */
+.generator {
+  padding: 58px 0 72px;
+  border-top: 1px solid var(--line);
+}
+.generator-head {
+  display: grid;
+  grid-template-columns: 1.05fr .95fr;
+  gap: 80px;
+  align-items: end;
+  margin-bottom: 34px;
+}
+.generator-head h2 {
+  max-width: 760px;
+  margin-bottom: 0;
+  font-size: clamp(42px, 5.5vw, 78px);
+  line-height: .94;
+  letter-spacing: -.055em;
+  font-weight: 470;
+}
+.generator-head > p {
+  max-width: 520px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+.generator-shell {
+  border: 1px solid var(--line);
+  background: rgba(242, 240, 234, .52);
+}
+.generator-tabs {
+  min-height: 54px;
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--line);
+}
+.generator-tabs button {
+  min-width: 130px;
+  padding: 0 18px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  color: #77736b;
+  font-size: 10px;
+}
+.generator-tabs button.active {
+  background: var(--ink);
+  color: #efede7;
+}
+.generator-body {
+  display: grid;
+  grid-template-columns: 1.05fr .95fr;
+  min-height: 360px;
+}
+.drop-zone {
+  min-height: 360px;
+  padding: 54px;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  border-right: 1px solid var(--line);
+}
+.drop-icon {
+  width: 52px;
+  height: 52px;
+  margin-bottom: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+}
+.drop-zone strong {
+  max-width: 560px;
+  margin-bottom: 10px;
+  font-size: clamp(25px, 3vw, 38px);
+  line-height: 1.05;
+  letter-spacing: -.04em;
+  font-weight: 470;
+}
+.drop-zone p {
+  max-width: 520px;
+  margin-bottom: 24px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.drop-zone button {
+  min-height: 42px;
+  padding: 0 15px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: var(--ink);
+  color: #efede7;
+  font-size: 10px;
+}
+.generated-stack {
+  padding: 34px;
+  display: grid;
+  align-content: start;
+}
+.generated-label {
+  margin-bottom: 18px;
+  color: #7b776f;
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+.generated-stack > div {
+  min-height: 64px;
+  padding: 12px 0;
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 12px;
+  align-items: center;
+  border-top: 1px solid var(--line);
+}
+.generated-stack > div:last-child { border-bottom: 1px solid var(--line); }
+.generated-stack > div > span { display: grid; gap: 3px; }
+.generated-stack strong { font-size: 11px; font-weight: 520; }
+.generated-stack small { color: var(--muted); font-size: 9px; line-height: 1.45; }
+
+.learn-band {
+  background: #d7d4ca;
+  color: var(--ink);
+}
+.learn-band .feature-copy > p { color: #55514b; }
+.learn-preview {
+  padding: 30px;
+  border: 1px solid var(--line);
+  background: #efede7;
+}
+.learn-preview-top {
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+}
+.learn-preview-top span {
+  color: #7b776f;
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.learn-preview-top strong { font-size: 10px; font-weight: 520; }
+.learn-steps { border-top: 1px solid var(--line); }
+.learn-step {
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  color: #817d75;
+}
+.learn-step > span { font-size: 9px; }
+.learn-step > div { display: grid; gap: 4px; }
+.learn-step strong { font-size: 11px; font-weight: 520; }
+.learn-step small { font-size: 8px; color: #8b877f; }
+.learn-step.complete { color: #5e7d62; }
+.learn-step.active {
+  color: var(--ink);
+  background: rgba(227, 98, 50, .08);
+}
+.learn-insight {
+  margin-top: 24px;
+  padding: 18px;
+  border-left: 2px solid var(--orange);
+  background: rgba(227, 98, 50, .07);
+  display: grid;
+  gap: 5px;
+}
+.learn-insight span {
+  color: #945038;
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.learn-insight strong { font-size: 18px; font-weight: 500; }
+.learn-insight p { margin: 0; color: #65524a; font-size: 9px; line-height: 1.5; }
+.inline-offer-cta {
+  width: fit-content;
+  min-height: 40px;
+  margin-top: 26px;
+  padding: 0 14px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 9px;
+}
+.free-round-note {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(242, 240, 234, .18);
+  display: grid;
+  gap: 5px;
+}
+.free-round-note strong { color: #efede7; font-size: 11px; font-weight: 520; }
+.free-round-note span { color: #77736b; font-size: 9px; line-height: 1.5; }
+
+.quizlet-pricing-grid {
+  width: min(1180px, 100%);
+  grid-template-columns: repeat(3, 1fr);
+}
+.plus-card { background: rgba(242, 240, 234, .72); }
+.pricing-disclosure {
+  max-width: 760px;
+  margin: 22px auto 0;
+  color: #827e76;
+  font-size: 8px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+@media (max-width: 1020px) {
+  .generator-head,
+  .generator-body {
+    grid-template-columns: 1fr;
+  }
+  .generator-head { gap: 22px; }
+  .drop-zone { border-right: 0; border-bottom: 1px solid var(--line); }
+  .quizlet-pricing-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 700px) {
+  .generator { padding: 42px 0 52px; }
+  .generator-tabs { overflow-x: auto; }
+  .generator-tabs button { min-width: 112px; }
+  .drop-zone { min-height: 320px; padding: 32px 20px; }
+  .generated-stack { padding: 24px 20px; }
+  .learn-preview { padding: 20px; }
+}
