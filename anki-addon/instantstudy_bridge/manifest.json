@@ -1,0 +1,9 @@
+{
+  "package": "instantstudy_bridge",
+  "name": "InstantStudy Bridge",
+  "mod": 0,
+  "min_point_version": 45,
+  "max_point_version": 99,
+  "branch_index": 0,
+  "conflicts": []
+}
