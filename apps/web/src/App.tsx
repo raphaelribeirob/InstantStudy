@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   BookOpenCheck,
@@ -9,9 +9,6 @@ import {
   FileText,
   FlaskConical,
   GraduationCap,
-  Headphones,
-  Layers3,
-  MessageSquareText,
   Sparkles,
   TerminalSquare,
   Timer,
@@ -95,27 +92,6 @@ function Logo() {
     </a>
   );
 }
-
-function SourceCard({
-  icon,
-  label,
-  note,
-}: {
-  icon: ReactNode;
-  label: string;
-  note: string;
-}) {
-  return (
-    <div className="source-card">
-      <span className="source-icon">{icon}</span>
-      <div>
-        <strong>{label}</strong>
-        <small>{note}</small>
-      </div>
-    </div>
-  );
-}
-
 
 function StudyGenerator() {
   const [source, setSource] = useState<"paste" | "upload" | "drive" | "audio">("upload");
