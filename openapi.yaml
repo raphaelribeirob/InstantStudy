@@ -8,6 +8,66 @@ servers:
 security:
   - bearerAuth: []
 paths:
+  /api/v1/study/prepare:
+    post:
+      operationId: prepareStudy
+      summary: Start InstantStudy directly from pasted content or file references
+      description: |
+        Primary content-first entry point. Use when the learner provides material
+        and wants to study immediately. Anki is optional.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                contentText:
+                  type: string
+                  maxLength: 200000
+                files:
+                  type: array
+                  maxItems: 10
+                  items:
+                    type: object
+                    required: [download_url, file_id]
+                    properties:
+                      download_url:
+                        type: string
+                        format: uri
+                      file_id:
+                        type: string
+                      mime_type:
+                        type: string
+                      file_name:
+                        type: string
+                title:
+                  type: string
+                goal:
+                  type: string
+                mode:
+                  type: string
+                  enum: [learn, review, quiz, test]
+                  default: learn
+      responses:
+        "200":
+          description: Study session is ready
+  /api/v1/study/sessions/{sessionId}:
+    get:
+      operationId: getStudySession
+      summary: Retrieve a prepared study session
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Prepared study session
+        "404":
+          description: Study session not found
   /api/v1/status:
     get:
       operationId: ankiStatus
