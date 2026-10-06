@@ -1,5 +1,17 @@
 import { randomUUID } from "node:crypto";
 import type { ContentSession, StudyMode } from "./contentSessions.js";
+import {
+  createStudyPersistence,
+  type DueReview,
+  type StudyPersistence,
+} from "./studyPersistence.js";
+
+export type TestQuestionType =
+  | "multiple_choice"
+  | "true_false"
+  | "short_answer"
+  | "free_recall"
+  | "application";
 
 export type StudyEvaluation = {
   correctness: number;
@@ -21,6 +33,9 @@ export type ConceptState = {
   incorrect: number;
   difficulty: number;
   lastSeenAt?: string;
+  lastPerformance?: number;
+  stabilityDays: number;
+  nextReviewAt?: string;
   missingConcepts: string[];
 };
 
@@ -37,20 +52,33 @@ export type StudyAttempt = {
   missingConcepts: string[];
 };
 
+export type TestConfig = {
+  startedAt: string;
+  durationMinutes?: number;
+  endsAt?: string;
+  questionTypes: TestQuestionType[];
+  feedbackPolicy: "end_only";
+};
+
 export type AdaptiveStudySession = {
   id: string;
   contentSessionId: string;
+  learnerId?: string;
   title: string;
   mode: StudyMode;
   goal?: string;
   createdAt: string;
+  completedAt?: string;
   status: "active" | "completed";
   questionIndex: number;
   maxQuestions: number;
   targetMinutes?: number;
   concepts: ConceptState[];
   attempts: StudyAttempt[];
+  testConfig?: TestConfig;
 };
+
+const DAY_MS = 86_400_000;
 
 function clamp(value: number, min = 0, max = 1) {
   return Math.max(min, Math.min(max, value));
@@ -58,6 +86,10 @@ function clamp(value: number, min = 0, max = 1) {
 
 function normalizeWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim();
+}
+
+function conceptKey(value: string) {
+  return normalizeWhitespace(value).toLocaleLowerCase();
 }
 
 function splitCandidateConcepts(text: string) {
@@ -96,6 +128,22 @@ function labelFromExcerpt(excerpt: string) {
   return `${cleaned.slice(0, 69).trim()}…`;
 }
 
+function blankConcept(label: string, sourceExcerpt: string): ConceptState {
+  return {
+    id: randomUUID(),
+    label,
+    sourceExcerpt,
+    mastery: 0.15,
+    attempts: 0,
+    correct: 0,
+    partial: 0,
+    incorrect: 0,
+    difficulty: 1,
+    stabilityDays: 0.25,
+    missingConcepts: [],
+  };
+}
+
 export function deriveConcepts(text: string, limit = 12): ConceptState[] {
   const candidates = splitCandidateConcepts(text);
   const seen = new Set<string>();
@@ -104,75 +152,71 @@ export function deriveConcepts(text: string, limit = 12): ConceptState[] {
   for (const candidate of candidates) {
     const excerpt = normalizeWhitespace(candidate);
     const label = labelFromExcerpt(excerpt);
-    const key = label.toLocaleLowerCase();
+    const key = conceptKey(label);
 
     if (label.length < 3 || seen.has(key)) continue;
     seen.add(key);
 
-    concepts.push({
-      id: randomUUID(),
-      label,
-      sourceExcerpt: excerpt.slice(0, 600),
-      mastery: 0.15,
-      attempts: 0,
-      correct: 0,
-      partial: 0,
-      incorrect: 0,
-      difficulty: 1,
-      missingConcepts: [],
-    });
-
+    concepts.push(blankConcept(label, excerpt.slice(0, 600)));
     if (concepts.length >= limit) break;
   }
 
   if (!concepts.length && text.trim()) {
     const excerpt = normalizeWhitespace(text).slice(0, 600);
-    concepts.push({
-      id: randomUUID(),
-      label: "Core material",
-      sourceExcerpt: excerpt,
-      mastery: 0.15,
-      attempts: 0,
-      correct: 0,
-      partial: 0,
-      incorrect: 0,
-      difficulty: 1,
-      missingConcepts: [],
-    });
+    concepts.push(blankConcept("Core material", excerpt));
   }
 
   return concepts;
 }
 
-function questionType(mode: StudyMode, difficulty: number) {
-  if (mode === "test") {
-    return difficulty >= 3 ? "application" : "free_recall";
+function defaultTestQuestionTypes(): TestQuestionType[] {
+  return ["multiple_choice", "short_answer", "free_recall", "application"];
+}
+
+function questionType(
+  session: AdaptiveStudySession,
+  concept: ConceptState,
+): TestQuestionType | "guided_recall" | "explain_why" {
+  if (session.mode === "test") {
+    const types = session.testConfig?.questionTypes.length
+      ? session.testConfig.questionTypes
+      : defaultTestQuestionTypes();
+    return types[session.questionIndex % types.length];
   }
 
-  if (mode === "quiz") {
-    return difficulty <= 1 ? "short_answer" : "free_recall";
+  if (session.mode === "quiz") {
+    return concept.difficulty <= 1 ? "short_answer" : "free_recall";
   }
 
-  if (mode === "review") {
-    return "free_recall";
-  }
-
-  if (difficulty <= 1) return "guided_recall";
-  if (difficulty === 2) return "free_recall";
-  if (difficulty === 3) return "explain_why";
+  if (session.mode === "review") return "free_recall";
+  if (concept.difficulty <= 1) return "guided_recall";
+  if (concept.difficulty === 2) return "free_recall";
+  if (concept.difficulty === 3) return "explain_why";
   return "application";
 }
 
+function overdueDays(concept: ConceptState, now = Date.now()) {
+  if (!concept.nextReviewAt) return 0;
+  return Math.max(0, (now - new Date(concept.nextReviewAt).getTime()) / DAY_MS);
+}
+
 function chooseConcept(session: AdaptiveStudySession) {
+  const now = Date.now();
   const ordered = [...session.concepts].sort((a, b) => {
+    const aDue = overdueDays(a, now);
+    const bDue = overdueDays(b, now);
+
     const aPriority =
-      (1 - a.mastery) * 0.7 +
-      (a.attempts === 0 ? 0.25 : 0) +
-      Math.min(a.incorrect * 0.05, 0.15);
+      (1 - a.mastery) * 0.58 +
+      (a.attempts === 0 ? 0.2 : 0) +
+      Math.min(a.incorrect * 0.05, 0.15) +
+      Math.min(aDue * 0.08, 0.3);
+
     const bPriority =
-      (1 - b.mastery) * 0.7 +
-      (b.attempts === 0 ? 0.25 : 0) +
-      Math.min(b.incorrect * 0.05, 0.15);
+      (1 - b.mastery) * 0.58 +
+      (b.attempts === 0 ? 0.2 : 0) +
+      Math.min(b.incorrect * 0.05, 0.15) +
+      Math.min(bDue * 0.08, 0.3);
 
     return bPriority - aPriority;
   });
@@ -184,32 +228,73 @@ function chooseConcept(session: AdaptiveStudySession) {
   return ordered[0];
 }
 
-export class StudyEngine {
-  private sessions = new Map<string, AdaptiveStudySession>();
+function reviewSchedule(
+  performance: number,
+  previousStabilityDays: number,
+  now = Date.now(),
+) {
+  let stabilityDays: number;
 
-  start(
+  if (performance < 0.45) {
+    stabilityDays = 0.25;
+  } else if (performance < 0.65) {
+    stabilityDays = 1;
+  } else if (performance < 0.85) {
+    stabilityDays = Math.max(2, previousStabilityDays * 1.8);
+  } else {
+    stabilityDays = Math.max(3, previousStabilityDays * 2.4);
+  }
+
+  stabilityDays = Math.min(stabilityDays, 120);
+
+  return {
+    stabilityDays: Number(stabilityDays.toFixed(2)),
+    nextReviewAt: new Date(now + stabilityDays * DAY_MS).toISOString(),
+  };
+}
+
+function decayedPrior(prior: ConceptState) {
+  const overdue = overdueDays(prior);
+  const decay = Math.min(0.3, overdue * 0.025);
+
+  return {
+    mastery: clamp(prior.mastery - decay),
+    difficulty: prior.difficulty,
+    stabilityDays: Math.max(0.25, prior.stabilityDays || 0.25),
+    nextReviewAt: prior.nextReviewAt,
+    lastSeenAt: prior.lastSeenAt,
+    lastPerformance: prior.lastPerformance,
+    missingConcepts: prior.missingConcepts,
+  };
+}
+
+export class StudyEngine {
+  private cache = new Map<string, AdaptiveStudySession>();
+
+  constructor(
+    private persistence: StudyPersistence = createStudyPersistence(),
+  ) {}
+
+  async start(
     content: ContentSession,
     options?: {
+      learnerId?: string;
       mode?: StudyMode;
       targetMinutes?: number;
       maxQuestions?: number;
+      testDurationMinutes?: number;
+      testQuestionTypes?: TestQuestionType[];
       concepts?: Array<{ label: string; sourceExcerpt?: string }>;
     },
   ) {
     const rawText = content.contentText?.trim() ?? "";
     const concepts = options?.concepts?.length
-      ? options.concepts.slice(0, 30).map((concept) => ({
-          id: randomUUID(),
-          label: concept.label.trim(),
-          sourceExcerpt: (concept.sourceExcerpt ?? concept.label).trim().slice(0, 600),
-          mastery: 0.15,
-          attempts: 0,
-          correct: 0,
-          partial: 0,
-          incorrect: 0,
-          difficulty: 1,
-          missingConcepts: [],
-        }))
+      ? options.concepts.slice(0, 30).map((concept) =>
+          blankConcept(
+            concept.label.trim(),
+            (concept.sourceExcerpt ?? concept.label).trim().slice(0, 600),
+          ),
+        )
       : deriveConcepts(rawText, 12);
 
     if (!concepts.length) {
@@ -218,44 +303,91 @@ export class StudyEngine {
       );
     }
 
+    if (options?.learnerId) {
+      const priors = await this.persistence.priorConcepts(
+        options.learnerId,
+        concepts.map((concept) => concept.label),
+      );
+
+      for (const concept of concepts) {
+        const prior = priors.get(conceptKey(concept.label));
+        if (!prior) continue;
+        Object.assign(concept, decayedPrior(prior));
+      }
+    }
+
+    const mode = options?.mode ?? content.mode;
+    const createdAt = new Date().toISOString();
+    const testDurationMinutes =
+      mode === "test" ? options?.testDurationMinutes : undefined;
+
     const session: AdaptiveStudySession = {
       id: randomUUID(),
       contentSessionId: content.id,
+      learnerId: options?.learnerId,
       title: content.title,
-      mode: options?.mode ?? content.mode,
+      mode,
       goal: content.goal,
-      createdAt: new Date().toISOString(),
+      createdAt,
       status: "active",
       questionIndex: 0,
       maxQuestions: Math.max(1, Math.min(options?.maxQuestions ?? 12, 50)),
       targetMinutes: options?.targetMinutes,
       concepts,
       attempts: [],
+      testConfig:
+        mode === "test"
+          ? {
+              startedAt: createdAt,
+              durationMinutes: testDurationMinutes,
+              endsAt: testDurationMinutes
+                ? new Date(Date.now() + testDurationMinutes * 60_000).toISOString()
+                : undefined,
+              questionTypes:
+                options?.testQuestionTypes?.length
+                  ? [...new Set(options.testQuestionTypes)].slice(0, 5)
+                  : defaultTestQuestionTypes(),
+              feedbackPolicy: "end_only",
+            }
+          : undefined,
     };
 
-    this.sessions.set(session.id, session);
+    this.cache.set(session.id, session);
+    await this.persistence.save(session);
     return session;
   }
 
-  get(sessionId: string) {
-    return this.sessions.get(sessionId) ?? null;
+  async get(sessionId: string) {
+    const cached = this.cache.get(sessionId);
+    if (cached) return cached;
+
+    const persisted = await this.persistence.get(sessionId);
+    if (persisted) this.cache.set(sessionId, persisted);
+    return persisted;
   }
 
-  next(sessionId: string) {
-    const session = this.requireActive(sessionId);
+  async next(sessionId: string) {
+    const session = await this.requireActive(sessionId);
+
+    const testExpired =
+      session.testConfig?.endsAt &&
+      Date.now() >= new Date(session.testConfig.endsAt).getTime();
 
     if (
+      testExpired ||
       session.questionIndex >= session.maxQuestions ||
-      session.concepts.every((concept) => concept.mastery >= 0.88)
+      (session.mode !== "test" &&
+        session.concepts.every((concept) => concept.mastery >= 0.88))
     ) {
       return {
         done: true as const,
+        reason: testExpired ? "time_expired" : "complete",
         summary: this.summary(session),
       };
     }
 
     const concept = chooseConcept(session);
-    const type = questionType(session.mode, concept.difficulty);
+    const type = questionType(session, concept);
 
     return {
       done: false as const,
@@ -263,12 +395,21 @@ export class StudyEngine {
       questionIndex: session.questionIndex + 1,
       totalPlanned: session.maxQuestions,
       mode: session.mode,
+      test:
+        session.mode === "test"
+          ? {
+              endsAt: session.testConfig?.endsAt,
+              durationMinutes: session.testConfig?.durationMinutes,
+              feedbackPolicy: "end_only",
+            }
+          : undefined,
       concept: {
         id: concept.id,
         label: concept.label,
         sourceExcerpt: concept.sourceExcerpt,
         mastery: Number(concept.mastery.toFixed(2)),
         difficulty: concept.difficulty,
+        nextReviewAt: concept.nextReviewAt,
       },
       questionPolicy: {
         type,
@@ -280,22 +421,22 @@ export class StudyEngine {
             : "none",
         instruction:
           session.mode === "test"
-            ? "Ask one exam-style question based only on the supplied source. Do not give hints or correctness feedback until the test ends."
+            ? `Ask exactly one ${type} exam-style question based only on the supplied source. Do not reveal hints, correctness, explanations, or the answer until the test ends.`
             : session.mode === "quiz"
               ? "Ask one concise question. After the learner answers, grade it and explain briefly."
               : session.mode === "review"
-                ? "Use active recall. Ask directly and keep the interaction fast."
+                ? "Use active recall. Prioritize due and weak concepts. Ask directly and keep the interaction fast."
                 : "Teach adaptively: ask one question at the current difficulty, then use the answer quality to decide whether to scaffold or increase difficulty.",
       },
     };
   }
 
-  submit(
+  async submit(
     sessionId: string,
     conceptId: string,
     evaluation: StudyEvaluation,
   ) {
-    const session = this.requireActive(sessionId);
+    const session = await this.requireActive(sessionId);
     const concept = session.concepts.find((item) => item.id === conceptId);
 
     if (!concept) throw new Error("Concept not found in this study session.");
@@ -304,24 +445,36 @@ export class StudyEngine {
     const completeness = clamp(evaluation.completeness);
     const confidence = clamp(evaluation.confidence ?? 0.8);
     const performance = correctness * 0.65 + completeness * 0.35;
-    const prior = concept.mastery;
+    const priorMastery = concept.mastery;
 
     concept.attempts += 1;
     concept.lastSeenAt = new Date().toISOString();
-    concept.missingConcepts = [...new Set(evaluation.missingConcepts ?? [])].slice(0, 10);
+    concept.lastPerformance = Number(performance.toFixed(3));
+    concept.missingConcepts = [
+      ...new Set(evaluation.missingConcepts ?? []),
+    ].slice(0, 10);
 
     if (performance >= 0.85) concept.correct += 1;
     else if (performance >= 0.5) concept.partial += 1;
     else concept.incorrect += 1;
 
     const learningRate = session.mode === "learn" ? 0.48 : 0.38;
-    concept.mastery = clamp(prior * (1 - learningRate) + performance * learningRate);
+    concept.mastery = clamp(
+      priorMastery * (1 - learningRate) + performance * learningRate,
+    );
 
     if (performance >= 0.82 && completeness >= 0.75) {
       concept.difficulty = Math.min(4, concept.difficulty + 1);
     } else if (performance < 0.45) {
       concept.difficulty = Math.max(1, concept.difficulty - 1);
     }
+
+    const schedule = reviewSchedule(
+      performance,
+      concept.stabilityDays || 0.25,
+    );
+    concept.stabilityDays = schedule.stabilityDays;
+    concept.nextReviewAt = schedule.nextReviewAt;
 
     const attempt: StudyAttempt = {
       id: randomUUID(),
@@ -340,29 +493,50 @@ export class StudyEngine {
     session.questionIndex += 1;
 
     const needsRepair = performance < 0.65;
+    const testExpired =
+      session.testConfig?.endsAt &&
+      Date.now() >= new Date(session.testConfig.endsAt).getTime();
     const done =
+      Boolean(testExpired) ||
       session.questionIndex >= session.maxQuestions ||
-      session.concepts.every((item) => item.mastery >= 0.88);
+      (session.mode !== "test" &&
+        session.concepts.every((item) => item.mastery >= 0.88));
+
+    await this.persistence.save(session);
 
     return {
       sessionId: session.id,
       activationEvent:
         session.attempts.length === 1 ? "first_answer_submitted" : undefined,
-      evaluation: {
-        correctness,
-        completeness,
-        confidence,
-        performance: Number(performance.toFixed(2)),
-        needsRepair,
-        suppressImmediateFeedback: session.mode === "test",
-      },
-      concept: {
-        id: concept.id,
-        label: concept.label,
-        mastery: Number(concept.mastery.toFixed(2)),
-        difficulty: concept.difficulty,
-        missingConcepts: concept.missingConcepts,
-      },
+      evaluation:
+        session.mode === "test"
+          ? {
+              recorded: true,
+              suppressImmediateFeedback: true,
+            }
+          : {
+              correctness,
+              completeness,
+              confidence,
+              performance: Number(performance.toFixed(2)),
+              needsRepair,
+              suppressImmediateFeedback: false,
+            },
+      concept:
+        session.mode === "test"
+          ? {
+              id: concept.id,
+              label: concept.label,
+              nextReviewAt: concept.nextReviewAt,
+            }
+          : {
+              id: concept.id,
+              label: concept.label,
+              mastery: Number(concept.mastery.toFixed(2)),
+              difficulty: concept.difficulty,
+              nextReviewAt: concept.nextReviewAt,
+              missingConcepts: concept.missingConcepts,
+            },
       nextPolicy: done
         ? "finish"
         : needsRepair && session.mode === "learn"
@@ -373,16 +547,29 @@ export class StudyEngine {
     };
   }
 
-  finish(sessionId: string) {
-    const session = this.get(sessionId);
+  async finish(sessionId: string) {
+    const session = await this.get(sessionId);
     if (!session) throw new Error("Study session not found.");
 
     session.status = "completed";
+    session.completedAt = new Date().toISOString();
+    await this.persistence.save(session);
     return this.summary(session);
   }
 
-  private requireActive(sessionId: string) {
-    const session = this.get(sessionId);
+  async dueReviews(
+    learnerId: string,
+    options?: { before?: string; limit?: number },
+  ): Promise<DueReview[]> {
+    return this.persistence.dueReviews(
+      learnerId,
+      options?.before ?? new Date().toISOString(),
+      Math.max(1, Math.min(options?.limit ?? 20, 100)),
+    );
+  }
+
+  private async requireActive(sessionId: string) {
+    const session = await this.get(sessionId);
     if (!session) throw new Error("Study session not found.");
     if (session.status !== "active") throw new Error("Study session is completed.");
     return session;
@@ -402,17 +589,55 @@ export class StudyEngine {
         id: concept.id,
         label: concept.label,
         mastery: Number(concept.mastery.toFixed(2)),
+        nextReviewAt: concept.nextReviewAt,
         missingConcepts: concept.missingConcepts,
       }));
 
+    const testPerformance =
+      session.mode === "test" && attempts
+        ? session.attempts.reduce(
+            (sum, attempt) =>
+              sum + attempt.correctness * 0.65 + attempt.completeness * 0.35,
+            0,
+          ) / attempts
+        : undefined;
+
+    const durationSeconds = Math.max(
+      0,
+      Math.round(
+        (new Date(session.completedAt ?? new Date().toISOString()).getTime() -
+          new Date(session.createdAt).getTime()) /
+          1000,
+      ),
+    );
+
     return {
       sessionId: session.id,
+      learnerId: session.learnerId,
       mode: session.mode,
       attempts,
       averageMastery: Number(averageMastery.toFixed(2)),
-      conceptsStudied: session.concepts.filter((concept) => concept.attempts > 0).length,
+      conceptsStudied: session.concepts.filter((concept) => concept.attempts > 0)
+        .length,
       weakConcepts,
-      completed: session.status === "completed" || session.questionIndex >= session.maxQuestions,
+      completed:
+        session.status === "completed" ||
+        session.questionIndex >= session.maxQuestions,
+      nextReviewAt: session.concepts
+        .map((concept) => concept.nextReviewAt)
+        .filter((value): value is string => Boolean(value))
+        .sort()[0],
+      testResult:
+        session.mode === "test"
+          ? {
+              scorePercent: Math.round((testPerformance ?? 0) * 100),
+              answered: attempts,
+              totalQuestions: session.maxQuestions,
+              durationSeconds,
+              feedbackPolicy: "released_at_end",
+              questionTypes: session.testConfig?.questionTypes,
+            }
+          : undefined,
     };
   }
 }
