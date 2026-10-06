@@ -70,10 +70,9 @@ export default async function handler(req, res) {
       process.env.INSTANTSTUDY_ENTITLEMENT_SYNC_URL &&
       process.env.INSTANTSTUDY_ENTITLEMENT_SYNC_TOKEN
     ),
-    instant_bible: Boolean(
-      process.env.INSTANT_BIBLE_ENTITLEMENT_SYNC_URL &&
-      process.env.INSTANT_BIBLE_ENTITLEMENT_SYNC_TOKEN
-    ),
+    // InstantBible web access remains local-first today. Do not accept a
+    // web charge until an authenticated entitlement subject + sync path exists.
+    instant_bible: false,
     instant_speak: Boolean(
       process.env.INSTANT_SPEAK_ENTITLEMENT_SYNC_URL &&
       process.env.INSTANT_SPEAK_ENTITLEMENT_SYNC_TOKEN
