@@ -253,8 +253,8 @@ function ConnectAgent() {
   return (
     <section className="connect-band" id="connect">
       <div className="connect-intro">
-        <p className="eyebrow light">Study where you already think</p>
-        <h2>Bring InstantStudy™ into your AI.</h2>
+        <p className="eyebrow light">Learning, native to AI</p>
+        <h2>The study engine follows you into the AI you already use.</h2>
         <p>
           Your AI keeps the conversation. InstantStudy adds the adaptive learning
           loop behind it.
@@ -304,9 +304,9 @@ function Pricing() {
   return (
     <section className="section pricing-section" id="pricing">
       <div className="section-heading pricing-heading">
-        <p className="eyebrow">Simple pricing</p>
-        <h2>Start free. Remove the limits when study becomes a habit.</h2>
-        <p>Get the learning loop first. Upgrade only when you need unlimited practice and continuity.</p>
+        <p className="eyebrow">Start now</p>
+        <h2>The future of learning starts free.</h2>
+        <p>Experience the full learning loop first. Upgrade only when you want unlimited practice and continuity.</p>
       </div>
 
       <div className="billing-switch" aria-label="Billing interval">
@@ -401,67 +401,69 @@ export function App() {
       <header className="nav-shell">
         <Logo />
         <nav>
-          <a href="#tools">Study tools</a>
-          <a href="#test">Practice tests</a>
+          <a href="#tools">Learn</a>
+          <a href="#test">Test</a>
           <a href="#review">Review</a>
           <a href="#pricing">Pricing</a>
         </nav>
         <a className="nav-cta" href="#connect">
-          Start free <ArrowRight size={14} />
+          Try InstantStudy™ <ArrowRight size={14} />
         </a>
       </header>
 
-      <section className="hero">
-        <div className="hero-grid">
-          <div className="hero-copy">
-            <div className="hero-pill"><Sparkles size={14} /> Built for active recall</div>
-            <h1>Turn anything you’re learning into practice.</h1>
-            <p>
-              Drop in notes, PDFs, slides, lecture material or the conversation
-              already inside your AI. InstantStudy™ turns it into adaptive Learn,
-              Review, Quiz and Test sessions—without building a deck first.
-            </p>
-            <div className="hero-actions">
-              <a className="hero-primary" href="#connect">
-                Start studying free <ArrowRight size={17} />
-              </a>
-              <a className="hero-secondary" href="#demo">See a study session</a>
-            </div>
-            <small>No deck setup · No switching apps · Your material stays in the learning loop</small>
-          </div>
+      <section className="hero future-hero">
+        <div className="future-kicker">
+          <span><Sparkles size={13} /> Introducing InstantStudy™</span>
+          <span>Adaptive learning · Persistent memory</span>
+        </div>
 
-          <div className="source-stack">
-            <span className="source-stack-label">Any input</span>
-            <SourceCard icon={<FileText size={20} />} label="Lecture notes" note="notes.pdf" />
-            <SourceCard icon={<Layers3 size={20} />} label="Slides" note="week-07.pptx" />
-            <SourceCard icon={<MessageSquareText size={20} />} label="AI conversation" note="current context" />
-            <SourceCard icon={<Headphones size={20} />} label="Lecture material" note="transcript or notes" />
-            <div className="source-arrow">↓</div>
-            <div className="instant-card">
-              <span className="brand-orb large" aria-hidden="true"><i /><b /></span>
-              <div>
-                <strong>InstantStudy™</strong>
-                <span>12 concepts found · ready to learn</span>
-              </div>
-            </div>
+        <div className="future-title" aria-label="The future of learning">
+          <span>The future</span>
+          <span>of learning.</span>
+        </div>
+
+        <div className="future-intro">
+          <p>
+            Your AI already knows how to explain. InstantStudy™ adds the system
+            that makes learning stick: adaptive practice, exam rehearsal,
+            mastery and right-time review.
+          </p>
+          <div className="hero-actions">
+            <a className="hero-primary" href="#connect">
+              Start learning <ArrowRight size={17} />
+            </a>
+            <a className="hero-secondary" href="#demo">Experience the loop</a>
+          </div>
+        </div>
+
+        <div className="future-materials">
+          <div className="future-material-copy">
+            <span className="source-stack-label">Any material becomes practice</span>
+            <strong>Drop it in. Start with the first question.</strong>
+          </div>
+          <div className="future-material-grid">
+            <SourceCard icon={<FileText size={20} />} label="Notes" note="PDF · text" />
+            <SourceCard icon={<Layers3 size={20} />} label="Slides" note="lecture deck" />
+            <SourceCard icon={<MessageSquareText size={20} />} label="AI context" note="current conversation" />
+            <SourceCard icon={<Headphones size={20} />} label="Lecture" note="transcript · notes" />
           </div>
         </div>
 
         <HeroProduct />
       </section>
 
-      <section className="trust-strip">
-        <span>One learning loop across</span>
+      <section className="trust-strip future-strip">
+        <span>One learning system, wherever you think.</span>
         <strong>ChatGPT</strong><strong>Claude</strong><strong>Cursor</strong><strong>Codex</strong><strong>Any MCP agent</strong>
       </section>
 
       <section className="section tools-section" id="tools">
         <div className="section-heading wide-heading">
-          <p className="eyebrow">Study tools that work together</p>
-          <h2>Understand it once. Practice it four ways.</h2>
+          <p className="eyebrow">A new learning architecture</p>
+          <h2>Learning should adapt to you, not the other way around.</h2>
           <p>
-            The same material moves through explanation, recall, testing and
-            scheduled review instead of becoming separate disconnected study assets.
+            One knowledge state connects explanation, recall, testing and review.
+            Every answer changes what happens next.
           </p>
         </div>
 
@@ -480,8 +482,8 @@ export function App() {
 
       <section className="feature-band test-band" id="test">
         <div className="feature-copy">
-          <p className="eyebrow light">Practice tests</p>
-          <h2>Rehearse the exam before the exam.</h2>
+          <p className="eyebrow light">Future-ready testing</p>
+          <h2>Practice under pressure before it matters.</h2>
           <p>
             Build a test from your own material, mix question types, add a timer
             and keep feedback hidden until the end.
@@ -498,8 +500,8 @@ export function App() {
       <section className="feature-band review-band" id="review">
         <RetentionPreview />
         <div className="feature-copy dark-copy">
-          <p className="eyebrow">Right-time review</p>
-          <h2>Study what is getting weak—not everything again.</h2>
+          <p className="eyebrow">Memory, not repetition</p>
+          <h2>The system knows what is fading before you do.</h2>
           <p>
             Every answer updates mastery and schedules the next review. Weak and
             overdue concepts return first.
@@ -514,8 +516,8 @@ export function App() {
 
       <section className="section continuity-section">
         <div className="continuity-copy">
-          <p className="eyebrow">Built for continuity</p>
-          <h2>Your next study session should know what happened in the last one.</h2>
+          <p className="eyebrow">A living knowledge state</p>
+          <h2>Every session starts where the last one left off.</h2>
           <p>
             InstantStudy™ is designed to carry your knowledge state forward:
             what you know, what is fragile and what should come next.
@@ -538,8 +540,8 @@ export function App() {
       <section className="final-cta">
         <div>
           <p className="eyebrow light">InstantStudy™</p>
-          <h2>Turn today’s material into tomorrow’s memory.</h2>
-          <p>Start with your own notes. Upgrade only when you want the limits gone.</p>
+          <h2>Learn once. Keep it longer.</h2>
+          <p>The future of learning is adaptive, continuous and already inside your AI.</p>
         </div>
         <a href="#connect">
           Start studying free <ArrowRight size={17} />

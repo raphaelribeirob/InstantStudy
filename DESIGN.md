@@ -1,453 +1,330 @@
-# InstantStudy™ — Design System
+# InstantStudy™ — The Future of Learning
 
-> Active learning should feel clear, modern, and immediately actionable.
+> A learning system that feels less like software and more like a new medium.
 
-**Status:** Offer-led visual system v1.0  
+**Status:** Future of Learning v2  
 **Product:** InstantStudy™  
-**Category:** AI-native learning
+**Category:** AI-native learning  
+**Visual reference:** atmosphere and editorial direction inspired by the current ElevenLabs v4 launch page, without copying its text, assets, identity, or exact layout.
 
 ---
 
-## 1. Design thesis
+## 1. North star
 
-InstantStudy™ should look like a modern learning product, not a developer tool and not a clone of an existing study app.
+The homepage should make one claim immediately:
 
-The commercial flow is simple:
+**The future of learning.**
 
-**Bring material → Practice → Test → Review → Remember**
+The design is not a dashboard-first SaaS system. It is an editorial product launch with the learning engine itself acting as proof.
 
-The design must make that loop visible.
+Commercial loop:
 
-### Principles
-
-1. **Learning outcome first**  
-   Lead with what the student can do, not MCP, APIs, agents, or infrastructure.
-
-2. **One connected system**  
-   Learn, Quiz, Test, Review, and mastery should feel like states of the same product.
-
-3. **Serious, not academic-corporate**  
-   The product should feel credible for university and professional study without looking like an LMS.
-
-4. **Color carries learning state**  
-   Blue = active learning / primary progress.  
-   Orange = weak / due attention.  
-   Green = stable knowledge.  
-   Purple = exam / challenge context.
-
-5. **Progress without gamification theater**  
-   Use mastery, review queues, and exam readiness. Avoid coins, streak pressure, confetti, or cartoon rewards.
+**Any material → Learn → Quiz → Test → Review → Remember**
 
 ---
 
-## 2. Brand language
+## 2. Reference translation
 
-The visual identity is original to InstantStudy™.
+The ElevenLabs v4 page is used only as a high-level design-language reference.
 
-### Core feeling
+Transferable ideas:
 
-- crisp white learning surfaces
-- cool blue-gray canvas
-- deep navy for focus states
-- electric blue for action and mastery
-- orange for due/weak concepts
-- soft lavender and mint as secondary learning signals
-- strong typography
-- rounded but not playful
-- product UI shown directly in marketing
+- monumental display typography
+- short, declarative copy
+- cinematic product reveals
+- mixed light/dark surfaces
+- analog grain over digital UI
+- generous whitespace
+- large full-width feature bands
+- restrained navigation
+- product controls shown as visual proof
+- warm industrial neutrals with one strong accent
+- sections that feel like scenes rather than stacks of cards
 
-### Avoid
+Do not copy:
 
-- copying Quizlet visual assets or exact layouts
-- ElevenLabs editorial minimalism as the main identity
-- generic black-and-white AI landing pages
-- excessive gradients
-- glass everywhere
-- neon gaming aesthetics
-- enterprise dashboards
-- decorative AI robots
+- ElevenLabs wording
+- brand assets
+- v4 product imagery
+- voice UI
+- exact component layouts
+- exact color values
+- proprietary fonts
 
 ---
 
-## 3. Color system
+## 3. Atmosphere
 
-```css
-:root {
-  --ink: #172036;
-  --muted: #68728a;
-  --line: #dfe4ef;
-  --paper: #ffffff;
-  --wash: #f1f4fb;
+InstantStudy™ should feel like:
 
-  --blue: #3859ff;
-  --blue-dark: #2438b8;
-  --navy: #111a35;
+**paper + film grain + computational intelligence**
 
-  --lavender: #dfe3ff;
-  --purple: #7a5cff;
-  --mint: #bff1dc;
-  --yellow: #ffe7a0;
-  --orange: #ff8f5c;
-}
-```
+Primary canvas:
 
-### Semantic meaning
+- warm mineral gray
+- nearly black focus surfaces
+- burnt orange attention state
+- electric indigo memory state
 
-- **Blue:** active learning, mastery, primary action
-- **Orange:** due now, fragile memory, attention
-- **Green/mint:** stable concept
-- **Purple:** tests, challenge, exam simulation
-- **Navy:** focused study environments and technical connection surfaces
+The page should never look sterile.
+
+### Grain
+
+A subtle fixed noise layer sits above the entire page.
+
+Rules:
+
+- SVG fractal noise
+- low opacity
+- multiply on light surfaces
+- overlay on dark feature scenes
+- pointer-events none
+- no raster asset dependency
+
+Grain should be felt before it is noticed.
 
 ---
 
 ## 4. Typography
 
-**Primary:** Inter  
-**Fallback:** system-ui
+Use Inter / Helvetica Neue / system sans.
 
-### Display
+### Monumental display
 
-- weight: 700–800
-- tracking: -0.045em to -0.055em
-- line-height: 0.98–1.06
-- use for hero and core product promises
+Hero:
 
-### Product headings
+- 76–188px desktop
+- 58–92px mobile
+- weight around 450–500
+- tracking around -0.075em
+- line-height around 0.79–0.86
 
-- weight: 650–750
-- tracking: -0.02em to -0.04em
+Section display:
 
-### Body
+- 48–88px
+- weight around 450–500
+- tracking around -0.06em
 
-- weight: 400
-- line-height: 1.5–1.65
-- muted blue-gray, not pure gray
+The tone should be declarative, not promotional.
 
-### Recommended scale
+Prefer:
 
-| Role | Size |
-|---|---:|
-| Hero | 48–76px |
-| Section title | 36–52px |
-| Product card title | 22–30px |
-| Lead | 16–18px |
-| Body | 13–16px |
-| UI label | 9–12px |
+- The future of learning.
+- Learning should adapt to you.
+- Practice under pressure before it matters.
+- The system knows what is fading.
+- Learn once. Keep it longer.
 
----
+Avoid:
 
-## 5. Layout
-
-**Marketing max width:** 1180px  
-**Content max width:** 1120px  
-**Mobile gutter:** 11–16px
-
-### Section rhythm
-
-- hero top: 90–110px
-- standard section: 100–120px
-- feature bands: 52–72px internal padding
-- card gaps: 10–16px
-
-The page should alternate between:
-
-1. open white/cool canvas
-2. strong navy feature band
-3. soft learning-state feature band
-4. white pricing/FAQ
+- supercharge
+- revolutionize
+- crush your exams
+- AI-powered platform
+- verbose feature headlines
 
 ---
 
-## 6. Shape system
+## 5. Color
 
-| Element | Radius |
-|---|---:|
-| Nav shell | 16–20px |
-| Primary CTA | 12–14px |
-| Product cards | 20–28px |
-| Feature bands | 24–34px |
-| Small controls | 9–13px |
-| Pills / tags | 999px |
+Primary tokens:
 
-The system is rounded, but not bubbly.
+- ink: #11110f
+- paper: #f2f0ea
+- paper-2: #e9e7e1
+- paper-3: #dedbd3
+- orange: #e36232
+- orange-soft: #f1a06f
+- electric: #5b6cff
+- green: #98bd9d
 
----
+Meaning:
 
-## 7. Elevation
-
-Use shadows only to make product surfaces feel tangible.
-
-### Product window
-
-```css
-box-shadow: 0 24px 80px rgba(35, 48, 84, .10);
-```
-
-### Primary blue CTA
-
-```css
-box-shadow: 0 10px 26px rgba(56, 89, 255, .20);
-```
-
-Avoid stacking multiple elevated cards inside each other.
+- **orange** → weak / due / attention / urgency
+- **electric indigo** → memory / active mastery
+- **green** → stable knowledge
+- **near black** → focus / exam / technical connection
 
 ---
 
-## 8. Signature elements
+## 6. Shape and chrome
 
-### 8.1 InstantStudy orb
+This version removes excessive SaaS softness.
 
-The orb is the compact brand mark.
+Use:
 
-- blue lower mass = accumulated memory
-- orange upper mass = attention / forgetting risk
-- pale blue field = active learning space
+- thin borders
+- mostly square or lightly rounded product surfaces
+- full-pill action buttons
+- circular brand orb
+- full-width rectangular feature scenes
 
-It may appear in:
-- logo
-- ingestion/result moments
-- loading / learning-state transitions
+Avoid:
 
-Do not repeat it as decoration in every section.
+- every section inside a 28px rounded card
+- large glass panels
+- constant drop shadows
+- decorative pills everywhere
 
-### 8.2 Knowledge state
+---
 
-The product should always be able to show:
+## 7. Hero composition
 
-- mastery %
+Structure:
+
+1. minimal nav
+2. small introduction line
+3. monumental two-line statement
+4. abstract InstantStudy orb
+5. concise product thesis
+6. two actions
+7. material-to-study transformation
+8. real study-engine UI
+
+Primary line:
+
+**The future of learning.**
+
+Supporting copy:
+
+Your AI already knows how to explain. InstantStudy™ adds the system that makes learning stick: adaptive practice, exam rehearsal, mastery and right-time review.
+
+---
+
+## 8. Product proof
+
+The first major product view is dark.
+
+It must show:
+
+- Learn / Quiz / Test / Review path
+- active question
+- answer surface
+- mastery
 - weak concepts
 - next review
-- difficulty
-- what is due
 
-The knowledge state is a product differentiator, not a decorative analytics widget.
-
-### 8.3 Study path
-
-Use a four-step product language:
-
-**Learn → Quiz → Test → Review**
-
-The current mode should be obvious, while the rest remain visibly part of the same loop.
+The marketing page should prove the learning loop before explaining architecture.
 
 ---
 
-## 9. Marketing page architecture
+## 9. Feature scenes
 
-The homepage follows the proven study-offer logic without copying another brand's design.
+### Test
 
-### 1. Hero
+Near-black environment.
 
-Promise:
+Message:
 
-**Turn anything you're learning into practice.**
-
-Show accepted material types beside the promise.
-
-Primary CTA:
-**Start studying free**
-
-Secondary CTA:
-**See a study session**
-
-### 2. Product demonstration
-
-Show the real loop:
-
-- source material
-- question
-- answer surface
-- adaptive difficulty
-- mastery
-- next review
-
-### 3. Study tools
-
-Four connected cards:
-
-- Learn
-- Quiz
-- Test
-- Review
-
-### 4. Practice test
-
-This is a major premium-value surface.
+**Practice under pressure before it matters.**
 
 Show:
-- question format
+
 - timer
+- mixed question format
 - progress
-- hidden feedback
-- final score concept
+- hidden mid-test feedback
 
-### 5. Review / retention
+### Review
+
+Burnt-orange environment.
+
+Message:
+
+**The system knows what is fading before you do.**
 
 Show:
-- due concepts
-- mastery decay
-- review queue
-- strong / weak knowledge
 
-### 6. Continuity
+- due queue
+- mastery
+- review timing
 
-Explain the moat:
+### Continuity
 
-**The next session remembers the last one.**
+Warm neutral environment.
 
-### 7. AI connection
+Message:
 
-MCP belongs later in the page.
+**Every session starts where the last one left off.**
 
-Consumer message:
-**Study where you already think.**
+Show:
 
-Technical configuration is available but is not the headline.
-
-### 8. Pricing
-
-Free:
-- complete loop with limits
-
-Unlimited:
-- unlimited study
-- cross-session mastery
-- due reviews
-- all supported agents
-- optional Anki
-
-### 9. FAQ + final CTA
-
-Close on outcome, not infrastructure.
-
----
-
-## 10. Product UI
-
-### Active study surface
-
-During a study session:
-
-- question occupies the visual center
-- navigation becomes quiet
-- one answer surface
-- one primary action
-- mastery remains visible but secondary
-
-### Test mode
-
-Test should feel stricter than Learn:
-
-- timer
-- question count
-- no correctness feedback mid-test
-- exam-like whitespace
-- score only at the end
-
-### Review mode
-
-Review should prioritize urgency:
-
+- overall mastery
+- strong
+- review soon
 - due now
-- today
-- tomorrow
-- later
-
-Weak concepts use orange micro-signals, never full red screens.
 
 ---
 
-## 11. Interaction style
+## 10. AI connection
 
-### Buttons
+Connection is infrastructure, not the hero.
 
-Primary:
-- blue fill
-- white text
-- 12–14px radius
-- 44–50px height
+Position later in the page.
 
-Secondary:
-- white fill
-- subtle border
-- dark text
+Message:
 
-Dark feature bands:
-- white button or dark nested controls depending on hierarchy
+**The study engine follows you into the AI you already use.**
 
-### Motion
-
-- 120–180ms controls
-- 180–260ms surfaces
-- no bouncing
-- no decorative infinite motion
-
-Respect `prefers-reduced-motion`.
+The code panel can remain technical and dark.
 
 ---
 
-## 12. Responsive rules
+## 11. Pricing
 
-### Desktop
+The Free → Unlimited ladder remains.
 
-Marketing can show dense product previews, but study content itself remains focused.
+The visual structure should be simple:
 
-### Tablet
-
-Collapse three-column study windows to two columns.
-
-### Mobile
-
-- single-column
-- hide secondary product panels before shrinking them into illegibility
-- CTAs stack vertically
-- product preview remains usable
-- pricing becomes one card per row
-- technical connection controls scroll or stack
+- Free on the light canvas
+- Unlimited on black
+- no discount-theater
+- trial visible but secondary
+- value described in study outcomes
 
 ---
 
-## 13. Accessibility
+## 12. Motion
 
-- WCAG AA contrast for body text and controls
-- 44px touch targets where practical
-- learning state never encoded by color only
-- visible keyboard focus
-- reduced-motion support
-- text zoom must not break active study
+Motion should feel like signal propagation.
 
----
+Good:
 
-## 14. Copy style
+- slow reveal of large type
+- subtle product-panel fades
+- mastery line transitions
+- orb state change
+- slight texture movement if performance permits
 
-InstantStudy™ speaks in outcomes.
+Avoid:
 
-### Prefer
+- bouncing
+- parallax spectacle
+- constant floating cards
+- gamified celebration
 
-- Turn your notes into practice.
-- Practice until it sticks.
-- 3 concepts need review.
-- No hints until the test ends.
-- Review this again tomorrow.
-- Your next study session remembers this one.
-
-### Avoid
-
-- AI-powered revolutionary learning platform
-- Supercharge your brain
-- Crush every exam
-- Become unstoppable
-- MCP-first developer language in consumer sections
+Always respect prefers-reduced-motion.
 
 ---
 
-## 15. Offer/design rule
+## 13. Responsive behavior
 
-The homepage may borrow **commercial structure** from proven study products, but never their visual identity, proprietary graphics, logos, exact wording, or page composition.
+On mobile:
 
-The test for every section:
+- keep the large headline
+- remove secondary analytics before shrinking them
+- one learning surface per screen
+- stack CTAs
+- preserve grain
+- keep feature bands cinematic
+- keep product copy concise
 
-> Does this make the learner understand the next useful learning action faster?
+---
 
-If not, remove it.
+## 14. Brand test
+
+Every screen should answer:
+
+> Does this feel like the next generation of learning, or just another study app?
+
+If it looks like a conventional flashcard product, simplify and increase the sense of system, memory, and continuity.
