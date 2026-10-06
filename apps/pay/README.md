@@ -23,13 +23,39 @@ The browser never sends a Paddle price ID. It sends only an allowlisted offer ke
 ```text
 Product CTA
   -> Instant Pay
-  -> POST /api/checkout { offer, source, locale }
+  -> POST /api/paywall
+  -> Adapty placement / audience / A-B variation
+  -> allowlisted Instant offer
+  -> POST /api/checkout
   -> server allowlist resolves Paddle price
   -> Paddle transaction API
-  -> transaction custom_data
+  -> transaction custom_data + Adapty attribution IDs
   -> Paddle Hosted Checkout ?transaction_id=...
-  -> Paddle webhook / central entitlement service
+  -> verified Paddle webhook
+  -> central entitlement service
+  -> Adapty transaction attribution
 ```
+
+Adapty is the optimization layer. Paddle remains the payment processor.
+If Adapty is unavailable, Instant Pay falls back to the original allowlisted
+offer so experiments never make checkout unavailable.
+
+### Adapty remote config contract
+
+A variation may return these optional remote-config keys:
+
+```json
+{
+  "offer_key": "instant_bible_pro_annual",
+  "eyebrow": "SCRIPTURE",
+  "title": "Build a consistent daily Scripture practice.",
+  "description": "Unlock the complete personalized Scripture-to-action experience.",
+  "cta": "Start my plan"
+}
+```
+
+`offer_key` can only switch to another allowlisted offer for the same product.
+Adapty never sends a Paddle price ID to the browser.
 
 ## Security invariants
 
@@ -41,6 +67,27 @@ Product CTA
 6. Fulfillment must happen from verified Paddle webhooks.
 7. No user identity is trusted from query parameters.
 8. DotSpeak checkout must only be linked from a guardian-controlled surface.
+9. Adapty may select copy or another allowlisted offer for the same product only.
+10. Adapty public/secret keys stay server-side in Instant Pay.
+11. Adapty variation/paywall IDs are attribution metadata, never proof of access.
+
+## Adapty setup
+
+Create a dedicated Adapty app for InstantPayments, then configure:
+
+```text
+ADAPTY_PUBLIC_API_KEY
+ADAPTY_SECRET_API_KEY
+ADAPTY_STORE=paddle
+ADAPTY_PLACEMENT_ID=instant_pay_main
+```
+
+Product-specific placements may override the fallback placement through the
+`ADAPTY_PLACEMENT_*` variables documented in `.env.example`.
+
+The browser gets a persistent anonymous Instant Pay ID used only for stable
+Adapty audience/variation assignment. Email, journal content, spiritual
+answers, study material and other product content must not be sent to Adapty.
 
 ## Paddle setup
 

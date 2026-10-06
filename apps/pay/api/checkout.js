@@ -1,4 +1,5 @@
 import { resolveOffer } from "./_catalog.js";
+import { cleanCustomerUserId, cleanOpaqueId } from "./_adapty.js";
 
 const LIVE_API = "https://api.paddle.com";
 const SANDBOX_API = "https://sandbox-api.paddle.com";
@@ -47,6 +48,9 @@ export default async function handler(req, res) {
 
   const source = cleanSource(body.source);
   const locale = cleanLocale(body.locale);
+  const customerUserId = cleanCustomerUserId(body.customer_user_id);
+  const adaptyVariationId = cleanOpaqueId(body.adapty_variation_id);
+  const adaptyPaywallId = cleanOpaqueId(body.adapty_paywall_id);
   const apiBase = environment === "live" ? LIVE_API : SANDBOX_API;
 
   const response = await fetch(`${apiBase}/transactions`, {
@@ -66,6 +70,9 @@ export default async function handler(req, res) {
         plan_key: offer.plan,
         billing_cadence: offer.cadence,
         source_app: source,
+        ...(customerUserId ? { adapty_customer_user_id: customerUserId } : {}),
+        ...(adaptyVariationId ? { adapty_variation_id: adaptyVariationId } : {}),
+        ...(adaptyPaywallId ? { adapty_paywall_id: adaptyPaywallId } : {}),
       },
     }),
   });

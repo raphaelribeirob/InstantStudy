@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { defaultOffer, offerFor } from "./catalog";
 import "./styles.css";
@@ -19,10 +19,69 @@ function locale() {
   return browser.slice(0, 16);
 }
 
+function customerUserId() {
+  const storageKey = "instant_pay_customer_id";
+  const current = window.localStorage.getItem(storageKey);
+  if (current && /^[a-zA-Z0-9._:-]{8,128}$/.test(current)) return current;
+
+  const randomId =
+    typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const id = `anon_${randomId}`;
+  window.localStorage.setItem(storageKey, id);
+  return id;
+}
+
+type AdaptyDecision = {
+  adapty_enabled?: boolean;
+  offer_key?: string;
+  variation_id?: string;
+  paywall_id?: string;
+  eyebrow?: string;
+  title?: string;
+  description?: string;
+  cta?: string;
+};
+
 function App() {
-  const offer = useMemo(currentOffer, []);
+  const baseOffer = useMemo(currentOffer, []);
+  const [offer, setOffer] = useState(baseOffer);
+  const [decision, setDecision] = useState<AdaptyDecision>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolvePaywall() {
+      try {
+        const response = await fetch("/api/paywall", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            offer: baseOffer.key,
+            source: sourceApp(),
+            locale: locale(),
+            customer_user_id: customerUserId(),
+          }),
+        });
+        const data = (await response.json().catch(() => ({}))) as AdaptyDecision;
+        if (cancelled || !response.ok) return;
+
+        const resolved = offerFor(data.offer_key ?? null);
+        if (resolved) setOffer(resolved);
+        setDecision(data);
+      } catch {
+        // Adapty is an optimization layer. Catalog checkout stays available.
+      }
+    }
+
+    void resolvePaywall();
+    return () => {
+      cancelled = true;
+    };
+  }, [baseOffer]);
 
   async function continueToPayment() {
     setBusy(true);
@@ -35,6 +94,9 @@ function App() {
           offer: offer.key,
           source: sourceApp(),
           locale: locale(),
+          customer_user_id: customerUserId(),
+          adapty_variation_id: decision.variation_id,
+          adapty_paywall_id: decision.paywall_id,
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -57,9 +119,9 @@ function App() {
 
       <section className="layout">
         <div className="copy">
-          <p className="eyebrow">{offer.eyebrow}</p>
-          <h1>{offer.title}</h1>
-          <p className="lead">{offer.description}</p>
+          <p className="eyebrow">{decision.eyebrow ?? offer.eyebrow}</p>
+          <h1>{decision.title ?? offer.title}</h1>
+          <p className="lead">{decision.description ?? offer.description}</p>
 
           <div className="trust">
             <span>Global payments</span>
@@ -93,7 +155,7 @@ function App() {
           </div>
 
           <button type="button" onClick={continueToPayment} disabled={busy}>
-            {busy ? "Opening secure checkout…" : "Continue to secure checkout"}
+            {busy ? "Opening secure checkout…" : (decision.cta ?? "Continue to secure checkout")}
           </button>
 
           {error && <p className="error" role="alert">{error}</p>}

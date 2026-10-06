@@ -17,12 +17,25 @@ const offers = {
   instant_one_annual: ["PADDLE_PRICE_INSTANT_ONE_ANNUAL", "instant_one", "all_access", "annual"],
 };
 
-export function resolveOffer(key) {
-  const row = offers[String(key || "")];
+export function offerDefinition(key) {
+  const normalizedKey = String(key || "");
+  const row = offers[normalizedKey];
   if (!row) return null;
   const [envKey, product, plan, cadence] = row;
-  const priceId = String(process.env[envKey] || "").trim();
+  return { key: normalizedKey, envKey, product, plan, cadence };
+}
+
+export function resolveOffer(key) {
+  const definition = offerDefinition(key);
+  if (!definition) return null;
+  const priceId = String(process.env[definition.envKey] || "").trim();
   if (!priceId) return null;
   if (!/^pri_[a-z0-9]{20,40}$/.test(priceId)) return null;
-  return { key: String(key), priceId, product, plan, cadence };
+  return { ...definition, priceId };
+}
+
+export function isSameProductOffer(baseKey, candidateKey) {
+  const base = offerDefinition(baseKey);
+  const candidate = offerDefinition(candidateKey);
+  return Boolean(base && candidate && base.product === candidate.product);
 }

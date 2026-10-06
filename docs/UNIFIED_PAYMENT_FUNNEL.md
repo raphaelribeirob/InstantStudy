@@ -9,7 +9,7 @@ InstantSpeak ─┐
 InstantStudy ─┤
 InstantBible ─┤
 InstantVest  ─┤
-InstantCloser ┤──> Instant Pay ──> Paddle ──> webhook ──> entitlements
+InstantCloser ┤──> Instant Pay ──> Adapty ──> Paddle ──> webhook ──> entitlements
 DotSpeak*    ─┤
 Instant One ─┘
 ```
@@ -44,6 +44,15 @@ PAY_URL/?offer=<offer_key>&source=<app_key>
 - instant_one_annual
 
 Price IDs never appear in product clients.
+
+Adapty is centralized in Instant Pay. It controls placement resolution,
+audience segmentation, A/B variation and remote paywall copy. It may choose
+only an allowlisted offer for the same product. Paddle remains the payment
+processor and the verified webhook remains authoritative for entitlements.
+
+The Adapty variation ID, paywall ID and anonymous Instant Pay customer ID are
+copied into Paddle `custom_data` so the central webhook can attribute a
+verified purchase back to the paywall variation.
 
 ## Current scope
 
