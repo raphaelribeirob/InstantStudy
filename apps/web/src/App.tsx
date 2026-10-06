@@ -100,7 +100,7 @@ function StudyGenerator() {
     paste: "Paste text",
     upload: "Upload files",
     drive: "Google Drive",
-    audio: "Lecture audio",
+    audio: "Record audio",
   };
 
   return (
@@ -137,13 +137,13 @@ function StudyGenerator() {
               {source === "paste" && "Paste the material you need to learn"}
               {source === "upload" && "Drop notes, readings or lecture slides"}
               {source === "drive" && "Choose a document from your Drive"}
-              {source === "audio" && "Add a lecture transcript or recording notes"}
+              {source === "audio" && "Record or add lecture material"}
             </strong>
             <p>
               PDF, DOCX, PPTX, plain text, conversation context and supported study material.
             </p>
             <button type="button">
-              {source === "paste" ? "Paste text" : source === "drive" ? "Choose file" : source === "audio" ? "Add lecture" : "Browse files"}
+              {source === "paste" ? "Paste text" : source === "drive" ? "Choose file" : source === "audio" ? "Record audio" : "Browse files"}
             </button>
           </div>
 
@@ -380,6 +380,8 @@ function Pricing() {
   const unlimitedMonthly = offer?.monthlyPrice ?? "$6.99 / month";
   const plusAnnual = "$35.99 / year";
   const plusMonthly = "$4.99 / month";
+  const annualUnlimitedEquivalent = "$3.75 / month";
+  const annualPlusEquivalent = "$2.99 / month";
 
   return (
     <section className="section pricing-section" id="pricing">
@@ -420,14 +422,14 @@ function Pricing() {
         <article className="pricing-card plus-card">
           <div>
             <span className="plan-name">Plus</span>
-            <h3>{annual ? plusAnnual : plusMonthly}</h3>
-            <p>{annual ? "7-day free trial." : "Cancel anytime."}</p>
+            <h3>{annual ? annualPlusEquivalent : plusMonthly}</h3>
+            <p>{annual ? `Billed at ${plusAnnual} · 7-day free trial.` : "Cancel anytime."}</p>
           </div>
           <ul>
-            <li><Check size={16} /> Higher monthly Learn allowance</li>
-            <li><Check size={16} /> More practice tests</li>
+            <li><Check size={16} /> 20 Learn rounds per month</li>
+            <li><Check size={16} /> 3 practice tests per month</li>
             <li><Check size={16} /> Persistent mastery and review queue</li>
-            <li><Check size={16} /> Ad-free InstantStudy experience</li>
+            <li><Check size={16} /> All core study modes</li>
           </ul>
           <a className="plan-button secondary-plan" href="#connect">
             {annual ? "Start free trial" : "Choose Plus"}
@@ -438,14 +440,14 @@ function Pricing() {
           <div className="most-popular">Most popular</div>
           <div>
             <span className="plan-name">Unlimited</span>
-            <h3>{annual ? unlimitedAnnual : unlimitedMonthly}</h3>
-            <p>{annual ? (offer?.trial ?? "7 days free") : "Cancel anytime"}.</p>
+            <h3>{annual ? annualUnlimitedEquivalent : unlimitedMonthly}</h3>
+            <p>{annual ? `Billed at ${unlimitedAnnual} · ${offer?.trial ?? "7 days free"}.` : "Cancel anytime."}</p>
           </div>
           <ul>
-            <li><Check size={16} /> Unlimited Learn, Review, Quiz and Test</li>
+            <li><Check size={16} /> Unlimited Learn rounds</li>
+            <li><Check size={16} /> Complete access to practice tests</li>
             <li><Check size={16} /> Cross-session mastery and due reviews</li>
-            <li><Check size={16} /> Every supported AI agent</li>
-            <li><Check size={16} /> Optional Anki integration</li>
+            <li><Check size={16} /> Every supported AI agent + optional Anki</li>
           </ul>
           <a
             className="plan-button primary-plan"
