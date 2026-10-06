@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import manage from "./manage.js";
 
@@ -51,4 +52,11 @@ test("manage redirects only to configured HTTPS portal", () => {
   } else {
     delete process.env.PADDLE_CUSTOMER_PORTAL_URL;
   }
+});
+
+
+test("InstantBible checkout is fail-closed until authenticated entitlement exists", () => {
+  const source = readFileSync(new URL("./checkout.js", import.meta.url), "utf8");
+  assert.match(source, /instant_bible:\s*false/);
+  assert.match(source, /entitlement_not_configured/);
 });
