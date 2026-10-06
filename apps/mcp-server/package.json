@@ -12,7 +12,8 @@
     "@modelcontextprotocol/sdk": "^1.12.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "zod": "^3.24.4"
+    "zod": "^3.24.4",
+    "pdfjs-dist": "^5.4.149"
   },
   "devDependencies": {
     "@types/cors": "^2.8.18",

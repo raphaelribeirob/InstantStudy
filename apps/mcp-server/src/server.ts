@@ -7,6 +7,8 @@ import { BridgeQueue } from "./bridgeQueue.js";
 import { AdaptyClient } from "./adapty.js";
 import { readFileSync } from "node:fs";
 import { ContentSessionStore } from "./contentSessions.js";
+import { StudyEngine } from "./studyEngine.js";
+import { ingestFiles } from "./ingest.js";
 
 const PORT = Number.parseInt(process.env.PORT ?? "8000", 10);
 const DEVICE_ID = process.env.INSTANTSTUDY_DEVICE_ID ?? "dev-device";
@@ -18,6 +20,7 @@ const TIMEOUT_MS = Number.parseInt(
 
 const bridge = new BridgeQueue(TIMEOUT_MS);
 const contentSessions = new ContentSessionStore();
+const studyEngine = new StudyEngine();
 const API_KEY = process.env.INSTANTSTUDY_API_KEY ?? "replace-me-api-key";
 const adapty = new AdaptyClient({
   publicApiKey: process.env.ADAPTY_PUBLIC_API_KEY,
@@ -54,6 +57,17 @@ const prepareStudySchema = z
     title: z.string().min(1).max(200).optional(),
     goal: z.string().min(1).max(500).optional(),
     mode: z.enum(["learn", "review", "quiz", "test"]).default("learn"),
+    targetMinutes: z.number().int().min(1).max(180).optional(),
+    maxQuestions: z.number().int().min(1).max(50).default(12),
+    concepts: z
+      .array(
+        z.object({
+          label: z.string().min(1).max(200),
+          sourceExcerpt: z.string().max(1200).optional(),
+        }),
+      )
+      .max(30)
+      .optional(),
   })
   .refine(
     (input) => Boolean(input.contentText?.trim()) || input.files.length > 0,
@@ -151,29 +165,51 @@ function createMcpServer() {
         "openai/fileParams": ["files"],
       },
     },
-    async ({ contentText, files, title, goal, mode }) => {
-      const session = contentSessions.create({
-        contentText,
+    async ({
+      contentText,
+      files,
+      title,
+      goal,
+      mode,
+      targetMinutes,
+      maxQuestions,
+      concepts,
+    }) => {
+      const ingested = files.length ? await ingestFiles(files) : { text: "", files: [] };
+      const combinedText = [contentText?.trim(), ingested.text.trim()]
+        .filter(Boolean)
+        .join("\n\n")
+        .slice(0, 200000);
+
+      const contentSession = contentSessions.create({
+        contentText: combinedText || undefined,
         files,
         title,
         goal,
         mode,
       });
 
+      const studySession = studyEngine.start(contentSession, {
+        mode,
+        targetMinutes,
+        maxQuestions,
+        concepts,
+      });
+
+      const next = studyEngine.next(studySession.id);
+
       return toolResult({
-        sessionId: session.id,
-        status: session.status,
-        title: session.title,
-        mode: session.mode,
-        goal: session.goal,
-        sources: session.files.map((file) => ({
-          fileId: file.file_id,
-          fileName: file.file_name,
-          mimeType: file.mime_type,
-        })),
-        hasInlineContent: Boolean(session.contentText),
+        contentSessionId: contentSession.id,
+        studySessionId: studySession.id,
+        status: studySession.status,
+        title: studySession.title,
+        mode: studySession.mode,
+        goal: studySession.goal,
+        conceptCount: studySession.concepts.length,
+        ingestion: ingested.files,
+        next,
         nextAction:
-          "Start immediately. Ask one question from the supplied content. Wait for the learner's answer before explaining or revealing the answer.",
+          "Ask the returned next question now. After the learner answers, evaluate correctness and completeness against the source, then call submit_study_answer before continuing.",
       });
     },
   );
@@ -194,24 +230,114 @@ function createMcpServer() {
       },
     },
     async ({ sessionId }) => {
-      const session = contentSessions.get(sessionId);
+      const session = studyEngine.get(sessionId);
       if (!session) {
         throw new Error("Study session not found.");
       }
 
       return toolResult({
         sessionId: session.id,
+        contentSessionId: session.contentSessionId,
         status: session.status,
         title: session.title,
         mode: session.mode,
         goal: session.goal,
-        contentText: session.contentText,
-        sources: session.files.map((file) => ({
-          fileId: file.file_id,
-          fileName: file.file_name,
-          mimeType: file.mime_type,
+        questionIndex: session.questionIndex,
+        maxQuestions: session.maxQuestions,
+        concepts: session.concepts.map((concept) => ({
+          id: concept.id,
+          label: concept.label,
+          mastery: Number(concept.mastery.toFixed(2)),
+          attempts: concept.attempts,
+          difficulty: concept.difficulty,
+          missingConcepts: concept.missingConcepts,
         })),
       });
+    },
+  );
+
+  server.registerTool(
+    "next_study_question",
+    {
+      title: "Get next adaptive study question",
+      description:
+        "Return the next study target and question policy for an active InstantStudy session. Generate exactly one question from the provided concept/source excerpt and follow the mode-specific policy.",
+      inputSchema: z.object({
+        studySessionId: z.string().uuid(),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ studySessionId }) => {
+      return toolResult(studyEngine.next(studySessionId));
+    },
+  );
+
+  server.registerTool(
+    "submit_study_answer",
+    {
+      title: "Record a learner answer",
+      description:
+        "After the learner answers an InstantStudy question, semantically evaluate it against the source and submit the result. correctness/completeness are 0..1. Use missingConcepts for important omissions. InstantStudy updates mastery and difficulty consistently across LLM hosts.",
+      inputSchema: z.object({
+        studySessionId: z.string().uuid(),
+        conceptId: z.string().uuid(),
+        correctness: z.number().min(0).max(1),
+        completeness: z.number().min(0).max(1),
+        confidence: z.number().min(0).max(1).default(0.8),
+        missingConcepts: z.array(z.string().min(1).max(200)).max(10).default([]),
+        userAnswer: z.string().max(20000).optional(),
+        feedback: z.string().max(10000).optional(),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({
+      studySessionId,
+      conceptId,
+      correctness,
+      completeness,
+      confidence,
+      missingConcepts,
+      userAnswer,
+      feedback,
+    }) => {
+      return toolResult(
+        studyEngine.submit(studySessionId, conceptId, {
+          correctness,
+          completeness,
+          confidence,
+          missingConcepts,
+          userAnswer,
+          feedback,
+        }),
+      );
+    },
+  );
+
+  server.registerTool(
+    "finish_study_session",
+    {
+      title: "Finish InstantStudy session",
+      description:
+        "Finish an active study session and return a concise mastery/weakness summary.",
+      inputSchema: z.object({
+        studySessionId: z.string().uuid(),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ studySessionId }) => {
+      return toolResult(studyEngine.finish(studySessionId));
     },
   );
 
@@ -456,22 +582,35 @@ app.use("/api/v1", requireApiAuth);
 app.post("/api/v1/study/prepare", async (req, res) => {
   try {
     const input = prepareStudySchema.parse(req.body ?? {});
-    const session = contentSessions.create(input);
+    const ingested = input.files.length
+      ? await ingestFiles(input.files)
+      : { text: "", files: [] };
+    const combinedText = [input.contentText?.trim(), ingested.text.trim()]
+      .filter(Boolean)
+      .join("\n\n")
+      .slice(0, 200000);
+
+    const contentSession = contentSessions.create({
+      ...input,
+      contentText: combinedText || undefined,
+    });
+    const studySession = studyEngine.start(contentSession, {
+      mode: input.mode,
+      targetMinutes: input.targetMinutes,
+      maxQuestions: input.maxQuestions,
+      concepts: input.concepts,
+    });
 
     res.json({
-      sessionId: session.id,
-      status: session.status,
-      title: session.title,
-      mode: session.mode,
-      goal: session.goal,
-      sources: session.files.map((file) => ({
-        fileId: file.file_id,
-        fileName: file.file_name,
-        mimeType: file.mime_type,
-      })),
-      hasInlineContent: Boolean(session.contentText),
-      nextAction:
-        "Ask one question from the supplied content and wait for the learner's answer.",
+      contentSessionId: contentSession.id,
+      studySessionId: studySession.id,
+      status: studySession.status,
+      title: studySession.title,
+      mode: studySession.mode,
+      goal: studySession.goal,
+      conceptCount: studySession.concepts.length,
+      ingestion: ingested.files,
+      next: studyEngine.next(studySession.id),
     });
   } catch (error) {
     sendApiError(res, error);
@@ -479,7 +618,7 @@ app.post("/api/v1/study/prepare", async (req, res) => {
 });
 
 app.get("/api/v1/study/sessions/:sessionId", (req, res) => {
-  const session = contentSessions.get(req.params.sessionId);
+  const session = studyEngine.get(req.params.sessionId);
   if (!session) {
     res.status(404).json({ error: "study_session_not_found" });
     return;
@@ -487,17 +626,74 @@ app.get("/api/v1/study/sessions/:sessionId", (req, res) => {
 
   res.json({
     sessionId: session.id,
+    contentSessionId: session.contentSessionId,
     status: session.status,
     title: session.title,
     mode: session.mode,
     goal: session.goal,
-    contentText: session.contentText,
-    sources: session.files.map((file) => ({
-      fileId: file.file_id,
-      fileName: file.file_name,
-      mimeType: file.mime_type,
+    questionIndex: session.questionIndex,
+    maxQuestions: session.maxQuestions,
+    concepts: session.concepts.map((concept) => ({
+      id: concept.id,
+      label: concept.label,
+      mastery: Number(concept.mastery.toFixed(2)),
+      attempts: concept.attempts,
+      difficulty: concept.difficulty,
+      missingConcepts: concept.missingConcepts,
     })),
   });
+});
+
+app.post("/api/v1/study/next", (req, res) => {
+  try {
+    const input = z
+      .object({ studySessionId: z.string().uuid() })
+      .parse(req.body ?? {});
+    res.json(studyEngine.next(input.studySessionId));
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/study/answer", (req, res) => {
+  try {
+    const input = z
+      .object({
+        studySessionId: z.string().uuid(),
+        conceptId: z.string().uuid(),
+        correctness: z.number().min(0).max(1),
+        completeness: z.number().min(0).max(1),
+        confidence: z.number().min(0).max(1).default(0.8),
+        missingConcepts: z.array(z.string().min(1).max(200)).max(10).default([]),
+        userAnswer: z.string().max(20000).optional(),
+        feedback: z.string().max(10000).optional(),
+      })
+      .parse(req.body);
+
+    res.json(
+      studyEngine.submit(input.studySessionId, input.conceptId, {
+        correctness: input.correctness,
+        completeness: input.completeness,
+        confidence: input.confidence,
+        missingConcepts: input.missingConcepts,
+        userAnswer: input.userAnswer,
+        feedback: input.feedback,
+      }),
+    );
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/study/finish", (req, res) => {
+  try {
+    const input = z
+      .object({ studySessionId: z.string().uuid() })
+      .parse(req.body ?? {});
+    res.json(studyEngine.finish(input.studySessionId));
+  } catch (error) {
+    sendApiError(res, error);
+  }
 });
 
 app.get("/api/v1/status", async (_req, res) => {

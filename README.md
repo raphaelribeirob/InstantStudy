@@ -1,30 +1,89 @@
 # InstantStudy
 
-**Study your Anki directly inside any tool-capable LLM.**
+**Drop anything. Learn it.**
 
-InstantStudy is an LLM-native study layer for Anki. ChatGPT is the first distribution surface, but the core is provider-neutral. The first product goal is deliberately narrow:
+InstantStudy turns content inside a tool-capable LLM into an adaptive study session.
 
-> Ask ChatGPT to study your Anki deck, answer in the conversation, get semantic feedback, and write the review result back to Anki.
+Paste notes, upload a PDF, use material already in the conversation, or connect Anki. InstantStudy structures what matters, asks one question at a time, evaluates the learner's answer, adapts difficulty, tracks weak concepts, and keeps the session moving.
+
+> Quizlet-style study mechanics, rebuilt natively for LLMs.
 
 ## Product thesis
 
-Quizlet made flashcards easy. Anki made spaced repetition powerful. InstantStudy makes both conversational.
+The product is not an Anki connector.
 
-The V1 does **not** try to replace Anki's scheduler. It uses Anki as the source of truth for cards and review scheduling while ChatGPT handles the study experience.
+Anki is an optional source and scheduling integration.
 
-## Core loop
+The core product is the **Study Engine**:
 
-1. User installs the InstantStudy Anki bridge.
-2. The bridge pairs with the InstantStudy backend.
-3. ChatGPT, Claude, another MCP client, or a REST/OpenAPI tool client calls InstantStudy.
-4. The backend dispatches commands to the paired Anki client.
-5. ChatGPT asks one question at a time.
-6. The user answers naturally.
-7. ChatGPT evaluates correctness and completeness.
-8. InstantStudy records the review in Anki.
-9. The next due card is selected.
+```
+content
+  ↓
+InstantStudy
+  ↓
+Learn / Review / Quiz / Test
+  ↓
+answer
+  ↓
+semantic evaluation
+  ↓
+knowledge state
+  ↓
+next best question
+```
 
-## V1 tools
+## Zero-friction entry
+
+The primary experience is:
+
+```
+upload/paste material in the LLM
+        ↓
+"InstantStudy"
+        ↓
+prepare_study
+        ↓
+first adaptive question
+```
+
+No deck creation. No dashboard. No mandatory onboarding before first value.
+
+## Study modes
+
+### Learn
+Starts with support, moves toward free recall, explanation, and application. Weak answers trigger repair/retest. Strong answers increase difficulty.
+
+### Review
+Optimizes for fast active recall and weak-concept repetition.
+
+### Quiz
+Uses short question cycles with immediate grading and explanation.
+
+### Test
+Uses exam-style questions and suppresses correctness feedback until the session finishes.
+
+## Knowledge state
+
+Each session tracks per concept:
+
+- mastery
+- attempts
+- correct / partial / incorrect
+- current difficulty
+- missing concepts
+- last seen state
+
+This state determines what InstantStudy asks next.
+
+## Core MCP tools
+
+- `prepare_study`
+- `next_study_question`
+- `submit_study_answer`
+- `finish_study_session`
+- `get_study_session`
+
+Optional Anki tools:
 
 - `anki_status`
 - `list_decks`
@@ -32,56 +91,50 @@ The V1 does **not** try to replace Anki's scheduler. It uses Anki as the source 
 - `search_cards`
 - `create_card`
 - `record_review`
+
+Monetization:
+
 - `get_subscription_offer`
 
-## Architecture
+## Content ingestion
 
-```
-LLM client
-   |
-   | MCP or REST/OpenAPI
-   v
-InstantStudy MCP Server
-   |
-   | command queue
-   v
-InstantStudy Anki Bridge
-   |
-   | localhost:8765
-   v
-AnkiConnect
-   |
-   v
-Anki
-```
+InstantStudy can ingest text directly and extract text from supported remote PDFs/text files supplied through a host. When a host already has the document contents available, it can pass extracted text directly for maximum portability.
 
-The bridge makes an outbound connection/poll to the InstantStudy server, so the user's Anki does not need to expose a public port.
-
-## Monetization
-
-Adapty is integrated as the pricing experimentation control plane. The server resolves the active offer from the `instantstudy_main` placement, so audiences, localized offers, products, and A/B price tests can change without deploying new InstantStudy code.
-
-Stripe remains the default payment rail.
+Image-heavy/scanned content may still require the host LLM's vision/text extraction.
 
 ## LLM compatibility
 
-- MCP clients: connect to `/mcp`.
-- Other tool-capable LLMs: use the REST API under `/api/v1`.
-- OpenAPI contract: `/openapi.yaml`.
+- MCP clients connect to `/mcp`.
+- Other tool-capable LLMs use REST/OpenAPI under `/api/v1`.
+- No study-domain code depends on OpenAI, Anthropic, or Google model SDKs.
 
-No study-domain code depends on an OpenAI, Anthropic, or Google model SDK.
+The host LLM performs semantic interpretation and question wording. InstantStudy owns the session policy, mode behavior, mastery updates, progression, and study state.
 
-## Repository
+## Monetization
 
-- `apps/mcp-server` — remote MCP + bridge API
-- `anki-addon` — Anki-side bridge
-- `docs` — architecture and product contracts
-- `DESIGN.md` — existing InstantStudy design system
+Adapty controls pricing experiments through the `instantstudy_main` placement. Monetization should be presented **after first study value** for content-first users, with alternative timing tested through experimentation.
 
-## Development status
+## Anki
 
-This branch is the first ChatGPT + Anki foundation. Authentication, persistent queues, billing, marketplace packaging, and production deployment are intentionally deferred until the study loop is validated.
+Anki remains valuable for people who already have decks or want mature spaced-repetition scheduling.
 
-## Security rule
+Architecture:
 
-Never expose AnkiConnect directly to the public internet. InstantStudy's bridge must only make outbound requests to the remote backend.
+```
+Any LLM
+   │
+   ├── MCP
+   └── REST/OpenAPI
+          │
+          ▼
+   InstantStudy Study Engine
+          │
+     ┌────┴─────┐
+     ▼          ▼
+ Content     Knowledge state
+                   │
+                   ▼
+             Optional Anki
+```
+
+Never expose AnkiConnect directly to the public internet.

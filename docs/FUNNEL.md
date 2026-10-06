@@ -1,137 +1,97 @@
-# InstantStudy funnel — Quizlet mechanics, InstantStudy identity
+# InstantStudy funnel — Quizlet mechanics adapted for LLMs
 
-## Competitive extraction
+## Principle
 
-Current Quizlet mobile funnel research shows this acquisition sequence:
+InstantStudy borrows the conversion mechanics that work in Quizlet, but the LLM environment removes a major source of friction: the learner can already have the study material in the conversation.
 
-1. Sign-up prompt
-2. Birthday and role qualification
-3. Subscription paywall
-4. Notification permission warm-up
-5. Native notification permission
-6. Introductory activation
-7. Study set / flashcards
-8. Learn / Test features with additional premium triggers
+Therefore the primary funnel is **value-first**, not signup-first.
 
-Primary research references:
-
-- ScreensDesign, Quizlet 2026 flow:
-  https://screensdesign.com/apps/quizlet-study-with-flashcards/
-- Quizlet current Plus pricing:
-  https://quizlet.com/upgrade
-- Quizlet ChatGPT app:
-  https://help.quizlet.com/hc/en-us/articles/44716146144909-Create-flashcard-sets-directly-in-ChatGPT
-- Quizlet AI flashcard generation:
-  https://quizlet.com/features/ai-flashcard-generator
-
-The strategic mechanic is:
+## Content-first funnel
 
 ```
-value promise
-  -> identity
-  -> qualification
-  -> trial/paywall
-  -> permission
-  -> activation
-  -> premium triggers at high intent
+1. CONTENT
+   Paste notes or upload material in the LLM
+
+2. INTENT
+   "InstantStudy" / "study this" / "quiz me"
+
+3. FIRST VALUE
+   prepare_study -> first adaptive question
+
+4. ACTIVATION
+   learner submits the first answer
+   event: first_answer_submitted
+
+5. IDENTITY
+   Ask the learner to keep progress across sessions
+
+6. OPTIONAL MEMORY
+   Connect Anki if they already use it
+
+7. MONETIZATION
+   Present Adapty-selected Pro offer at a high-intent moment
+
+8. RETENTION
+   Reminder / review when knowledge is weakening
 ```
 
-We intentionally do not copy Quizlet's visual assets, brand, wording, or screen layouts.
+## Cold-start web funnel
 
-## InstantStudy adaptation
+The website also starts with content.
 
 ```
-1. Value
-   "Study where you already think."
-
-2. Identity
-   Google / email entry point
-
-3. Learning context
-   School / university / work / language
-
-4. Desired outcome
-   Remember / exam / Anki / understand
-
-5. Source
-   Connect Anki / start with study material
-
-6. Paywall
-   Adapty-driven annual vs monthly experiment
-   Annual trial selected by default
-
-7. Reminder warm-up
-   Explain the value before any platform permission prompt
-
-8. Activation
-   "InstantStudy, let's study for 10 minutes."
+content -> choose Learn/Review/Quiz/Test -> session prepared -> account/Pro later
 ```
 
-## Why the paywall appears before the first full session
+It must not require Google/email, learner role, Anki connection, or a paywall before demonstrating study value.
 
-Quizlet monetizes early, before substantial product depth. InstantStudy keeps that principle because:
+## What we retain from Quizlet
 
-- intent is highest immediately after personalization;
-- Adapty can test whether early paywall beats a post-activation paywall;
-- limited access remains available so the funnel can be tested without a hard wall.
+- fast transformation from source material into practice;
+- multiple study modes over the same knowledge;
+- increasing difficulty;
+- immediate correction outside Test mode;
+- premium triggers at moments of clear intent;
+- trial/price experimentation.
 
-The placement remains:
+## What we do not copy
+
+- Quizlet brand, visual assets, wording, illustrations, or layouts;
+- public-set marketplace as a V1 requirement;
+- games as a core feature;
+- teacher/classroom complexity before the learner loop works.
+
+## Adapty
+
+Placement:
 
 ```
 instantstudy_main
 ```
 
-Adapty remote config may control:
+Adapty may test:
 
-- headline
-- CTA
-- annual price label
-- monthly price label
-- trial label
-- checkout URL
+- post-first-answer vs later paywall timing;
+- monthly vs annual;
+- trial length;
+- pricing by audience/region;
+- paywall headline and CTA.
 
-## Design translation
+## Design
 
-The implementation follows `DESIGN.md`, whose reference language comes from ElevenLabs as documented by Refero.
+The visual system remains the InstantStudy `DESIGN.md`:
 
-It uses:
-
-- warm off-white canvas;
+- warm paper canvas;
 - light editorial typography;
-- taupe learning surfaces;
-- black primary pill actions;
-- hairline warm borders;
-- restrained blue/orange memory-state accents;
-- no Quizlet blue;
-- no copied Quizlet illustrations;
-- no ElevenLabs logos, assets, or literal layouts.
+- taupe surfaces;
+- black pill actions;
+- restrained blue/orange cognitive signals;
+- minimal chrome.
 
-## Funnel events
-
-The prototype emits browser custom events:
+## Primary activation metric
 
 ```
-instantstudy:funnel
+first_answer_submitted
 ```
 
-with event names such as:
-
-- `funnel_step_viewed`
-- `signup_started`
-- `funnel_choice`
-- `paywall_cta_clicked`
-- `first_session_started`
-
-If `window.dataLayer` is present, the same events are pushed there.
-
-## Acceptance criteria
-
-- Funnel is usable from 320px mobile through desktop.
-- One dominant action per screen.
-- Back navigation works on qualification/paywall steps.
-- Paywall resolves Adapty offer when backend credentials are configured.
-- Funnel still renders with safe fallback pricing when Adapty is unavailable.
-- Annual and monthly variants are selectable.
-- Limited-access path does not block activation.
-- No Quizlet trademarked UI or copied visual asset is used.
-- No model-provider branding is required.
+A signup is not activation. A prepared session is not activation. The user is activated only after participating in the learning loop.
