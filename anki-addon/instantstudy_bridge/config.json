@@ -1,0 +1,7 @@
+{
+  "bridge_server_url": "http://127.0.0.1:8000",
+  "device_id": "dev-device",
+  "bridge_token": "replace-me",
+  "anki_connect_url": "http://127.0.0.1:8765",
+  "poll_interval_ms": 1500
+}
