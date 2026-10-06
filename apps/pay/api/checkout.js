@@ -1,7 +1,5 @@
 import { resolveOffer } from "./_catalog.js";
-
-const LIVE_API = "https://api.paddle.com";
-const SANDBOX_API = "https://sandbox-api.paddle.com";
+import { paddleApiBase } from "./_paddle.js";
 
 function json(res, status, body) {
   res.status(status);
@@ -25,8 +23,6 @@ export default async function handler(req, res) {
 
   const apiKey = String(process.env.PADDLE_API_KEY || "").trim();
   const hostedCheckout = String(process.env.PADDLE_HOSTED_CHECKOUT_URL || "").trim();
-  const environment = String(process.env.PADDLE_ENV || "sandbox").toLowerCase();
-
   if (!apiKey || !hostedCheckout) {
     return json(res, 503, { error: "billing_not_configured" });
   }
@@ -47,9 +43,8 @@ export default async function handler(req, res) {
 
   const source = cleanSource(body.source);
   const locale = cleanLocale(body.locale);
-  const apiBase = environment === "live" ? LIVE_API : SANDBOX_API;
 
-  const response = await fetch(`${apiBase}/transactions`, {
+  const response = await fetch(`${paddleApiBase()}/transactions`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${apiKey}`,
@@ -60,9 +55,10 @@ export default async function handler(req, res) {
       items: [{ price_id: offer.priceId, quantity: 1 }],
       collection_mode: "automatic",
       custom_data: {
-        funnel: "instant_unified_v1",
+        funnel: "instant_unified_v2",
         offer_key: offer.key,
         product_key: offer.product,
+        entitlement_key: offer.entitlement,
         plan_key: offer.plan,
         billing_cadence: offer.cadence,
         source_app: source,
