@@ -6,9 +6,10 @@ on:
     branches:
       - main
       - feat/chatgpt-anki-plugin
+      - feat/quizlet-funnel-refero
 
 jobs:
-  typecheck:
+  validate:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,3 +21,4 @@ jobs:
 
       - run: npm install
       - run: npm run typecheck
+      - run: npm run build:web
