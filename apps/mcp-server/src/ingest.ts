@@ -1,7 +1,8 @@
+import JSZip from "jszip";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { StudyFile } from "./contentSessions.js";
 
-const MAX_FILE_BYTES = 12 * 1024 * 1024;
+const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_TEXT_CHARS = 200_000;
 
 function isTextMime(mime = "") {
@@ -12,6 +13,30 @@ function isTextMime(mime = "") {
     mime.includes("markdown") ||
     mime.includes("csv")
   );
+}
+
+function isAudioMime(mime = "", name = "") {
+  return (
+    mime.startsWith("audio/") ||
+    /\.(mp3|mp4|mpeg|mpga|m4a|ogg|wav|webm|flac)$/i.test(name)
+  );
+}
+
+function normalizeMime(file: StudyFile, responseMime = "") {
+  const supplied = file.mime_type?.toLowerCase() ?? "";
+  const response = responseMime.toLowerCase();
+  const name = file.file_name?.toLowerCase() ?? "";
+
+  if (supplied) return supplied;
+  if (response) return response;
+  if (name.endsWith(".pdf")) return "application/pdf";
+  if (name.endsWith(".docx")) {
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  }
+  if (name.endsWith(".pptx")) {
+    return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  }
+  return "";
 }
 
 async function download(file: StudyFile) {
@@ -42,8 +67,123 @@ async function download(file: StudyFile) {
 
   return {
     bytes: buffer,
-    mime: file.mime_type || response.headers.get("content-type") || "",
+    mime: normalizeMime(
+      file,
+      response.headers.get("content-type") || "",
+    ),
   };
+}
+
+function decodeXmlEntities(value: string) {
+  return value
+    .replaceAll("&amp;", "&")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&apos;", "'");
+}
+
+function extractXmlText(xml: string, tag: string) {
+  const escaped = tag.replace(":", "\\:");
+  const regex = new RegExp(`<${escaped}[^>]*>([\\s\\S]*?)<\\/${escaped}>`, "g");
+  return [...xml.matchAll(regex)]
+    .map((match) =>
+      decodeXmlEntities(
+        match[1]
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim(),
+      ),
+    )
+    .filter(Boolean);
+}
+
+async function extractDocx(bytes: Uint8Array) {
+  const zip = await JSZip.loadAsync(bytes);
+  const orderedPaths = [
+    "word/document.xml",
+    ...Object.keys(zip.files)
+      .filter((path) => /^word\/(header|footer|footnotes|endnotes).*\.xml$/i.test(path))
+      .sort(),
+  ];
+
+  const parts: string[] = [];
+  for (const path of orderedPaths) {
+    const file = zip.file(path);
+    if (!file) continue;
+    const xml = await file.async("text");
+    const text = extractXmlText(xml, "w:t").join(" ").trim();
+    if (text) parts.push(text);
+    if (parts.join("\n\n").length >= MAX_TEXT_CHARS) break;
+  }
+
+  return parts.join("\n\n").slice(0, MAX_TEXT_CHARS);
+}
+
+function slideNumber(path: string) {
+  const match = path.match(/slide(\d+)\.xml$/i);
+  return match ? Number.parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
+}
+
+async function extractPptx(bytes: Uint8Array) {
+  const zip = await JSZip.loadAsync(bytes);
+  const slidePaths = Object.keys(zip.files)
+    .filter((path) => /^ppt\/slides\/slide\d+\.xml$/i.test(path))
+    .sort((a, b) => slideNumber(a) - slideNumber(b));
+
+  const slides: string[] = [];
+  for (const path of slidePaths) {
+    const file = zip.file(path);
+    if (!file) continue;
+    const xml = await file.async("text");
+    const text = extractXmlText(xml, "a:t").join(" ").trim();
+    if (text) slides.push(text);
+    if (slides.join("\n\n").length >= MAX_TEXT_CHARS) break;
+  }
+
+  return slides.join("\n\n").slice(0, MAX_TEXT_CHARS);
+}
+
+async function transcribeAudio(
+  bytes: Uint8Array,
+  mime: string,
+  fileName = "lecture-audio",
+) {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) return null;
+
+  const form = new FormData();
+  const audioBytes = new Uint8Array(bytes.byteLength);
+  audioBytes.set(bytes);
+  form.append(
+    "file",
+    new Blob([audioBytes.buffer], { type: mime || "application/octet-stream" }),
+    fileName,
+  );
+  form.append(
+    "model",
+    process.env.INSTANTSTUDY_TRANSCRIPTION_MODEL?.trim() ||
+      "gpt-4o-mini-transcribe",
+  );
+
+  const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: form,
+    signal: AbortSignal.timeout(120_000),
+  });
+
+  if (!response.ok) {
+    const detail = (await response.text()).slice(0, 500);
+    throw new Error(
+      `Audio transcription failed: HTTP ${response.status} ${detail}`,
+    );
+  }
+
+  const payload = (await response.json()) as { text?: string };
+  return payload.text?.trim().slice(0, MAX_TEXT_CHARS) || null;
 }
 
 async function extractPdf(bytes: Uint8Array) {
@@ -73,6 +213,7 @@ export async function ingestFiles(files: StudyFile[]) {
     mimeType?: string;
     text?: string;
     status: "extracted" | "host_text_required" | "failed";
+    extraction?: "pdf" | "docx" | "pptx" | "text" | "audio";
     error?: string;
   }> = [];
 
@@ -80,14 +221,65 @@ export async function ingestFiles(files: StudyFile[]) {
     try {
       const { bytes, mime } = await download(file);
       const normalizedMime = mime.toLowerCase();
+      const name = file.file_name?.toLowerCase() ?? "";
 
-      if (normalizedMime.includes("pdf")) {
+      if (normalizedMime.includes("pdf") || name.endsWith(".pdf")) {
         const text = await extractPdf(bytes);
         extracted.push({
           fileId: file.file_id,
           fileName: file.file_name,
           mimeType: mime,
           text,
+          extraction: "pdf",
+          status: text ? "extracted" : "host_text_required",
+        });
+        continue;
+      }
+
+      if (
+        normalizedMime.includes("wordprocessingml") ||
+        name.endsWith(".docx")
+      ) {
+        const text = await extractDocx(bytes);
+        extracted.push({
+          fileId: file.file_id,
+          fileName: file.file_name,
+          mimeType: mime,
+          text,
+          extraction: "docx",
+          status: text ? "extracted" : "host_text_required",
+        });
+        continue;
+      }
+
+      if (
+        normalizedMime.includes("presentationml") ||
+        name.endsWith(".pptx")
+      ) {
+        const text = await extractPptx(bytes);
+        extracted.push({
+          fileId: file.file_id,
+          fileName: file.file_name,
+          mimeType: mime,
+          text,
+          extraction: "pptx",
+          status: text ? "extracted" : "host_text_required",
+        });
+        continue;
+      }
+
+      if (isAudioMime(normalizedMime, name)) {
+        const text = await transcribeAudio(
+          bytes,
+          normalizedMime,
+          file.file_name || "lecture-audio",
+        );
+        extracted.push({
+          fileId: file.file_id,
+          fileName: file.file_name,
+          mimeType: mime,
+          text: text || undefined,
+          extraction: "audio",
           status: text ? "extracted" : "host_text_required",
         });
         continue;
@@ -102,6 +294,7 @@ export async function ingestFiles(files: StudyFile[]) {
           fileName: file.file_name,
           mimeType: mime,
           text,
+          extraction: "text",
           status: text.trim() ? "extracted" : "host_text_required",
         });
         continue;
@@ -133,5 +326,9 @@ export async function ingestFiles(files: StudyFile[]) {
   return {
     text,
     files: extracted,
+    limits: {
+      maxFileBytes: MAX_FILE_BYTES,
+      maxTextChars: MAX_TEXT_CHARS,
+    },
   };
 }

@@ -176,7 +176,7 @@ function defaultTestQuestionTypes(): TestQuestionType[] {
 function questionType(
   session: AdaptiveStudySession,
   concept: ConceptState,
-): TestQuestionType | "guided_recall" | "explain_why" {
+): TestQuestionType | "explain_why" {
   if (session.mode === "test") {
     const types = session.testConfig?.questionTypes.length
       ? session.testConfig.questionTypes
@@ -189,9 +189,9 @@ function questionType(
   }
 
   if (session.mode === "review") return "free_recall";
-  if (concept.difficulty <= 1) return "guided_recall";
-  if (concept.difficulty === 2) return "free_recall";
-  if (concept.difficulty === 3) return "explain_why";
+  if (concept.difficulty <= 1) return "multiple_choice";
+  if (concept.difficulty === 2) return "short_answer";
+  if (concept.difficulty === 3) return "free_recall";
   return "application";
 }
 
@@ -417,8 +417,10 @@ export class StudyEngine {
         immediateFeedback: session.mode !== "test",
         guidance:
           session.mode === "learn" && concept.difficulty <= 1
-            ? "light"
-            : "none",
+            ? "recognition"
+            : session.mode === "learn" && concept.difficulty === 2
+              ? "light"
+              : "none",
         instruction:
           session.mode === "test"
             ? `Ask exactly one ${type} exam-style question based only on the supplied source. Do not reveal hints, correctness, explanations, or the answer until the test ends.`
@@ -426,7 +428,13 @@ export class StudyEngine {
               ? "Ask one concise question. After the learner answers, grade it and explain briefly."
               : session.mode === "review"
                 ? "Use active recall. Prioritize due and weak concepts. Ask directly and keep the interaction fast."
-                : "Teach adaptively: ask one question at the current difficulty, then use the answer quality to decide whether to scaffold or increase difficulty.",
+                : type === "multiple_choice"
+                  ? "Teach adaptively with one recognition question and plausible distractors grounded in the source. Do not reveal the answer before the attempt."
+                  : type === "short_answer"
+                    ? "Ask one concise written-recall question. Give only light scaffolding after an incorrect attempt."
+                    : type === "free_recall"
+                      ? "Ask for unaided recall in the learner's own words. Evaluate important omissions before increasing difficulty."
+                      : "Ask the learner to apply the concept in a new context. If they struggle, repair the weak concept before retesting.",
       },
     };
   }

@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { ContentSessionStore } from "./contentSessions.js";
 import { StudyEngine } from "./studyEngine.js";
 import { ingestFiles } from "./ingest.js";
+import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 
 const PORT = Number.parseInt(process.env.PORT ?? "8000", 10);
 const DEVICE_ID = process.env.INSTANTSTUDY_DEVICE_ID ?? "dev-device";
@@ -215,6 +216,10 @@ function createMcpServer() {
         mode,
       });
 
+      const usage = learnerId
+        ? await studyEntitlements.consume(learnerId, mode)
+        : undefined;
+
       const studySession = await studyEngine.start(contentSession, {
         learnerId,
         mode,
@@ -236,10 +241,31 @@ function createMcpServer() {
         goal: studySession.goal,
         conceptCount: studySession.concepts.length,
         ingestion: ingested.files,
+        usage,
         next,
         nextAction:
           "Ask the returned next question now. After the learner answers, evaluate correctness and completeness against the source, then call submit_study_answer before continuing.",
       });
+    },
+  );
+
+  server.registerTool(
+    "get_study_plan",
+    {
+      title: "Get InstantStudy plan and usage",
+      description:
+        "Return the learner's current Free, Plus, or Unlimited entitlement and the remaining monthly Learn/Test allowance.",
+      inputSchema: z.object({
+        learnerId: z.string().min(3).max(200),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ learnerId }) => {
+      return toolResult(await studyEntitlements.getStatus(learnerId));
     },
   );
 
@@ -622,6 +648,16 @@ function requireApiAuth(
 }
 
 function sendApiError(res: express.Response, error: unknown) {
+  if (error instanceof UsageLimitError) {
+    res.status(error.statusCode).json({
+      error: error.code,
+      message: error.message,
+      metric: error.metric,
+      usage: error.usage,
+    });
+    return;
+  }
+
   const message = error instanceof Error ? error.message : "Internal server error";
   res.status(500).json({ error: "internal_error", message });
 }
@@ -641,6 +677,9 @@ app.get("/connection.json", (req, res) => {
       "quiz",
       "test",
       "adaptive mastery",
+      "native PDF/DOCX/PPTX ingestion",
+      "monthly plan entitlements",
+      "optional audio transcription",
       "optional Anki",
     ],
   });
@@ -675,6 +714,10 @@ app.post("/api/v1/study/prepare", async (req, res) => {
       ...input,
       contentText: combinedText || undefined,
     });
+    const usage = input.learnerId
+      ? await studyEntitlements.consume(input.learnerId, input.mode)
+      : undefined;
+
     const studySession = await studyEngine.start(contentSession, {
       learnerId: input.learnerId,
       mode: input.mode,
@@ -694,6 +737,7 @@ app.post("/api/v1/study/prepare", async (req, res) => {
       goal: studySession.goal,
       conceptCount: studySession.concepts.length,
       ingestion: ingested.files,
+      usage,
       next: await studyEngine.next(studySession.id),
     });
   } catch (error) {
@@ -775,6 +819,32 @@ app.post("/api/v1/study/finish", async (req, res) => {
       .object({ studySessionId: z.string().uuid() })
       .parse(req.body ?? {});
     res.json(await studyEngine.finish(input.studySessionId));
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.get("/api/v1/account/usage", async (req, res) => {
+  try {
+    const input = z
+      .object({ learnerId: z.string().min(3).max(200) })
+      .parse(req.query);
+    res.json(await studyEntitlements.getStatus(input.learnerId));
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/admin/entitlement", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        learnerId: z.string().min(3).max(200),
+        plan: z.enum(["free", "plus", "unlimited"]),
+      })
+      .parse(req.body ?? {});
+
+    res.json(await studyEntitlements.setPlan(input.learnerId, input.plan));
   } catch (error) {
     sendApiError(res, error);
   }
@@ -925,6 +995,20 @@ app.get("/health", (_req, res) => {
   res.json({
     ok: true,
     service: "instantstudy-mcp",
+    storage: process.env.DATABASE_URL ? "durable" : "memory",
+    ingestion: {
+      pdf: true,
+      docx: true,
+      pptx: true,
+      text: true,
+      audioTranscription: Boolean(process.env.OPENAI_API_KEY),
+      maxFileMb: 25,
+    },
+    entitlements: {
+      enabled: true,
+      plus: { learnRoundsPerMonth: 20, practiceTestsPerMonth: 3 },
+      unlimited: { learnRoundsPerMonth: null, practiceTestsPerMonth: null },
+    },
     device: bridge.status(DEVICE_ID),
   });
 });
