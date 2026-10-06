@@ -42,7 +42,7 @@ jobs:
           if-no-files-found: ignore
 
   zap-baseline:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/feat/owasp-instantpay'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
