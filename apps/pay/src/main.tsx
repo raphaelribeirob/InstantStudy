@@ -14,6 +14,12 @@ function sourceApp() {
   return /^[a-z0-9_-]{1,48}$/.test(raw) ? raw : "";
 }
 
+function signedHandoff() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = String(params.get("handoff") || "");
+  return /^[A-Za-z0-9_-]{16,4096}\.[a-f0-9]{64}$/.test(raw) ? raw : "";
+}
+
 function locale() {
   const browser = navigator.language || "en";
   return browser.slice(0, 16);
@@ -97,6 +103,7 @@ function App() {
           customer_user_id: customerUserId(),
           adapty_variation_id: decision.variation_id,
           adapty_paywall_id: decision.paywall_id,
+          handoff: signedHandoff(),
         }),
       });
       const data = await response.json().catch(() => ({}));
