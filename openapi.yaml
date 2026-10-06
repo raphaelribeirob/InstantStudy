@@ -49,6 +49,26 @@ paths:
                   type: string
                   enum: [learn, review, quiz, test]
                   default: learn
+                targetMinutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 180
+                maxQuestions:
+                  type: integer
+                  minimum: 1
+                  maximum: 50
+                  default: 12
+                concepts:
+                  type: array
+                  maxItems: 30
+                  items:
+                    type: object
+                    required: [label]
+                    properties:
+                      label:
+                        type: string
+                      sourceExcerpt:
+                        type: string
       responses:
         "200":
           description: Study session is ready
@@ -68,6 +88,84 @@ paths:
           description: Prepared study session
         "404":
           description: Study session not found
+  /api/v1/study/next:
+    post:
+      operationId: nextStudyQuestion
+      summary: Get the next adaptive study target and question policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studySessionId]
+              properties:
+                studySessionId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Next adaptive question target
+  /api/v1/study/answer:
+    post:
+      operationId: submitStudyAnswer
+      summary: Record semantic evaluation and update mastery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studySessionId, conceptId, correctness, completeness]
+              properties:
+                studySessionId:
+                  type: string
+                  format: uuid
+                conceptId:
+                  type: string
+                  format: uuid
+                correctness:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                completeness:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                confidence:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  default: 0.8
+                missingConcepts:
+                  type: array
+                  items:
+                    type: string
+                userAnswer:
+                  type: string
+                feedback:
+                  type: string
+      responses:
+        "200":
+          description: Updated knowledge state and next policy
+  /api/v1/study/finish:
+    post:
+      operationId: finishStudySession
+      summary: Finish a study session and return mastery summary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studySessionId]
+              properties:
+                studySessionId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Session summary
   /api/v1/status:
     get:
       operationId: ankiStatus
