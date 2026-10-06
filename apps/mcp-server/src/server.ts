@@ -1,0 +1,352 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import cors from "cors";
+import express from "express";
+import { z } from "zod";
+import { BridgeQueue } from "./bridgeQueue.js";
+
+const PORT = Number.parseInt(process.env.PORT ?? "8000", 10);
+const DEVICE_ID = process.env.INSTANTSTUDY_DEVICE_ID ?? "dev-device";
+const BRIDGE_TOKEN = process.env.INSTANTSTUDY_BRIDGE_TOKEN ?? "replace-me";
+const TIMEOUT_MS = Number.parseInt(
+  process.env.ANKI_COMMAND_TIMEOUT_MS ?? "15000",
+  10,
+);
+
+const bridge = new BridgeQueue(TIMEOUT_MS);
+
+type AnkiCard = {
+  cardId?: number;
+  note?: number;
+  deckName?: string;
+  modelName?: string;
+  question?: string;
+  answer?: string;
+  fields?: Record<string, unknown>;
+  interval?: number;
+  reps?: number;
+  lapses?: number;
+};
+
+function asObject(data: unknown): Record<string, unknown> {
+  return data && typeof data === "object" && !Array.isArray(data)
+    ? (data as Record<string, unknown>)
+    : { value: data };
+}
+
+function toolResult(data: unknown) {
+  const structuredContent = asObject(data);
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(structuredContent),
+      },
+    ],
+    structuredContent,
+  };
+}
+
+function escapeDeckName(deckName: string) {
+  return deckName.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+}
+
+async function callAnki(
+  action: string,
+  params: Record<string, unknown> = {},
+): Promise<unknown> {
+  return bridge.dispatch(DEVICE_ID, action, params);
+}
+
+async function cardsFromQuery(query: string, limit: number) {
+  const ids = (await callAnki("findCards", { query })) as number[];
+  const selected = Array.isArray(ids) ? ids.slice(0, limit) : [];
+  if (!selected.length) return [];
+
+  const cards = (await callAnki("cardsInfo", {
+    cards: selected,
+  })) as AnkiCard[];
+
+  return Array.isArray(cards)
+    ? cards.map((card) => ({
+        cardId: card.cardId,
+        noteId: card.note,
+        deckName: card.deckName,
+        modelName: card.modelName,
+        question: card.question,
+        answer: card.answer,
+        fields: card.fields,
+        interval: card.interval,
+        reps: card.reps,
+        lapses: card.lapses,
+      }))
+    : [];
+}
+
+function createMcpServer() {
+  const server = new McpServer({
+    name: "instantstudy",
+    version: "0.1.0",
+  });
+
+  server.registerTool(
+    "anki_status",
+    {
+      title: "Check Anki connection",
+      description:
+        "Check whether the learner's Anki is reachable through InstantStudy. Use before starting a study session if connection state is unknown.",
+      inputSchema: z.object({}),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async () => {
+      const version = await callAnki("version");
+      return toolResult({
+        connected: true,
+        ankiConnectVersion: version,
+        deviceId: DEVICE_ID,
+      });
+    },
+  );
+
+  server.registerTool(
+    "list_decks",
+    {
+      title: "List Anki decks",
+      description:
+        "List the learner's Anki deck names. Use when choosing what to study or when the learner asks what decks they have.",
+      inputSchema: z.object({}),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async () => {
+      const decks = await callAnki("deckNames");
+      return toolResult({ decks });
+    },
+  );
+
+  server.registerTool(
+    "get_due_cards",
+    {
+      title: "Get due Anki cards",
+      description:
+        "Retrieve due cards for a study session. The result includes both question and expected answer so you can evaluate the learner semantically. Do not reveal the expected answer before the learner attempts the question unless they ask.",
+      inputSchema: z.object({
+        deckName: z
+          .string()
+          .min(1)
+          .optional()
+          .describe("Optional exact Anki deck name."),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .default(10)
+          .describe("Maximum cards to retrieve."),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ deckName, limit }) => {
+      const query = deckName
+        ? `deck:"${escapeDeckName(deckName)}" is:due`
+        : "is:due";
+      const cards = await cardsFromQuery(query, limit);
+      return toolResult({ query, count: cards.length, cards });
+    },
+  );
+
+  server.registerTool(
+    "search_cards",
+    {
+      title: "Search Anki cards",
+      description:
+        "Search the learner's Anki collection using Anki search syntax, then return bounded card details.",
+      inputSchema: z.object({
+        query: z.string().min(1).max(500),
+        limit: z.number().int().min(1).max(50).default(20),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ query, limit }) => {
+      const cards = await cardsFromQuery(query, limit);
+      return toolResult({ query, count: cards.length, cards });
+    },
+  );
+
+  server.registerTool(
+    "create_card",
+    {
+      title: "Create Anki card",
+      description:
+        "Create a Basic Anki note from a front, back, deck, and optional tags. Use only when the learner wants to save new material to Anki.",
+      inputSchema: z.object({
+        deckName: z.string().min(1).max(200),
+        front: z.string().min(1).max(10000),
+        back: z.string().min(1).max(20000),
+        tags: z.array(z.string().min(1).max(100)).max(20).default([]),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ deckName, front, back, tags }) => {
+      const noteId = await callAnki("addNote", {
+        note: {
+          deckName,
+          modelName: "Basic",
+          fields: {
+            Front: front,
+            Back: back,
+          },
+          tags,
+        },
+      });
+
+      return toolResult({ created: noteId !== null, noteId });
+    },
+  );
+
+  server.registerTool(
+    "record_review",
+    {
+      title: "Record Anki review",
+      description:
+        "Record the learner's answer in Anki after evaluating it. Ease: 1 Again, 2 Hard, 3 Good, 4 Easy. Prefer conservative grading when important information is missing.",
+      inputSchema: z.object({
+        cardId: z.number().int().positive(),
+        ease: z
+          .number()
+          .int()
+          .min(1)
+          .max(4)
+          .describe("1 Again, 2 Hard, 3 Good, 4 Easy."),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ cardId, ease }) => {
+      const result = await callAnki("answerCards", {
+        answers: [{ cardId, ease }],
+      });
+
+      const success =
+        Array.isArray(result) && result.length > 0 ? Boolean(result[0]) : false;
+
+      return toolResult({ success, cardId, ease });
+    },
+  );
+
+  return server;
+}
+
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: "1mb" }));
+
+function bridgeAuthorized(req: express.Request) {
+  const authorization = req.header("authorization");
+  return authorization === `Bearer ${BRIDGE_TOKEN}`;
+}
+
+app.get("/health", (_req, res) => {
+  res.json({
+    ok: true,
+    service: "instantstudy-mcp",
+    device: bridge.status(DEVICE_ID),
+  });
+});
+
+app.post("/bridge/poll", (req, res) => {
+  if (!bridgeAuthorized(req)) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
+  const deviceId = String(req.body?.deviceId ?? "");
+  if (deviceId !== DEVICE_ID) {
+    res.status(403).json({ error: "unknown_device" });
+    return;
+  }
+
+  res.json({ command: bridge.poll(deviceId) });
+});
+
+app.post("/bridge/result", (req, res) => {
+  if (!bridgeAuthorized(req)) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
+  const deviceId = String(req.body?.deviceId ?? "");
+  const commandId = String(req.body?.commandId ?? "");
+
+  if (deviceId !== DEVICE_ID) {
+    res.status(403).json({ error: "unknown_device" });
+    return;
+  }
+
+  const accepted = bridge.complete(
+    deviceId,
+    commandId,
+    req.body?.result,
+    req.body?.error ? String(req.body.error) : null,
+  );
+
+  res.status(accepted ? 200 : 404).json({ accepted });
+});
+
+app.all("/mcp", async (req, res) => {
+  const server = createMcpServer();
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+  });
+
+  res.on("close", () => {
+    transport.close().catch(() => {});
+    server.close().catch(() => {});
+  });
+
+  try {
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  } catch (error) {
+    console.error("MCP error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32603,
+          message:
+            error instanceof Error ? error.message : "Internal server error",
+        },
+        id: null,
+      });
+    }
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(
+    `InstantStudy MCP listening on http://localhost:${PORT}/mcp`,
+  );
+});
