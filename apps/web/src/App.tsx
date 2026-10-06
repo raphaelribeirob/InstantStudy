@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   BookOpenCheck,
@@ -26,16 +26,16 @@ const modes = [
 
 const faq = [
   {
-    q: "What is InstantStudy?",
-    a: "InstantStudy is an adaptive study engine that your AI agent can call through MCP or REST/OpenAPI. Drop in notes, PDFs, conversation context or Anki material and the agent can turn it into Learn, Review, Quiz or Test sessions.",
+    q: "What is InstantStudy™?",
+    a: "InstantStudy™ turns material already inside your AI into active study. Drop in notes, PDFs, slides, lecture content, conversation context or Anki material and keep learning through Learn, Review, Quiz and Test without leaving your agent.",
   },
   {
     q: "Which agents can connect?",
     a: "Any agent that can call a remote MCP server can use the same InstantStudy endpoint. We provide ready connection patterns for Codex, Claude Code, Cursor and ChatGPT plugin packaging, plus OpenAPI for non-MCP tool callers.",
   },
   {
-    q: "Does InstantStudy replace my LLM?",
-    a: "No. Your LLM still understands the material, writes the questions and talks to you. InstantStudy owns the learning loop: mode policy, concept selection, mastery, difficulty, repair/retest and session state.",
+    q: "Why not just ask my AI to quiz me?",
+    a: "Your AI is good at explanation and question wording. InstantStudy™ adds the learning system generic chat lacks: persistent mastery, adaptive difficulty, weak-concept repair, retesting, study modes and a consistent next-best-question policy.",
   },
   {
     q: "Do I need Anki?",
@@ -66,7 +66,7 @@ function Logo() {
       <span className="brand-mark" aria-hidden="true">
         <span />
       </span>
-      <span>InstantStudy</span>
+      <span className="brand-word">InstantStudy<span className="tm">™</span></span>
     </a>
   );
 }
@@ -186,9 +186,9 @@ function ConnectAgent() {
     <section className="section connect-section" id="connect">
       <div className="section-heading">
         <p className="eyebrow">Works with your agent</p>
-        <h2>Connect InstantStudy once.</h2>
+        <h2>Connect InstantStudy™ once.</h2>
         <p>
-          One remote MCP endpoint gives your agent the complete study engine:
+          Your agent keeps the conversation. InstantStudy™ adds the learning layer:
           content ingestion, Learn, Review, Quiz, Test, mastery and optional Anki.
         </p>
       </div>
@@ -262,9 +262,10 @@ function Pricing() {
     <section className="section pricing-section" id="pricing">
       <div className="section-heading centered-heading">
         <p className="eyebrow">Pricing</p>
-        <h2>Start free. Upgrade when study becomes a habit.</h2>
+        <h2>Try the learning loop free. Go unlimited when it works.</h2>
         <p>
-          Adapty controls the live offer, price tests and regional variants.
+          Inspired by Quizlet’s proven free-to-unlimited ladder, with pricing and
+          trial variants controlled through Adapty.
         </p>
       </div>
 
@@ -287,13 +288,13 @@ function Pricing() {
 
       <div className="price-grid">
         <article className="price-card">
-          <span>Free</span>
+          <span>InstantStudy™ Free</span>
           <h3>$0</h3>
-          <p>Try the study loop before you commit.</p>
+          <p>Experience the complete loop before paying.</p>
           <ul>
-            <li><Check size={15} /> Content-first study</li>
+            <li><Check size={15} /> Turn your own material into study</li>
             <li><Check size={15} /> Learn / Review / Quiz / Test</li>
-            <li><Check size={15} /> Limited adaptive sessions</li>
+            <li><Check size={15} /> Limited adaptive usage</li>
           </ul>
           <a className="secondary full-button" href="#connect">
             Connect your agent
@@ -302,14 +303,14 @@ function Pricing() {
 
         <article className="price-card featured">
           <div className="popular">Most useful</div>
-          <span>Pro</span>
+          <span>InstantStudy™ Unlimited</span>
           <h3>{price}</h3>
           <p>{offer?.trial ?? "7 days free"} · cancel anytime.</p>
           <ul>
-            <li><Check size={15} /> Full adaptive Study Engine</li>
-            <li><Check size={15} /> Persistent knowledge state</li>
-            <li><Check size={15} /> Anki integration</li>
-            <li><Check size={15} /> All supported LLM agents</li>
+            <li><Check size={15} /> Unlimited Learn / Review / Quiz / Test</li>
+            <li><Check size={15} /> Persistent mastery across sessions</li>
+            <li><Check size={15} /> All supported AI agents</li>
+            <li><Check size={15} /> Optional Anki memory integration</li>
           </ul>
           <a
             className="primary full-button"
@@ -362,11 +363,6 @@ function FAQ() {
 }
 
 export function App() {
-  const headlineAgents = useMemo(
-    () => ["Claude", "ChatGPT", "Cursor", "Codex"],
-    [],
-  );
-
   return (
     <main id="top">
       <header className="marketing-nav">
@@ -386,19 +382,15 @@ export function App() {
         <div className="hero-copy">
           <div className="launch-pill">
             <Sparkles size={14} />
-            One study engine for every agent
+            Active study for the AI you already use
           </div>
           <h1>
-            Turn{" "}
-            <span className="agent-word">
-              {headlineAgents.join(", ")}
-            </span>{" "}
-            or any MCP agent into your study engine.
+            Your AI can explain anything. InstantStudy<span className="tm hero-tm">™</span> makes you learn it.
           </h1>
           <p>
-            Give your AI Learn, Review, Quiz and Test. Drop in a PDF, notes,
-            conversation context or Anki deck. Your agent asks the questions;
-            InstantStudy remembers what should come next.
+            Drop in notes, PDFs, slides, lecture content, your current conversation
+            or Anki. InstantStudy™ turns the material into adaptive Learn, Review,
+            Quiz and Test sessions—and remembers what you need next.
           </p>
           <div className="hero-actions">
             <a className="primary hero-button" href="#connect">
@@ -408,34 +400,34 @@ export function App() {
               See how it works
             </a>
           </div>
-          <small>No new chat app. No deck setup. Keep the LLM you already use.</small>
+          <small>No deck setup. No switching apps. Keep the AI you already use.</small>
         </div>
 
         <ProductDemo />
       </section>
 
       <section className="compatibility-strip">
-        <span>Built for agent-native study</span>
+        <span>Study where learning already starts</span>
         <AgentRail />
       </section>
 
       <section className="section how-section" id="how">
         <div className="section-heading">
           <p className="eyebrow">How it works</p>
-          <h2>Studying with your agent is easy now.</h2>
+          <h2>From raw material to real recall.</h2>
           <p>
-            Connect once, give the agent material, and let InstantStudy manage
-            the learning loop behind the conversation.
+            Quizlet proved the value of turning notes into practice. InstantStudy™
+            removes the handoff: your material, practice and mastery stay inside the AI.
           </p>
         </div>
 
         <div className="steps-grid">
           <article>
             <span className="step-number">01</span>
-            <h3>Connect your agent</h3>
+            <h3>Bring the AI you already use</h3>
             <p>
-              Add the InstantStudy MCP endpoint to Codex, Claude Code, Cursor,
-              ChatGPT packaging or any compatible MCP client.
+              Connect InstantStudy™ once to ChatGPT, Claude, Cursor, Codex or any
+              compatible MCP agent.
             </p>
             <div className="step-visual agent-stack">
               <span>Claude</span>
@@ -447,10 +439,10 @@ export function App() {
 
           <article>
             <span className="step-number">02</span>
-            <h3>Drop in what you’re learning</h3>
+            <h3>Drop in anything you’re learning</h3>
             <p>
-              PDFs, notes, transcripts, conversation context and Anki can all
-              become a study session without creating a deck first.
+              Notes, PDFs, slides, lectures, current chat context and Anki can
+              become study material instantly—without building a deck first.
             </p>
             <div className="step-visual source-stack">
               <FileText size={22} />
@@ -462,10 +454,10 @@ export function App() {
 
           <article>
             <span className="step-number">03</span>
-            <h3>Let InstantStudy adapt</h3>
+            <h3>Practice until it sticks</h3>
             <p>
-              Your answer updates mastery and difficulty. Weak concepts get
-              repaired and retested; strong ones move into harder recall.
+              Learn adapts difficulty, Quiz gives fast feedback, Test simulates
+              exam conditions and Review returns to what is weakening.
             </p>
             <div className="step-visual mastery-visual">
               <span><i style={{ width: "82%" }} /> 82%</span>
@@ -478,17 +470,17 @@ export function App() {
 
       <section className="section proof-section">
         <div className="proof-copy">
-          <p className="eyebrow">One engine, every study mode</p>
-          <h2>Your agent talks. InstantStudy runs the learning system.</h2>
+          <p className="eyebrow">The Quizlet loop, rebuilt for AI</p>
+          <h2>Understand. Practice. Test. Remember.</h2>
           <p>
-            LLMs are already good at language. InstantStudy gives them consistent
-            educational state: concept mastery, adaptive difficulty, repair,
-            retest and optional Anki scheduling.
+            The difference is continuity. Your AI can explain the concept, then
+            InstantStudy™ turns that same context into adaptive practice and keeps
+            the knowledge state for what should happen next.
           </p>
           <div className="proof-metrics">
             <div><strong>4</strong><span>study modes</span></div>
-            <div><strong>1</strong><span>MCP endpoint</span></div>
-            <div><strong>0</strong><span>required decks</span></div>
+            <div><strong>1</strong><span>continuous learning loop</span></div>
+            <div><strong>0</strong><span>required handoffs</span></div>
           </div>
         </div>
 
@@ -543,8 +535,8 @@ export function App() {
 
       <section className="final-cta">
         <Orb />
-        <p className="eyebrow">InstantStudy</p>
-        <h2>Your AI already knows how to talk. Give it a way to teach.</h2>
+        <p className="eyebrow">InstantStudy™</p>
+        <h2>Your AI already explains. Now make it help you remember.</h2>
         <a className="primary hero-button" href="#connect">
           Connect your agent <ArrowRight size={17} />
         </a>

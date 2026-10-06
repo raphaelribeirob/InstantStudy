@@ -9,9 +9,9 @@ export type FunnelOffer = {
 };
 
 const FALLBACK_OFFER: FunnelOffer = {
-  headline: "Make every study session remember what came before.",
+  headline: "Study without limits. Remember across sessions.",
   cta: "Start 7-day free trial",
-  annualPrice: "$39.99 / year",
+  annualPrice: "$44.99 / year",
   monthlyPrice: "$6.99 / month",
   trial: "7 days free",
 };
