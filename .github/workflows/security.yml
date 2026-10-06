@@ -49,7 +49,7 @@ jobs:
       - name: OWASP ZAP baseline
         uses: zaproxy/action-baseline@v0.15.0
         with:
-          target: "https://instantstudy-web.vercel.app"
+          target: "https://instant-pay-gamma.vercel.app"
           allow_issue_writing: false
-          fail_action: false
-          artifact_name: zap-instantstudy
+          fail_action: true
+          artifact_name: zap-instantpay
