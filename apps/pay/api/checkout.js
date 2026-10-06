@@ -59,7 +59,11 @@ export default async function handler(req, res) {
   let trustedHandoff = null;
   if (source === "instant_closer") {
     try {
-      trustedHandoff = verifyInstantCloserHandoff(body.handoff, offer.key, source);
+      trustedHandoff = verifyInstantCloserHandoff(body.handoff, source);
+      const signedOffer = resolveOffer(trustedHandoff.offer);
+      if (!signedOffer || signedOffer.product !== offer.product) {
+        throw new Error("instant_closer_offer_scope_invalid");
+      }
     } catch (error) {
       console.warn(
         "InstantCloser payment handoff rejected",
