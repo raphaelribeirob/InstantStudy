@@ -677,6 +677,9 @@ app.get("/connection.json", (req, res) => {
       "quiz",
       "test",
       "adaptive mastery",
+      "native PDF/DOCX/PPTX ingestion",
+      "monthly plan entitlements",
+      "optional audio transcription",
       "optional Anki",
     ],
   });
@@ -992,6 +995,20 @@ app.get("/health", (_req, res) => {
   res.json({
     ok: true,
     service: "instantstudy-mcp",
+    storage: process.env.DATABASE_URL ? "durable" : "memory",
+    ingestion: {
+      pdf: true,
+      docx: true,
+      pptx: true,
+      text: true,
+      audioTranscription: Boolean(process.env.OPENAI_API_KEY),
+      maxFileMb: 25,
+    },
+    entitlements: {
+      enabled: true,
+      plus: { learnRoundsPerMonth: 20, practiceTestsPerMonth: 3 },
+      unlimited: { learnRoundsPerMonth: null, practiceTestsPerMonth: null },
+    },
     device: bridge.status(DEVICE_ID),
   });
 });
