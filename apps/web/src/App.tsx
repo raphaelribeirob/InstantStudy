@@ -264,8 +264,8 @@ function Pricing() {
         <p className="eyebrow">Pricing</p>
         <h2>Try the learning loop free. Go unlimited when it works.</h2>
         <p>
-          Inspired by Quizlet’s proven free-to-unlimited ladder, with pricing and
-          trial variants controlled through Adapty.
+          Start with the complete learning loop, then remove usage limits with
+          Unlimited. Pricing and trial variants are controlled through Adapty.
         </p>
       </div>
 
@@ -308,7 +308,7 @@ function Pricing() {
           <p>{offer?.trial ?? "7 days free"} · cancel anytime.</p>
           <ul>
             <li><Check size={15} /> Unlimited Learn / Review / Quiz / Test</li>
-            <li><Check size={15} /> Persistent mastery across sessions</li>
+            <li><Check size={15} /> Cross-session mastery + due reviews</li>
             <li><Check size={15} /> All supported AI agents</li>
             <li><Check size={15} /> Optional Anki memory integration</li>
           </ul>
@@ -416,8 +416,8 @@ export function App() {
           <p className="eyebrow">How it works</p>
           <h2>From raw material to real recall.</h2>
           <p>
-            Quizlet proved the value of turning notes into practice. InstantStudy™
-            removes the handoff: your material, practice and mastery stay inside the AI.
+            Turn the material already in your AI into active recall without a second
+            workflow: your material, practice and mastery stay in one learning loop.
           </p>
         </div>
 
@@ -470,7 +470,7 @@ export function App() {
 
       <section className="section proof-section">
         <div className="proof-copy">
-          <p className="eyebrow">The Quizlet loop, rebuilt for AI</p>
+          <p className="eyebrow">A complete learning loop inside your AI</p>
           <h2>Understand. Practice. Test. Remember.</h2>
           <p>
             The difference is continuity. Your AI can explain the concept, then
