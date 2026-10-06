@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 
 const LIVE_API = "https://api.paddle.com";
 const SANDBOX_API = "https://sandbox-api.paddle.com";
+const MAX_WEBHOOK_BYTES = 1024 * 1024;
 
 export function paddleApiBase() {
   return String(process.env.PADDLE_ENV || "sandbox").toLowerCase() === "live"
@@ -11,7 +12,19 @@ export function paddleApiBase() {
 
 export async function readRawBody(req) {
   const chunks = [];
-  for await (const chunk of req) chunks.push(Buffer.from(chunk));
+  let total = 0;
+
+  for await (const chunk of req) {
+    const buffer = Buffer.from(chunk);
+    total += buffer.length;
+    if (total > MAX_WEBHOOK_BYTES) {
+      const error = new Error("webhook_body_too_large");
+      error.code = "webhook_body_too_large";
+      throw error;
+    }
+    chunks.push(buffer);
+  }
+
   return Buffer.concat(chunks).toString("utf8");
 }
 
