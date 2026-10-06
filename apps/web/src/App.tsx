@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   BookOpenCheck,
@@ -101,7 +101,7 @@ function SourceCard({
   label,
   note,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   note: string;
 }) {
