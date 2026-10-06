@@ -153,9 +153,11 @@ async function transcribeAudio(
   if (!apiKey) return null;
 
   const form = new FormData();
+  const audioBytes = new Uint8Array(bytes.byteLength);
+  audioBytes.set(bytes);
   form.append(
     "file",
-    new Blob([bytes], { type: mime || "application/octet-stream" }),
+    new Blob([audioBytes.buffer], { type: mime || "application/octet-stream" }),
     fileName,
   );
   form.append(
