@@ -1,0 +1,14 @@
+{
+  "name": "instantstudy",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm --workspace apps/mcp-server run dev",
+    "start": "npm --workspace apps/mcp-server run start",
+    "typecheck": "npm --workspace apps/mcp-server run typecheck"
+  }
+}
