@@ -29,6 +29,7 @@ type View =
   | "home"
   | "library"
   | "create"
+  | "guide"
   | "flashcards"
   | "learn"
   | "test"
@@ -154,6 +155,7 @@ export function SoftwareApp() {
           {navItem("home", view, <Home size={17}/>, "Home", setView)}
           {navItem("library", view, <Library size={17}/>, "Library", setView)}
           <div className="software-nav-label">STUDY</div>
+          {navItem("guide", view, <BookOpen size={17}/>, "Study Guide", setView)}
           {navItem("flashcards", view, <FileText size={17}/>, "Flashcards", setView)}
           {navItem("learn", view, <Brain size={17}/>, "Learn", setView)}
           {navItem("test", view, <GraduationCap size={17}/>, "Practice Test", setView)}
@@ -203,10 +205,10 @@ export function SoftwareApp() {
             </div>
 
             <div className="software-feature-grid">
+              <button onClick={() => setView("guide")}><BookOpen/><strong>Study Guide</strong><span>Summary + key ideas</span></button>
               <button onClick={() => setView("flashcards")}><FileText/><strong>Flashcards</strong><span>Fast active recall</span></button>
               <button onClick={() => setView("learn")}><Brain/><strong>Learn</strong><span>Adaptive practice</span></button>
               <button onClick={() => setView("test")}><GraduationCap/><strong>Practice Test</strong><span>Exam rehearsal</span></button>
-              <button onClick={() => setView("ask")}><MessageCircle/><strong>Ask</strong><span>Understand anything</span></button>
             </div>
           </section>
         )}
@@ -247,7 +249,7 @@ export function SoftwareApp() {
           </section>
         )}
 
-        {["flashcards","learn","test","ask","review"].includes(view) && (
+        {["guide","flashcards","learn","test","ask","review"].includes(view) && (
           <section className="software-page">
             {!selected ? (
               <div className="software-empty large"><Brain size={28}/><h2>Add study material first.</h2><button onClick={() => setView("create")}>Create material</button></div>
@@ -256,12 +258,29 @@ export function SoftwareApp() {
                 <div className="software-workspace-head">
                   <div><p>{selected.title}</p><h1>{view === "test" ? "Practice Test" : view[0].toUpperCase() + view.slice(1)}</h1></div>
                   <div className="software-mode-switch">
+                    <button onClick={() => setView("guide")}>Guide</button>
                     <button onClick={() => setView("flashcards")}>Flashcards</button>
                     <button onClick={() => { setView("learn"); void startMode("learn"); }}>Learn</button>
                     <button onClick={() => { setView("test"); void startMode("test"); }}>Test</button>
                     <button onClick={() => setView("ask")}>Ask</button>
                   </div>
                 </div>
+
+                {view === "guide" && (
+                  <div className="software-guide">
+                    <article>
+                      <span>SUMMARY</span>
+                      <h2>{selected.title}</h2>
+                      <p>{summaryFor(selected.content)}</p>
+                    </article>
+                    <aside>
+                      <span>KEY IDEAS</span>
+                      {sentenceChunks(selected.content).slice(0, 7).map((idea, index) => (
+                        <div key={idea}><b>{String(index + 1).padStart(2, "0")}</b><p>{idea}</p></div>
+                      ))}
+                    </aside>
+                  </div>
+                )}
 
                 {view === "flashcards" && (
                   <div className="software-flashcards">
