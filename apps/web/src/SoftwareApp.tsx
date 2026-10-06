@@ -14,7 +14,7 @@ import {
   Sparkles,
   Upload,
 } from "lucide-react";
-import { prepareStudy, type StudyMode } from "./study";
+import { askStudyMaterial, prepareStudy, submitStudyAnswer, type StudyMode } from "./study";
 import { agentPresets, mcpUrl } from "./connection";
 import "./software.css";
 
@@ -90,7 +90,11 @@ export function SoftwareApp() {
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const [session, setSession] = useState<Awaited<ReturnType<typeof prepareStudy>> | null>(null);
+  const [answer, setAnswer] = useState("");
+  const [feedback, setFeedback] = useState("");
   const [question, setQuestion] = useState("");
+  const [askAnswer, setAskAnswer] = useState("");
+  const [askBusy, setAskBusy] = useState(false);
 
   const selected = useMemo(
     () => library.find((item) => item.id === selectedId) ?? library[0] ?? null,
@@ -120,6 +124,8 @@ export function SoftwareApp() {
     if (!material) return;
     setBusy(true);
     setSession(null);
+    setAnswer("");
+    setFeedback("");
     try {
       setSession(await prepareStudy({
         contentText: material.content,
@@ -128,6 +134,63 @@ export function SoftwareApp() {
       }));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function submitAnswer() {
+    const studySessionId = session?.studySessionId;
+    const conceptId = session?.next?.concept?.id;
+    if (!studySessionId || !conceptId || !answer.trim()) return;
+
+    setBusy(true);
+    setFeedback("");
+    try {
+      const result = await submitStudyAnswer({
+        studySessionId,
+        conceptId,
+        userAnswer: answer.trim(),
+      });
+
+      const testMode = session.mode === "test";
+      setFeedback(
+        testMode
+          ? result.submission?.done
+            ? "Practice test complete. Your answers were recorded for the final result."
+            : "Answer recorded. Test feedback stays hidden until the end."
+          : result.grade?.feedback || "Answer recorded.",
+      );
+      setAnswer("");
+
+      if (result.next) {
+        setSession({ ...session, next: result.next });
+      } else if (result.submission?.done) {
+        setSession({ ...session, next: undefined });
+      }
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Could not evaluate this answer.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function askMaterial() {
+    if (!selected || !question.trim()) return;
+    setAskBusy(true);
+    setAskAnswer("");
+    try {
+      const result = await askStudyMaterial({
+        contentText: selected.content,
+        question: question.trim(),
+      });
+      setAskAnswer(result.answer);
+    } catch (error) {
+      setAskAnswer(
+        error instanceof Error
+          ? error.message
+          : "InstantStudy could not answer from this material.",
+      );
+    } finally {
+      setAskBusy(false);
     }
   }
 
@@ -300,8 +363,16 @@ export function SoftwareApp() {
                           <span className="software-question-type">{session.next.questionPolicy?.type || "adaptive"}</span>
                           <h2>{session.next.concept.label}</h2>
                           <p>{session.next.questionPolicy?.instruction}</p>
-                          <textarea placeholder="Type your answer…" />
-                          <button>Submit answer</button>
+                          {feedback ? <div className="software-feedback">{feedback}</div> : null}
+                          <textarea
+                            value={answer}
+                            onChange={(e) => setAnswer(e.target.value)}
+                            placeholder="Type your answer…"
+                            disabled={busy}
+                          />
+                          <button disabled={!answer.trim() || busy} onClick={() => void submitAnswer()}>
+                            {busy ? "Evaluating…" : "Submit answer"}
+                          </button>
                         </>
                       ) : (
                         <>
@@ -317,8 +388,27 @@ export function SoftwareApp() {
                 {view === "ask" && (
                   <div className="software-ask">
                     <div className="software-ask-context"><Sparkles size={18}/><span>Answers stay grounded in <strong>{selected.title}</strong>.</span></div>
-                    <div className="software-chat-empty"><MessageCircle size={28}/><h2>Ask anything about this material.</h2><p>Explanations can become flashcards, Learn questions or a practice test without leaving the workspace.</p></div>
-                    <div className="software-ask-box"><input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="What would you like to understand?" /><button disabled={!question.trim()}>Ask</button></div>
+                    {askAnswer ? (
+                      <div className="software-ask-answer">
+                        <span>INSTANTSTUDY</span>
+                        <p>{askAnswer}</p>
+                      </div>
+                    ) : (
+                      <div className="software-chat-empty"><MessageCircle size={28}/><h2>Ask anything about this material.</h2><p>Explanations stay grounded in your material and can lead directly back into active study.</p></div>
+                    )}
+                    <div className="software-ask-box">
+                      <input
+                        value={question}
+                        onChange={(e) => setQuestion(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !askBusy) void askMaterial();
+                        }}
+                        placeholder="What would you like to understand?"
+                      />
+                      <button disabled={!question.trim() || askBusy} onClick={() => void askMaterial()}>
+                        {askBusy ? "Thinking…" : "Ask"}
+                      </button>
+                    </div>
                   </div>
                 )}
 
