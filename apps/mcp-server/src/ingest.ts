@@ -15,6 +15,13 @@ function isTextMime(mime = "") {
   );
 }
 
+function isAudioMime(mime = "", name = "") {
+  return (
+    mime.startsWith("audio/") ||
+    /\.(mp3|mp4|mpeg|mpga|m4a|ogg|wav|webm|flac)$/i.test(name)
+  );
+}
+
 function normalizeMime(file: StudyFile, responseMime = "") {
   const supplied = file.mime_type?.toLowerCase() ?? "";
   const response = responseMime.toLowerCase();
@@ -137,6 +144,46 @@ async function extractPptx(bytes: Uint8Array) {
   return slides.join("\n\n").slice(0, MAX_TEXT_CHARS);
 }
 
+async function transcribeAudio(
+  bytes: Uint8Array,
+  mime: string,
+  fileName = "lecture-audio",
+) {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) return null;
+
+  const form = new FormData();
+  form.append(
+    "file",
+    new Blob([bytes], { type: mime || "application/octet-stream" }),
+    fileName,
+  );
+  form.append(
+    "model",
+    process.env.INSTANTSTUDY_TRANSCRIPTION_MODEL?.trim() ||
+      "gpt-4o-mini-transcribe",
+  );
+
+  const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: form,
+    signal: AbortSignal.timeout(120_000),
+  });
+
+  if (!response.ok) {
+    const detail = (await response.text()).slice(0, 500);
+    throw new Error(
+      `Audio transcription failed: HTTP ${response.status} ${detail}`,
+    );
+  }
+
+  const payload = (await response.json()) as { text?: string };
+  return payload.text?.trim().slice(0, MAX_TEXT_CHARS) || null;
+}
+
 async function extractPdf(bytes: Uint8Array) {
   const document = await getDocument({ data: bytes }).promise;
   const pages: string[] = [];
@@ -164,7 +211,7 @@ export async function ingestFiles(files: StudyFile[]) {
     mimeType?: string;
     text?: string;
     status: "extracted" | "host_text_required" | "failed";
-    extraction?: "pdf" | "docx" | "pptx" | "text";
+    extraction?: "pdf" | "docx" | "pptx" | "text" | "audio";
     error?: string;
   }> = [];
 
@@ -214,6 +261,23 @@ export async function ingestFiles(files: StudyFile[]) {
           mimeType: mime,
           text,
           extraction: "pptx",
+          status: text ? "extracted" : "host_text_required",
+        });
+        continue;
+      }
+
+      if (isAudioMime(normalizedMime, name)) {
+        const text = await transcribeAudio(
+          bytes,
+          normalizedMime,
+          file.file_name || "lecture-audio",
+        );
+        extracted.push({
+          fileId: file.file_id,
+          fileName: file.file_name,
+          mimeType: mime,
+          text: text || undefined,
+          extraction: "audio",
           status: text ? "extracted" : "host_text_required",
         });
         continue;
