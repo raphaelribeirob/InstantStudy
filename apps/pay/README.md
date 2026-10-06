@@ -70,3 +70,39 @@ pay.<instant-domain>
 ```
 
 Do not put provider secrets in `VITE_*` variables.
+
+
+## Adapty
+
+When configured, Instant Pay resolves the active paywall server-side using
+`ADAPTY_PLACEMENT_ID=instant_pay_main`. Remote config may select an allowlisted
+`offer_key`; it can never inject a raw Paddle price ID or switch to another
+product family. If Adapty is unavailable, checkout safely falls back to the
+server-side catalog.
+
+## Webhook and fulfillment
+
+Configure Paddle to send notifications to:
+
+```text
+/api/webhook
+```
+
+The handler verifies `Paddle-Signature` over the raw body with HMAC-SHA256,
+rejects stale/replayed signatures outside the configured tolerance, and never
+grants access from a browser redirect. Entitlement sync is server-to-server and
+only runs when a trusted `entitlement_subject_id` is present in transaction
+custom data.
+
+## OWASP controls
+
+The Instant ecosystem applies security controls at multiple layers:
+
+- server-side price/offer allowlists
+- no payment provider secrets in browser bundles
+- strict checkout CSP and anti-framing headers
+- API/MCP rate limiting
+- CORS origin allowlists
+- SSRF protection for remote study material
+- dependency audit + OWASP Dependency-Check in CI
+- Vercel managed firewall CRS where supported
