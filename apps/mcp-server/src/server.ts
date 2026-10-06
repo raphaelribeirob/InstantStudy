@@ -6,6 +6,7 @@ import { z } from "zod";
 import { BridgeQueue } from "./bridgeQueue.js";
 import { AdaptyClient } from "./adapty.js";
 import { readFileSync } from "node:fs";
+import { ContentSessionStore } from "./contentSessions.js";
 
 const PORT = Number.parseInt(process.env.PORT ?? "8000", 10);
 const DEVICE_ID = process.env.INSTANTSTUDY_DEVICE_ID ?? "dev-device";
@@ -16,6 +17,7 @@ const TIMEOUT_MS = Number.parseInt(
 );
 
 const bridge = new BridgeQueue(TIMEOUT_MS);
+const contentSessions = new ContentSessionStore();
 const API_KEY = process.env.INSTANTSTUDY_API_KEY ?? "replace-me-api-key";
 const adapty = new AdaptyClient({
   publicApiKey: process.env.ADAPTY_PUBLIC_API_KEY,
@@ -27,6 +29,36 @@ const openapiSpec = readFileSync(
   new URL("../../../openapi.yaml", import.meta.url),
   "utf8",
 );
+
+const studyFileSchema = z.object({
+  download_url: z.string().url(),
+  file_id: z.string().min(1),
+  mime_type: z.string().optional(),
+  file_name: z.string().optional(),
+});
+
+const prepareStudySchema = z
+  .object({
+    contentText: z
+      .string()
+      .max(200000)
+      .optional()
+      .describe(
+        "Relevant pasted/extracted study content. When the host can read an attached file, include the important text here so the session remains portable across LLMs.",
+      ),
+    files: z
+      .array(studyFileSchema)
+      .max(10)
+      .default([])
+      .describe("Files supplied by the host, including ChatGPT file inputs."),
+    title: z.string().min(1).max(200).optional(),
+    goal: z.string().min(1).max(500).optional(),
+    mode: z.enum(["learn", "review", "quiz", "test"]).default("learn"),
+  })
+  .refine(
+    (input) => Boolean(input.contentText?.trim()) || input.files.length > 0,
+    { message: "Provide contentText or at least one file." },
+  );
 
 type AnkiCard = {
   cardId?: number;
@@ -101,6 +133,87 @@ function createMcpServer() {
     name: "instantstudy",
     version: "0.1.0",
   });
+
+  server.registerTool(
+    "prepare_study",
+    {
+      title: "Start InstantStudy from content",
+      description:
+        "PRIMARY CONTENT-FIRST ENTRY. Use immediately when the learner pastes notes, provides content in the conversation, or uploads files and asks to study, learn, review, quiz, test, or 'InstantStudy' them. Create the study session before asking onboarding questions. Do not require Anki. If the host can read the supplied file, also pass the relevant extracted text in contentText. After this tool returns, begin the first study question immediately.",
+      inputSchema: prepareStudySchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+        idempotentHint: false,
+      },
+      _meta: {
+        "openai/fileParams": ["files"],
+      },
+    },
+    async ({ contentText, files, title, goal, mode }) => {
+      const session = contentSessions.create({
+        contentText,
+        files,
+        title,
+        goal,
+        mode,
+      });
+
+      return toolResult({
+        sessionId: session.id,
+        status: session.status,
+        title: session.title,
+        mode: session.mode,
+        goal: session.goal,
+        sources: session.files.map((file) => ({
+          fileId: file.file_id,
+          fileName: file.file_name,
+          mimeType: file.mime_type,
+        })),
+        hasInlineContent: Boolean(session.contentText),
+        nextAction:
+          "Start immediately. Ask one question from the supplied content. Wait for the learner's answer before explaining or revealing the answer.",
+      });
+    },
+  );
+
+  server.registerTool(
+    "get_study_session",
+    {
+      title: "Get InstantStudy session",
+      description:
+        "Retrieve the active content-first study session and its source context.",
+      inputSchema: z.object({
+        sessionId: z.string().uuid(),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ sessionId }) => {
+      const session = contentSessions.get(sessionId);
+      if (!session) {
+        throw new Error("Study session not found.");
+      }
+
+      return toolResult({
+        sessionId: session.id,
+        status: session.status,
+        title: session.title,
+        mode: session.mode,
+        goal: session.goal,
+        contentText: session.contentText,
+        sources: session.files.map((file) => ({
+          fileId: file.file_id,
+          fileName: file.file_name,
+          mimeType: file.mime_type,
+        })),
+      });
+    },
+  );
 
   server.registerTool(
     "anki_status",
@@ -339,6 +452,53 @@ app.get("/openapi.yaml", (_req, res) => {
 });
 
 app.use("/api/v1", requireApiAuth);
+
+app.post("/api/v1/study/prepare", async (req, res) => {
+  try {
+    const input = prepareStudySchema.parse(req.body ?? {});
+    const session = contentSessions.create(input);
+
+    res.json({
+      sessionId: session.id,
+      status: session.status,
+      title: session.title,
+      mode: session.mode,
+      goal: session.goal,
+      sources: session.files.map((file) => ({
+        fileId: file.file_id,
+        fileName: file.file_name,
+        mimeType: file.mime_type,
+      })),
+      hasInlineContent: Boolean(session.contentText),
+      nextAction:
+        "Ask one question from the supplied content and wait for the learner's answer.",
+    });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.get("/api/v1/study/sessions/:sessionId", (req, res) => {
+  const session = contentSessions.get(req.params.sessionId);
+  if (!session) {
+    res.status(404).json({ error: "study_session_not_found" });
+    return;
+  }
+
+  res.json({
+    sessionId: session.id,
+    status: session.status,
+    title: session.title,
+    mode: session.mode,
+    goal: session.goal,
+    contentText: session.contentText,
+    sources: session.files.map((file) => ({
+      fileId: file.file_id,
+      fileName: file.file_name,
+      mimeType: file.mime_type,
+    })),
+  });
+});
 
 app.get("/api/v1/status", async (_req, res) => {
   try {
