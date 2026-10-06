@@ -14,6 +14,12 @@ function sourceApp() {
   return /^[a-z0-9_-]{1,48}$/.test(raw) ? raw : "";
 }
 
+function variationId() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = String(params.get("variation_id") || "").trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw) ? raw : "";
+}
+
 function locale() {
   const browser = navigator.language || "en";
   return browser.slice(0, 16);
@@ -35,6 +41,7 @@ function App() {
           offer: offer.key,
           source: sourceApp(),
           locale: locale(),
+          variation_id: variationId(),
         }),
       });
       const data = await response.json().catch(() => ({}));
