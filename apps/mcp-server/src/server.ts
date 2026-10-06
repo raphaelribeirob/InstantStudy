@@ -4,6 +4,8 @@ import cors from "cors";
 import express from "express";
 import { z } from "zod";
 import { BridgeQueue } from "./bridgeQueue.js";
+import { AdaptyClient } from "./adapty.js";
+import { readFileSync } from "node:fs";
 
 const PORT = Number.parseInt(process.env.PORT ?? "8000", 10);
 const DEVICE_ID = process.env.INSTANTSTUDY_DEVICE_ID ?? "dev-device";
@@ -14,6 +16,17 @@ const TIMEOUT_MS = Number.parseInt(
 );
 
 const bridge = new BridgeQueue(TIMEOUT_MS);
+const API_KEY = process.env.INSTANTSTUDY_API_KEY ?? "replace-me-api-key";
+const adapty = new AdaptyClient({
+  publicApiKey: process.env.ADAPTY_PUBLIC_API_KEY,
+  secretApiKey: process.env.ADAPTY_SECRET_API_KEY,
+  placementId: process.env.ADAPTY_PLACEMENT_ID ?? "instantstudy_main",
+  store: process.env.ADAPTY_STORE ?? "stripe",
+});
+const openapiSpec = readFileSync(
+  new URL("../../../openapi.yaml", import.meta.url),
+  "utf8",
+);
 
 type AnkiCard = {
   cardId?: number;
@@ -256,6 +269,37 @@ function createMcpServer() {
     },
   );
 
+  server.registerTool(
+    "get_subscription_offer",
+    {
+      title: "Get InstantStudy subscription offer",
+      description:
+        "Resolve the active subscription offer selected by Adapty for this learner. Call only when the learner asks about pricing, upgrading, subscribing, or paid access. The returned variation may be part of a pricing A/B test.",
+      inputSchema: z.object({
+        customerId: z
+          .string()
+          .min(1)
+          .max(200)
+          .describe("Stable InstantStudy customer identifier."),
+        locale: z
+          .string()
+          .min(2)
+          .max(20)
+          .default("en")
+          .describe("BCP-47 style locale such as en, en-US, or pt-BR."),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: true,
+      },
+    },
+    async ({ customerId, locale }) => {
+      const offer = await adapty.getOffer(customerId, locale);
+      return toolResult(offer);
+    },
+  );
+
   return server;
 }
 
@@ -267,6 +311,154 @@ function bridgeAuthorized(req: express.Request) {
   const authorization = req.header("authorization");
   return authorization === `Bearer ${BRIDGE_TOKEN}`;
 }
+
+function apiAuthorized(req: express.Request) {
+  const authorization = req.header("authorization");
+  return authorization === `Bearer ${API_KEY}`;
+}
+
+function requireApiAuth(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+) {
+  if (!apiAuthorized(req)) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  next();
+}
+
+function sendApiError(res: express.Response, error: unknown) {
+  const message = error instanceof Error ? error.message : "Internal server error";
+  res.status(500).json({ error: "internal_error", message });
+}
+
+app.get("/openapi.yaml", (_req, res) => {
+  res.type("application/yaml").send(openapiSpec);
+});
+
+app.use("/api/v1", requireApiAuth);
+
+app.get("/api/v1/status", async (_req, res) => {
+  try {
+    const version = await callAnki("version");
+    res.json({
+      connected: true,
+      ankiConnectVersion: version,
+      deviceId: DEVICE_ID,
+    });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.get("/api/v1/decks", async (_req, res) => {
+  try {
+    const decks = await callAnki("deckNames");
+    res.json({ decks });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/due", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        deckName: z.string().min(1).optional(),
+        limit: z.number().int().min(1).max(50).default(10),
+      })
+      .parse(req.body ?? {});
+
+    const query = input.deckName
+      ? `deck:"${escapeDeckName(input.deckName)}" is:due`
+      : "is:due";
+    const cards = await cardsFromQuery(query, input.limit);
+    res.json({ query, count: cards.length, cards });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/search", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        query: z.string().min(1).max(500),
+        limit: z.number().int().min(1).max(50).default(20),
+      })
+      .parse(req.body);
+
+    const cards = await cardsFromQuery(input.query, input.limit);
+    res.json({ query: input.query, count: cards.length, cards });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/cards", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        deckName: z.string().min(1).max(200),
+        front: z.string().min(1).max(10000),
+        back: z.string().min(1).max(20000),
+        tags: z.array(z.string().min(1).max(100)).max(20).default([]),
+      })
+      .parse(req.body);
+
+    const noteId = await callAnki("addNote", {
+      note: {
+        deckName: input.deckName,
+        modelName: "Basic",
+        fields: { Front: input.front, Back: input.back },
+        tags: input.tags,
+      },
+    });
+
+    res.json({ created: noteId !== null, noteId });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/reviews", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        cardId: z.number().int().positive(),
+        ease: z.number().int().min(1).max(4),
+      })
+      .parse(req.body);
+
+    const result = await callAnki("answerCards", {
+      answers: [{ cardId: input.cardId, ease: input.ease }],
+    });
+    const success =
+      Array.isArray(result) && result.length > 0 ? Boolean(result[0]) : false;
+
+    res.json({ success, cardId: input.cardId, ease: input.ease });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/offer", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        customerId: z.string().min(1).max(200),
+        locale: z.string().min(2).max(20).default("en"),
+      })
+      .parse(req.body);
+
+    const offer = await adapty.getOffer(input.customerId, input.locale);
+    res.json(offer);
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
 
 app.get("/health", (_req, res) => {
   res.json({
