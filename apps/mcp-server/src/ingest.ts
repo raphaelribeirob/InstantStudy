@@ -1,5 +1,7 @@
 import JSZip from "jszip";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import type { StudyFile } from "./contentSessions.js";
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -39,11 +41,123 @@ function normalizeMime(file: StudyFile, responseMime = "") {
   return "";
 }
 
+function privateIpv4(address: string) {
+  const parts = address.split(".").map(Number);
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part))) return true;
+  const [a, b] = parts;
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    a >= 224
+  );
+}
+
+function privateIp(address: string) {
+  const version = isIP(address);
+  if (version === 4) return privateIpv4(address);
+  if (version !== 6) return true;
+
+  const normalized = address.toLowerCase();
+  if (
+    normalized === "::" ||
+    normalized === "::1" ||
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd") ||
+    /^fe[89ab]/.test(normalized)
+  ) {
+    return true;
+  }
+
+  const mapped = normalized.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  return mapped ? privateIpv4(mapped[1]) : false;
+}
+
+function hostAllowed(hostname: string) {
+  const configured = (process.env.INSTANTSTUDY_FILE_HOST_ALLOWLIST ?? "")
+    .split(",")
+    .map((host) => host.trim().toLowerCase())
+    .filter(Boolean);
+  if (!configured.length) return true;
+
+  const host = hostname.toLowerCase();
+  return configured.some(
+    (allowed) => host === allowed || host.endsWith(`.${allowed}`),
+  );
+}
+
+async function validatePublicDownloadUrl(raw: string) {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error("Invalid file download URL.");
+  }
+
+  if (!["https:", "http:"].includes(url.protocol)) {
+    throw new Error("Only HTTP(S) file downloads are allowed.");
+  }
+  if (url.username || url.password) {
+    throw new Error("Credential-bearing file URLs are not allowed.");
+  }
+
+  const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+  if (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local") ||
+    hostname.endsWith(".internal") ||
+    hostname === "metadata.google.internal" ||
+    !hostAllowed(hostname)
+  ) {
+    throw new Error("File download host is not allowed.");
+  }
+
+  if (isIP(hostname)) {
+    if (privateIp(hostname)) throw new Error("Private-network file URLs are blocked.");
+    return url;
+  }
+
+  const resolved = await lookup(hostname, { all: true, verbatim: true });
+  if (!resolved.length || resolved.some((entry) => privateIp(entry.address))) {
+    throw new Error("File download host resolves to a private or invalid address.");
+  }
+
+  return url;
+}
+
+async function safeFetch(rawUrl: string) {
+  let current = await validatePublicDownloadUrl(rawUrl);
+
+  for (let redirects = 0; redirects <= 3; redirects += 1) {
+    const response = await fetch(current, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(20_000),
+      headers: { "user-agent": "InstantStudy-Ingest/1.0" },
+    });
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location || redirects === 3) {
+        throw new Error("File download redirect limit exceeded.");
+      }
+      current = await validatePublicDownloadUrl(new URL(location, current).toString());
+      continue;
+    }
+
+    return response;
+  }
+
+  throw new Error("File download redirect limit exceeded.");
+}
+
 async function download(file: StudyFile) {
-  const response = await fetch(file.download_url, {
-    redirect: "follow",
-    signal: AbortSignal.timeout(20_000),
-  });
+  const response = await safeFetch(file.download_url);
 
   if (!response.ok) {
     throw new Error(
