@@ -1,4 +1,5 @@
 import { resolveOffer } from "./_catalog.js";
+import { resolveAdaptyContext } from "./_adapty.js";
 
 const LIVE_API = "https://api.paddle.com";
 const SANDBOX_API = "https://sandbox-api.paddle.com";
@@ -18,6 +19,11 @@ function cleanSource(value) {
 function cleanLocale(value) {
   const locale = String(value || "").slice(0, 16);
   return /^[a-zA-Z]{2,3}(?:-[a-zA-Z]{2,4})?$/.test(locale) ? locale : "en";
+}
+
+function cleanCustomerId(value) {
+  const customerId = String(value || "").trim();
+  return /^[a-zA-Z0-9._:-]{8,128}$/.test(customerId) ? customerId : "";
 }
 
 export default async function handler(req, res) {
@@ -42,11 +48,28 @@ export default async function handler(req, res) {
   }
 
   const body = req.body && typeof req.body === "object" ? req.body : {};
-  const offer = resolveOffer(body.offer);
-  if (!offer) return json(res, 400, { error: "offer_unavailable" });
+  const requestedOffer = resolveOffer(body.offer);
+  if (!requestedOffer) return json(res, 400, { error: "offer_unavailable" });
 
   const source = cleanSource(body.source);
   const locale = cleanLocale(body.locale);
+  const customerId = cleanCustomerId(body.customerId);
+
+  const adapty = await resolveAdaptyContext({
+    customerId,
+    locale,
+    requestedOffer: requestedOffer.key,
+  });
+  const candidateOffer = resolveOffer(adapty.offerKey);
+  const offer =
+    candidateOffer && candidateOffer.product === requestedOffer.product
+      ? candidateOffer
+      : requestedOffer;
+
+  if (source !== "direct" && source !== offer.product) {
+    return json(res, 400, { error: "source_offer_mismatch" });
+  }
+
   const apiBase = environment === "live" ? LIVE_API : SANDBOX_API;
 
   const response = await fetch(`${apiBase}/transactions`, {
@@ -66,6 +89,11 @@ export default async function handler(req, res) {
         plan_key: offer.plan,
         billing_cadence: offer.cadence,
         source_app: source,
+        pricing_provider: adapty.provider,
+        adapty_variation_id: adapty.variationId || null,
+        adapty_paywall_id: adapty.paywallId || null,
+        adapty_placement_id: adapty.placementId || null,
+        analytics_customer_id: customerId || null,
       },
     }),
   });
@@ -84,5 +112,8 @@ export default async function handler(req, res) {
   return json(res, 200, {
     checkout_url: hosted.toString(),
     transaction_id: String(payload.data.id),
+    offer_key: offer.key,
+    pricing_provider: adapty.provider,
+    variation_id: adapty.variationId || null,
   });
 }
