@@ -1,0 +1,112 @@
+name: OWASP InstantPayments
+
+on:
+  push:
+    branches:
+      - main
+      - feat/use-unified-payment-funnel
+    paths:
+      - "apps/pay/**"
+      - ".github/workflows/owasp-instant-pay.yml"
+  pull_request:
+    paths:
+      - "apps/pay/**"
+      - ".github/workflows/owasp-instant-pay.yml"
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: owasp-instant-pay-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  runtime-guard:
+    name: OWASP runtime guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Install workspace dependencies
+        run: npm install --ignore-scripts
+      - name: Typecheck InstantPayments
+        run: npm --workspace apps/pay run typecheck
+      - name: Run InstantPayments security tests
+        run: npm --workspace apps/pay test
+      - name: Build InstantPayments
+        run: npm --workspace apps/pay run build
+
+  dependency-check:
+    name: OWASP Dependency-Check
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Install dependency metadata
+        run: npm install --ignore-scripts
+      - name: Install OWASP Dependency-Check 13.0.0
+        shell: bash
+        run: |
+          curl -fsSL \
+            https://github.com/dependency-check/DependencyCheck/releases/download/v13.0.0/dependency-check-13.0.0-release.zip \
+            -o dependency-check.zip
+          echo "44d920d1ec03e948df862a253f0912782a31b9beee8a7c8895b9cb95760176ed  dependency-check.zip" | sha256sum -c -
+          unzip -q dependency-check.zip -d "$RUNNER_TEMP"
+      - name: Scan InstantPayments dependencies
+        shell: bash
+        run: |
+          mkdir -p owasp-reports
+          args=(
+            --project "InstantPayments"
+            --scan "apps/pay"
+            --format "HTML"
+            --format "JSON"
+            --out "owasp-reports"
+            --failOnCVSS "7"
+          )
+          if [ -n "${NVD_API_KEY:-}" ]; then
+            args+=(--nvdApiKey "$NVD_API_KEY")
+          fi
+          "$RUNNER_TEMP/dependency-check/bin/dependency-check.sh" "${args[@]}"
+      - name: Upload Dependency-Check reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: owasp-dependency-check
+          path: owasp-reports/
+          if-no-files-found: warn
+
+  zap-baseline:
+    name: OWASP ZAP baseline
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        with:
+          target: ${{ vars.INSTANT_PAY_SECURITY_TARGET || 'https://instant-pay-gamma.vercel.app' }}
+          allow_issue_writing: false
+          fail_action: true
+          artifact_name: owasp-zap-instant-pay
+          cmd_options: "-a"

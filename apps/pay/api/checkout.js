@@ -1,5 +1,6 @@
 import { resolveOffer } from "./_catalog.js";
 import { cleanCustomerUserId, cleanOpaqueId } from "./_adapty.js";
+import { enforceApiRequest } from "./_security.js";
 
 const LIVE_API = "https://api.paddle.com";
 const SANDBOX_API = "https://sandbox-api.paddle.com";
@@ -23,6 +24,7 @@ function cleanLocale(value) {
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return json(res, 405, { error: "method_not_allowed" });
+  if (!enforceApiRequest(req, res, json)) return;
 
   const apiKey = String(process.env.PADDLE_API_KEY || "").trim();
   const hostedCheckout = String(process.env.PADDLE_HOSTED_CHECKOUT_URL || "").trim();

@@ -4,6 +4,7 @@ import {
   cleanLocale,
   getAdaptyPaywall,
 } from "./_adapty.js";
+import { enforceApiRequest } from "./_security.js";
 
 function json(res, status, body) {
   res.status(status);
@@ -16,6 +17,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return json(res, 405, { error: "method_not_allowed" });
   }
+  if (!enforceApiRequest(req, res, json)) return;
 
   const body = req.body && typeof req.body === "object" ? req.body : {};
   const baseOffer = offerDefinition(body.offer);

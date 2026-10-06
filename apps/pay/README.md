@@ -117,3 +117,30 @@ pay.<instant-domain>
 ```
 
 Do not put provider secrets in `VITE_*` variables.
+
+## OWASP security gate
+
+InstantPayments uses an OWASP-oriented security baseline:
+
+- Same-origin enforcement on browser POST requests to payment APIs.
+- JSON-only API contract with an 8 KiB request-body ceiling.
+- CSP, HSTS, frame denial, MIME sniffing denial and cross-origin isolation headers.
+- OWASP Dependency-Check 13.0.0 for scheduled/manual SCA. High-severity CVSS 7+ findings fail the scan.
+- OWASP ZAP Baseline for scheduled/manual DAST against the deployed Instant Pay origin.
+- Security action SHAs and the Dependency-Check release checksum are pinned.
+
+Recommended repository secret:
+
+```text
+NVD_API_KEY
+```
+
+Dependency-Check can run without it, but NVD rate limits make CI materially slower.
+
+Optional repository variable:
+
+```text
+INSTANT_PAY_SECURITY_TARGET=https://<canonical-instant-pay-domain>
+```
+
+Do not point ZAP at Paddle or Adapty. The scan target is the InstantPayments surface we control.
