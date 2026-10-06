@@ -534,8 +534,8 @@ export function App() {
           <a href="#test">Test</a>
           <a href="#pricing">Upgrade</a>
         </nav>
-        <a className="nav-cta" href="#generator">
-          Try InstantStudy™ <ArrowRight size={14} />
+        <a className="nav-cta" href="/app">
+          Open InstantStudy™ <ArrowRight size={14} />
         </a>
       </header>
 
@@ -557,8 +557,8 @@ export function App() {
             mastery and right-time review.
           </p>
           <div className="hero-actions">
-            <a className="hero-primary" href="#generator">
-              Start learning <ArrowRight size={17} />
+            <a className="hero-primary" href="/app">
+              Open the software <ArrowRight size={17} />
             </a>
             <a className="hero-secondary" href="#demo">Experience the loop</a>
           </div>
