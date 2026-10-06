@@ -230,22 +230,27 @@ function createMcpServer() {
       },
     },
     async ({ sessionId }) => {
-      const session = contentSessions.get(sessionId);
+      const session = studyEngine.get(sessionId);
       if (!session) {
         throw new Error("Study session not found.");
       }
 
       return toolResult({
         sessionId: session.id,
+        contentSessionId: session.contentSessionId,
         status: session.status,
         title: session.title,
         mode: session.mode,
         goal: session.goal,
-        contentText: session.contentText,
-        sources: session.files.map((file) => ({
-          fileId: file.file_id,
-          fileName: file.file_name,
-          mimeType: file.mime_type,
+        questionIndex: session.questionIndex,
+        maxQuestions: session.maxQuestions,
+        concepts: session.concepts.map((concept) => ({
+          id: concept.id,
+          label: concept.label,
+          mastery: Number(concept.mastery.toFixed(2)),
+          attempts: concept.attempts,
+          difficulty: concept.difficulty,
+          missingConcepts: concept.missingConcepts,
         })),
       });
     },
@@ -613,7 +618,7 @@ app.post("/api/v1/study/prepare", async (req, res) => {
 });
 
 app.get("/api/v1/study/sessions/:sessionId", (req, res) => {
-  const session = contentSessions.get(req.params.sessionId);
+  const session = studyEngine.get(req.params.sessionId);
   if (!session) {
     res.status(404).json({ error: "study_session_not_found" });
     return;
@@ -621,15 +626,20 @@ app.get("/api/v1/study/sessions/:sessionId", (req, res) => {
 
   res.json({
     sessionId: session.id,
+    contentSessionId: session.contentSessionId,
     status: session.status,
     title: session.title,
     mode: session.mode,
     goal: session.goal,
-    contentText: session.contentText,
-    sources: session.files.map((file) => ({
-      fileId: file.file_id,
-      fileName: file.file_name,
-      mimeType: file.mime_type,
+    questionIndex: session.questionIndex,
+    maxQuestions: session.maxQuestions,
+    concepts: session.concepts.map((concept) => ({
+      id: concept.id,
+      label: concept.label,
+      mastery: Number(concept.mastery.toFixed(2)),
+      attempts: concept.attempts,
+      difficulty: concept.difficulty,
+      missingConcepts: concept.missingConcepts,
     })),
   });
 });
