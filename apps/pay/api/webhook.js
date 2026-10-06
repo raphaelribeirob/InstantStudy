@@ -19,6 +19,7 @@ export const config = {
 function json(res, status, body) {
   res.setHeader("content-type", "application/json; charset=utf-8");
   res.setHeader("cache-control", "no-store");
+  res.setHeader("x-content-type-options", "nosniff");
   res.status(status);
   return res.end(JSON.stringify(body));
 }
@@ -73,6 +74,14 @@ export default async function handler(req, res) {
   let rawBody;
   try {
     rawBody = await readRawBody(req);
+  } catch (error) {
+    if (error?.code === "webhook_body_too_large") {
+      return json(res, 413, { error: "webhook_body_too_large" });
+    }
+    return json(res, 400, { error: "invalid_webhook_body" });
+  }
+
+  try {
     verifyPaddleSignature(rawBody, req.headers["paddle-signature"]);
   } catch (error) {
     console.error("Paddle webhook signature rejected", error?.message || "unknown");
