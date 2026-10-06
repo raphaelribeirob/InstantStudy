@@ -144,3 +144,25 @@ INSTANT_PAY_SECURITY_TARGET=https://<canonical-instant-pay-domain>
 ```
 
 Do not point ZAP at Paddle or Adapty. The scan target is the InstantPayments surface we control.
+
+
+## InstantCloser signed entitlement bridge
+
+InstantCloser sends a short-lived HMAC-signed `handoff` in the Instant Pay URL. The browser may forward it, but cannot forge or change its `company_id`, `offer`, source, or expiry.
+
+For `source=instant_closer`, `/api/checkout` rejects missing or invalid handoffs and copies only the verified company identity into Paddle `custom_data`.
+
+`/api/webhook` verifies the raw Paddle webhook with `PADDLE_WEBHOOK_SECRET`, then routes only events carrying a verified InstantCloser handoff. Entitlement callbacks are HMAC-signed again before being sent to:
+
+```
+INSTANT_CLOSER_ENTITLEMENT_WEBHOOK_URL
+```
+
+Use the same random value for:
+
+```
+Instant Pay:    INSTANT_CLOSER_SHARED_SECRET
+InstantCloser:  INSTANT_PAY_WEBHOOK_SECRET
+```
+
+The browser redirect never grants access. Only the verified webhook/callback chain may mutate the InstantCloser entitlement.
