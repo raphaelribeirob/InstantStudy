@@ -142,6 +142,18 @@ export type RetentionInsights = {
   charms: Array<{ id: string; title: string; description: string; unlocked: boolean }>;
 };
 
+export type StudyGame = {
+  title: string;
+  cards: Array<{
+    id: string;
+    pairId: string;
+    kind: "prompt" | "answer";
+    text: string;
+  }>;
+  pairCount: number;
+  generatedBy: "deterministic";
+};
+
 export type AudioStudy = {
   title: string;
   estimatedMinutes: number;
@@ -369,6 +381,27 @@ export async function getRetentionInsights() {
   return (await request(
     identified({ action: "insights" }),
   )) as RetentionInsights;
+}
+
+export async function getStudyGame(materialId: string) {
+  return (await request(
+    identified({ action: "study_game", materialId }),
+  )) as StudyGame;
+}
+
+export async function importPrivateDriveMaterial(input: {
+  fileId: string;
+  googleAccessToken: string;
+  title?: string;
+}) {
+  return (await request(
+    identified({
+      action: "drive_private_import",
+      fileId: input.fileId,
+      googleAccessToken: input.googleAccessToken,
+      title: input.title,
+    }),
+  )) as { material: StudyMaterial; ingestion: Array<Record<string, unknown>> };
 }
 
 export async function getAudioStudy(materialId: string) {
