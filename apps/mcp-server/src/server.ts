@@ -852,6 +852,7 @@ app.get("/connection.json", (req, res) => {
       "conversational podcast",
       "content-based study game",
       "study rooms",
+      "family entitlement synchronization",
       "optional Anki",
     ],
   });
@@ -1512,6 +1513,12 @@ app.get("/health", (_req, res) => {
       enabled: true,
       plus: { learnRoundsPerMonth: 20, practiceTestsPerMonth: 3 },
       unlimited: { learnRoundsPerMonth: null, practiceTestsPerMonth: null },
+      family: {
+        seats: 5,
+        inheritedPlan: "unlimited",
+        learnRoundsPerMonth: null,
+        practiceTestsPerMonth: null,
+      },
     },
     security: {
       apiAuthConfigured: configuredSecret(API_KEY),
