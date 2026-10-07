@@ -63,6 +63,15 @@ const offers: Record<string, Offer> = {
     title: "Remove the limits from your study loop.",
     description: "Unlimited core study modes, reviews and supported AI agents.",
   },
+  instant_study_family_annual: {
+    key: "instant_study_family_annual",
+    product: "InstantStudy",
+    plan: "Family",
+    cadence: "annual",
+    eyebrow: "LEARNING FOR FIVE",
+    title: "Five independent learners. One family plan.",
+    description: "Unlimited InstantStudy for one owner and up to four invited family members, each with separate progress.",
+  },
   instant_bible_pro_monthly: {
     key: "instant_bible_pro_monthly",
     product: "InstantBible",

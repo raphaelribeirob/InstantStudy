@@ -14,10 +14,12 @@ import {
   MessageCircle,
   Mic,
   Plug,
+  Puzzle,
   Search,
   Sparkles,
   Trophy,
   Upload,
+  UserRoundPlus,
   Users,
 } from "lucide-react";
 import {
@@ -27,7 +29,9 @@ import {
   getDueReviews,
   getRetentionInsights,
   getStudyRoom,
+  getStudyGame,
   googleDriveStudyInput,
+  importPrivateDriveMaterial,
   importStudyMaterial,
   joinStudyRoom,
   listStudyMaterials,
@@ -38,6 +42,7 @@ import {
   type AudioStudy,
   type DueReview,
   type RetentionInsights,
+  type StudyGame,
   type StudyMaterial,
   type StudyRoom,
   type StudyMode,
@@ -45,6 +50,17 @@ import {
   type TestQuestionType,
 } from "./study";
 import { agentPresets, mcpUrl } from "./connection";
+import {
+  googleDrivePrivateConfigured,
+  pickPrivateGoogleDriveFile,
+} from "./googleDrivePicker";
+import {
+  addInstantStudyFamilyMember,
+  getInstantStudyFamily,
+  openInstantStudyCheckout,
+  removeInstantStudyFamilyMember,
+  type InstantStudyFamily,
+} from "./instantBilling";
 import "./software.css";
 
 type View =
@@ -59,7 +75,9 @@ type View =
   | "review"
   | "insights"
   | "audio"
+  | "game"
   | "friends"
+  | "family"
   | "plugin";
 
 type SourceType = "paste" | "upload" | "drive" | "audio" | "scan";
@@ -141,6 +159,17 @@ export function SoftwareApp() {
   );
   const [roomBusy, setRoomBusy] = useState(false);
   const [roomMessage, setRoomMessage] = useState("");
+  const podcastStopRef = useRef(false);
+  const [studyGame, setStudyGame] = useState<StudyGame | null>(null);
+  const [gameOpenIds, setGameOpenIds] = useState<string[]>([]);
+  const [gameMatchedPairs, setGameMatchedPairs] = useState<string[]>([]);
+  const [gameMoves, setGameMoves] = useState(0);
+  const [gameLocked, setGameLocked] = useState(false);
+  const [family, setFamily] = useState<InstantStudyFamily | null>(null);
+  const [familyEmail, setFamilyEmail] = useState("");
+  const [familyBusy, setFamilyBusy] = useState(false);
+  const [familyMessage, setFamilyMessage] = useState("");
+
 
 
   const selected = useMemo(
@@ -223,6 +252,34 @@ export function SoftwareApp() {
   }, [view, selectedId]);
 
   useEffect(() => {
+    if (view !== "game" || !selected) return;
+    setStudyGame(null);
+    setGameOpenIds([]);
+    setGameMatchedPairs([]);
+    setGameMoves(0);
+    void getStudyGame(selected.id)
+      .then(setStudyGame)
+      .catch(() => setStudyGame(null));
+  }, [view, selectedId]);
+
+  useEffect(() => {
+    if (view !== "family") return;
+    setFamilyBusy(true);
+    setFamilyMessage("");
+    void getInstantStudyFamily()
+      .then(setFamily)
+      .catch((error) => {
+        setFamily(null);
+        setFamilyMessage(
+          error instanceof Error && error.message === "family_plan_required"
+            ? "Family plan required to manage seats."
+            : "Sign in with an Instant account to manage Family.",
+        );
+      })
+      .finally(() => setFamilyBusy(false));
+  }, [view]);
+
+  useEffect(() => {
     if (view !== "friends" || !room?.code) return;
     const timer = window.setInterval(() => {
       void getStudyRoom(room.code)
@@ -233,7 +290,10 @@ export function SoftwareApp() {
   }, [view, room?.code]);
 
   useEffect(() => {
-    return () => window.speechSynthesis?.cancel();
+    return () => {
+      podcastStopRef.current = true;
+      window.speechSynthesis?.cancel();
+    };
   }, []);
 
 
@@ -414,21 +474,126 @@ export function SoftwareApp() {
   function toggleAudioStudy() {
     if (!audioStudy || !("speechSynthesis" in window)) return;
     if (audioPlaying) {
+      podcastStopRef.current = true;
       window.speechSynthesis.cancel();
       setAudioPlaying(false);
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(
-      audioStudy.segments
-        .map((segment) => `${segment.speaker}: ${segment.text}`)
-        .join("  "),
-    );
-    utterance.rate = 0.96;
-    utterance.onend = () => setAudioPlaying(false);
-    utterance.onerror = () => setAudioPlaying(false);
+    podcastStopRef.current = false;
     setAudioPlaying(true);
-    window.speechSynthesis.speak(utterance);
+    const voices = window.speechSynthesis.getVoices();
+    const english = voices.filter((voice) => /^en(-|_)/i.test(voice.lang));
+    const hostVoice = english[0] ?? voices[0];
+    const coachVoice =
+      english.find((voice) => voice.name !== hostVoice?.name) ??
+      voices.find((voice) => voice.name !== hostVoice?.name) ??
+      hostVoice;
+
+    const speakAt = (index: number) => {
+      if (podcastStopRef.current || !audioStudy.segments[index]) {
+        setAudioPlaying(false);
+        return;
+      }
+      const segment = audioStudy.segments[index];
+      const utterance = new SpeechSynthesisUtterance(segment.text);
+      utterance.rate = segment.speaker === "Host" ? 0.98 : 0.94;
+      utterance.pitch = segment.speaker === "Host" ? 1.02 : 0.94;
+      utterance.voice = segment.speaker === "Host" ? hostVoice ?? null : coachVoice ?? null;
+      utterance.onend = () => speakAt(index + 1);
+      utterance.onerror = () => {
+        setAudioPlaying(false);
+      };
+      window.speechSynthesis.speak(utterance);
+    };
+
+    speakAt(0);
+  }
+
+  async function importPrivateDrive() {
+    setBusy(true);
+    setCreateError("");
+    try {
+      const picked = await pickPrivateGoogleDriveFile();
+      const result = await importPrivateDriveMaterial({
+        fileId: picked.fileId,
+        googleAccessToken: picked.accessToken,
+        title: title.trim() || picked.name,
+      });
+      const item = result.material;
+      setLibrary((current) => [item, ...current.filter((row) => row.id !== item.id)]);
+      setSelectedId(item.id);
+      setDriveUrl("");
+      setTitle("");
+      setView("learn");
+      await startMode("learn", item);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "google_drive_import_failed";
+      if (message !== "google_drive_picker_cancelled") {
+        setCreateError(message.replaceAll("_", " "));
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function chooseGameCard(cardId: string) {
+    if (!studyGame || gameLocked || gameOpenIds.includes(cardId)) return;
+    const card = studyGame.cards.find((item) => item.id === cardId);
+    if (!card || gameMatchedPairs.includes(card.pairId)) return;
+
+    const next = [...gameOpenIds, cardId];
+    setGameOpenIds(next);
+    if (next.length < 2) return;
+
+    setGameMoves((value) => value + 1);
+    const [first, second] = next
+      .map((id) => studyGame.cards.find((item) => item.id === id))
+      .filter(Boolean);
+    if (
+      first &&
+      second &&
+      first.pairId === second.pairId &&
+      first.kind !== second.kind
+    ) {
+      setGameMatchedPairs((current) => [...current, first.pairId]);
+      setGameOpenIds([]);
+      return;
+    }
+
+    setGameLocked(true);
+    window.setTimeout(() => {
+      setGameOpenIds([]);
+      setGameLocked(false);
+    }, 650);
+  }
+
+  async function addFamilyMember() {
+    if (!familyEmail.trim()) return;
+    setFamilyBusy(true);
+    setFamilyMessage("");
+    try {
+      const next = await addInstantStudyFamilyMember(familyEmail.trim());
+      setFamily(next);
+      setFamilyEmail("");
+      setFamilyMessage("Family member added. Their own account keeps separate progress.");
+    } catch (error) {
+      setFamilyMessage(error instanceof Error ? error.message.replaceAll("_", " ") : "Could not add member.");
+    } finally {
+      setFamilyBusy(false);
+    }
+  }
+
+  async function removeFamilyMember(email: string) {
+    setFamilyBusy(true);
+    setFamilyMessage("");
+    try {
+      setFamily(await removeInstantStudyFamilyMember(email));
+    } catch (error) {
+      setFamilyMessage(error instanceof Error ? error.message.replaceAll("_", " ") : "Could not remove member.");
+    } finally {
+      setFamilyBusy(false);
+    }
   }
 
   async function createRoom() {
@@ -533,8 +698,10 @@ export function SoftwareApp() {
           {navItem("ask", view, <MessageCircle size={17}/>, "Ask", setView)}
           {navItem("review", view, <BookOpen size={17}/>, "Review", setView)}
           {navItem("insights", view, <BarChart3 size={17}/>, "Insights", setView)}
-          {navItem("audio", view, <Headphones size={17}/>, "Audio Study", setView)}
+          {navItem("audio", view, <Headphones size={17}/>, "Podcast", setView)}
+          {navItem("game", view, <Puzzle size={17}/>, "Study Game", setView)}
           {navItem("friends", view, <Users size={17}/>, "Study With Friends", setView)}
+          {navItem("family", view, <UserRoundPlus size={17}/>, "Family", setView)}
           <div className="software-nav-label">AI</div>
           {navItem("plugin", view, <Plug size={17}/>, "Plugin", setView)}
         </nav>
@@ -594,8 +761,10 @@ export function SoftwareApp() {
               <button onClick={() => setView("learn")}><Brain/><strong>Learn</strong><span>Adaptive questions</span></button>
               <button onClick={() => setView("test")}><GraduationCap/><strong>Practice Test</strong><span>Configurable exam rehearsal</span></button>
               <button onClick={() => setView("insights")}><BarChart3/><strong>Retention Insights</strong><span>Mastery, streaks and weak concepts</span></button>
-              <button onClick={() => setView("audio")}><Headphones/><strong>Audio Study</strong><span>Turn notes into a guided review</span></button>
+              <button onClick={() => setView("audio")}><Headphones/><strong>Podcast</strong><span>Two-voice conversational review</span></button>
+              <button onClick={() => setView("game")}><Puzzle/><strong>Study Game</strong><span>Match concepts from your own material</span></button>
               <button onClick={() => setView("friends")}><Users/><strong>Study With Friends</strong><span>Share a room and progress together</span></button>
+              <button onClick={() => setView("family")}><UserRoundPlus/><strong>Family</strong><span>Five independent learner accounts</span></button>
             </div>
           </section>
         )}
@@ -653,11 +822,26 @@ export function SoftwareApp() {
               )}
 
               {sourceType === "drive" && (
-                <input
-                  value={driveUrl}
-                  onChange={(event) => setDriveUrl(event.target.value)}
-                  placeholder="Paste a public Google Drive file link"
-                />
+                <div className="software-drive-import">
+                  <button
+                    type="button"
+                    disabled={!googleDrivePrivateConfigured() || busy}
+                    onClick={() => void importPrivateDrive()}
+                  >
+                    <Upload size={17}/> Choose private Drive file
+                  </button>
+                  <span>
+                    {googleDrivePrivateConfigured()
+                      ? "Google Picker uses file-scoped OAuth access."
+                      : "Private Drive needs Google Picker environment configuration."}
+                  </span>
+                  <div className="software-drive-divider">OR PUBLIC LINK</div>
+                  <input
+                    value={driveUrl}
+                    onChange={(event) => setDriveUrl(event.target.value)}
+                    placeholder="Paste a public Google Drive file link"
+                  />
+                </div>
               )}
 
               {sourceType === "scan" && (
@@ -998,7 +1182,7 @@ export function SoftwareApp() {
         {view === "audio" && (
           <section className="software-page">
             <div className="software-title-row">
-              <div><p>LISTEN & RECALL</p><h1>Audio Study</h1></div>
+              <div><p>LISTEN & RECALL</p><h1>Podcast</h1></div>
             </div>
             {!selected ? (
               <div className="software-empty"><Headphones/><strong>Select study material first.</strong><button onClick={() => setView("library")}>Open library</button></div>
@@ -1007,12 +1191,12 @@ export function SoftwareApp() {
                 <aside>
                   <Headphones size={28}/>
                   <strong>{audioStudy.title}</strong>
-                  <span>~{audioStudy.estimatedMinutes} min guided review</span>
-                  <button onClick={toggleAudioStudy}>{audioPlaying ? "Stop" : "Play audio study"}</button>
+                  <span>~{audioStudy.estimatedMinutes} min · two voices · grounded in your material</span>
+                  <button onClick={toggleAudioStudy}>{audioPlaying ? "Stop podcast" : "Play podcast"}</button>
                 </aside>
                 <article>
                   {audioStudy.segments.map((segment, index) => (
-                    <div key={`${index}-${segment.speaker}`} className={segment.speaker === "Learner" ? "recall" : ""}>
+                    <div key={`${index}-${segment.speaker}`} className={segment.speaker === "Coach" ? "recall" : ""}>
                       <span>{segment.speaker}</span>
                       <p>{segment.text}</p>
                     </div>
@@ -1020,7 +1204,45 @@ export function SoftwareApp() {
                 </article>
               </div>
             ) : (
-              <div className="software-loading">Building audio review from {selected.title}…</div>
+              <div className="software-loading">Building podcast from {selected.title}…</div>
+            )}
+          </section>
+        )}
+
+        {view === "game" && (
+          <section className="software-page">
+            <div className="software-title-row">
+              <div><p>ACTIVE RECALL GAME</p><h1>Match the knowledge.</h1></div>
+            </div>
+            {!selected ? (
+              <div className="software-empty"><Puzzle/><strong>Select study material first.</strong><button onClick={() => setView("library")}>Open library</button></div>
+            ) : studyGame ? (
+              <>
+                <div className="software-game-status">
+                  <span>{gameMatchedPairs.length} / {studyGame.pairCount} pairs</span>
+                  <strong>{gameMatchedPairs.length === studyGame.pairCount ? `Complete in ${gameMoves} moves` : `${gameMoves} moves`}</strong>
+                  <button onClick={() => { setGameOpenIds([]); setGameMatchedPairs([]); setGameMoves(0); }}>Reset</button>
+                </div>
+                <div className="software-game-grid">
+                  {studyGame.cards.map((card) => {
+                    const matched = gameMatchedPairs.includes(card.pairId);
+                    const open = matched || gameOpenIds.includes(card.id);
+                    return (
+                      <button
+                        key={card.id}
+                        className={matched ? "matched" : open ? "open" : ""}
+                        disabled={matched || gameLocked}
+                        onClick={() => chooseGameCard(card.id)}
+                      >
+                        <span>{open ? (card.kind === "prompt" ? "QUESTION" : "ANSWER") : "RECALL"}</span>
+                        <strong>{open ? card.text : "Reveal"}</strong>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="software-loading">Building a deterministic game from {selected.title}…</div>
             )}
           </section>
         )}
@@ -1080,6 +1302,52 @@ export function SoftwareApp() {
               </div>
             )}
             {roomMessage ? <div className="software-feedback">{roomMessage}</div> : null}
+          </section>
+        )}
+
+        {view === "family" && (
+          <section className="software-page">
+            <div className="software-title-row">
+              <div><p>FIVE INDEPENDENT LEARNERS</p><h1>Family</h1></div>
+            </div>
+            {familyBusy && !family ? (
+              <div className="software-loading">Loading family seats…</div>
+            ) : family ? (
+              <div className="software-family">
+                <div className="software-family-head">
+                  <div><span>SEATS</span><strong>{family.seats.used} / {family.seats.total}</strong><small>Each account keeps its own library, mastery and review schedule.</small></div>
+                </div>
+                <div className="software-family-add">
+                  <input
+                    value={familyEmail}
+                    onChange={(event) => setFamilyEmail(event.target.value)}
+                    placeholder="family.member@example.com"
+                    type="email"
+                  />
+                  <button disabled={familyBusy || !familyEmail.trim() || family.seats.remaining <= 0} onClick={() => void addFamilyMember()}>
+                    Add member
+                  </button>
+                </div>
+                <div className="software-family-members">
+                  <article><strong>{family.owner}</strong><span>Owner · Unlimited</span></article>
+                  {family.members.map((member) => (
+                    <article key={member.member_email}>
+                      <strong>{member.member_email}</strong>
+                      <span>Member · Unlimited</span>
+                      <button disabled={familyBusy} onClick={() => void removeFamilyMember(member.member_email)}>Remove</button>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="software-family-upgrade">
+                <UserRoundPlus size={32}/>
+                <h2>One plan. Five separate learning states.</h2>
+                <p>Family includes the owner plus four invited members. Everyone gets Unlimited while keeping independent progress.</p>
+                <button onClick={() => void openInstantStudyCheckout("family", true)}>Choose Family</button>
+              </div>
+            )}
+            {familyMessage ? <div className="software-feedback">{familyMessage}</div> : null}
           </section>
         )}
 

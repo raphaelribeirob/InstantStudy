@@ -1083,8 +1083,11 @@ footer > span { justify-self: center; }
 .free-round-note span { color: #77736b; font-size: 9px; line-height: 1.5; }
 
 .quizlet-pricing-grid {
-  width: min(1180px, 100%);
-  grid-template-columns: repeat(3, 1fr);
+  width: min(1280px, 100%);
+  grid-template-columns: repeat(4, 1fr);
+}
+.family-card {
+  background: linear-gradient(180deg, rgba(91,108,255,.08), rgba(242,240,234,.76));
 }
 .plus-card { background: rgba(242, 240, 234, .72); }
 .pricing-disclosure {

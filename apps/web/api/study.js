@@ -110,6 +110,50 @@ async function verifiedLearner(body) {
   }
 }
 
+async function verifiedBillingPlan(body) {
+  const learnerId = cleanId(body.learnerId);
+  if (!learnerId || ANON_ID.test(learnerId)) return "free";
+
+  const accountUserId = cleanId(body.accountUserId);
+  const accessToken = cleanId(body.accountAccessToken, 4000);
+  if (!accountUserId || !accessToken || accountUserId !== learnerId) return "free";
+
+  const payBase = String(
+    process.env.INSTANT_PAY_URL ||
+      process.env.VITE_INSTANT_PAY_URL ||
+      "https://instant-pay-gamma.vercel.app",
+  ).replace(/\/$/, "");
+
+  try {
+    const response = await fetch(
+      `${payBase}/v1/billing/entitlements?user_id=${encodeURIComponent(accountUserId)}`,
+      {
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          accept: "application/json",
+        },
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+    if (!response.ok) return "free";
+    const payload = await response.json().catch(() => ({}));
+    const active = Array.isArray(payload.entitlements)
+      ? payload.entitlements.filter((item) => item?.active === true).map((item) => String(item.key || ""))
+      : [];
+    if (
+      active.includes("instant_study.unlimited") ||
+      active.includes("instant_study.family") ||
+      active.includes("instant_study.family_member")
+    ) {
+      return "unlimited";
+    }
+    if (active.includes("instant_study.plus")) return "plus";
+    return "free";
+  } catch {
+    return "free";
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return json(res, 405, { error: "method_not_allowed" });
 
@@ -133,6 +177,8 @@ export default async function handler(req, res) {
     "material_get",
     "insights",
     "audio_study",
+    "study_game",
+    "drive_private_import",
     "room_create",
     "room_join",
     "room_get",
@@ -152,6 +198,9 @@ export default async function handler(req, res) {
         ? body.mode
         : "learn";
       const learnerId = await verifiedLearner(body);
+      const billingPlan = learnerId
+        ? await verifiedBillingPlan(body)
+        : "free";
       const maxQuestions = Number.isInteger(body.maxQuestions)
         ? Math.max(1, Math.min(Number(body.maxQuestions), 50))
         : mode === "test" ? 20 : 12;
@@ -190,6 +239,7 @@ export default async function handler(req, res) {
         title,
         mode,
         learnerId: learnerId || undefined,
+        billingPlan,
         maxQuestions,
         testDurationMinutes,
         testQuestionTypes: testQuestionTypes?.length ? testQuestionTypes : undefined,
@@ -266,6 +316,114 @@ export default async function handler(req, res) {
       const learnerId = await verifiedLearner(body);
       if (!learnerId) return json(res, 401, { error: "learner_identity_required" });
       result = await upstream(base, apiKey, "/api/v1/insights", { learnerId });
+    } else if (action === "study_game") {
+      const learnerId = await verifiedLearner(body);
+      const materialId = cleanId(body.materialId, 64);
+      if (!learnerId || !materialId) {
+        return json(res, 400, { error: "study_game_input_invalid" });
+      }
+      result = await upstream(base, apiKey, "/api/v1/study-game", {
+        learnerId,
+        materialId,
+      });
+    } else if (action === "drive_private_import") {
+      const learnerId = await verifiedLearner(body);
+      const fileId = cleanId(body.fileId, 220);
+      const accessToken = cleanId(body.googleAccessToken, 4096);
+      const requestedTitle =
+        typeof body.title === "string" ? body.title.trim().slice(0, 200) : "";
+
+      if (
+        !learnerId ||
+        !accessToken ||
+        !/^[A-Za-z0-9_-]{8,220}$/.test(fileId)
+      ) {
+        return json(res, 400, { error: "drive_private_input_invalid" });
+      }
+
+      const metadataUrl =
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,size`;
+      const metadataResponse = await fetch(metadataUrl, {
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          accept: "application/json",
+        },
+        signal: AbortSignal.timeout(20_000),
+      });
+      const metadata = await metadataResponse.json().catch(() => ({}));
+      if (!metadataResponse.ok) {
+        return json(res, metadataResponse.status === 401 ? 401 : 502, {
+          error: metadataResponse.status === 401
+            ? "google_drive_authorization_expired"
+            : "google_drive_metadata_failed",
+        });
+      }
+
+      const mimeType = String(metadata.mimeType || "");
+      const name = String(metadata.name || "Google Drive file").slice(0, 260);
+      const googleType = "application/vnd.google-apps.";
+      let downloadUrl;
+      let outputMime = mimeType;
+      let outputName = name;
+
+      if (mimeType === `${googleType}document`) {
+        outputMime = "text/plain";
+        outputName = name.endsWith(".txt") ? name : `${name}.txt`;
+        downloadUrl =
+          `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=${encodeURIComponent(outputMime)}`;
+      } else if (mimeType === `${googleType}spreadsheet`) {
+        outputMime = "text/csv";
+        outputName = name.endsWith(".csv") ? name : `${name}.csv`;
+        downloadUrl =
+          `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=${encodeURIComponent(outputMime)}`;
+      } else if (
+        mimeType === `${googleType}presentation` ||
+        mimeType === `${googleType}drawing`
+      ) {
+        outputMime = "application/pdf";
+        outputName = name.endsWith(".pdf") ? name : `${name}.pdf`;
+        downloadUrl =
+          `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=${encodeURIComponent(outputMime)}`;
+      } else if (mimeType.startsWith(googleType)) {
+        return json(res, 415, { error: "google_drive_type_not_supported" });
+      } else {
+        downloadUrl =
+          `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`;
+      }
+
+      const driveResponse = await fetch(downloadUrl, {
+        headers: { authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!driveResponse.ok) {
+        return json(res, driveResponse.status === 401 ? 401 : 502, {
+          error: driveResponse.status === 401
+            ? "google_drive_authorization_expired"
+            : "google_drive_download_failed",
+        });
+      }
+
+      const bytes = Buffer.from(await driveResponse.arrayBuffer());
+      if (bytes.length > 2_500_000) {
+        return json(res, 413, {
+          error: "google_drive_file_too_large",
+          message: "Private Drive imports are limited to 2.5 MB in this release.",
+        });
+      }
+
+      result = await upstream(base, apiKey, "/api/v1/materials/import", {
+        learnerId,
+        title: requestedTitle || name,
+        sourceType: "drive",
+        files: [
+          {
+            file_id: `drive-${fileId}`,
+            file_name: outputName,
+            mime_type: outputMime,
+            inline_base64: bytes.toString("base64"),
+          },
+        ],
+      });
     } else if (action === "audio_study") {
       const learnerId = await verifiedLearner(body);
       const materialId = cleanId(body.materialId, 64);

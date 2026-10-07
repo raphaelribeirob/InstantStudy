@@ -16,7 +16,7 @@ import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
 import { generateStudyAssets } from "./studyAssets.js";
 import { materialStore } from "./materialStore.js";
-import { buildAudioStudy } from "./offerLayer.js";
+import { buildAudioStudy, buildStudyGame } from "./offerLayer.js";
 import { studyRoomStore } from "./studyRoomStore.js";
 import {
   databaseUrl,
@@ -116,6 +116,7 @@ const prepareStudySchema = z
       .describe(
         "Stable authenticated learner/profile identifier. Supply it to preserve mastery and due reviews across sessions.",
       ),
+    billingPlan: z.enum(["free", "plus", "unlimited"]).optional(),
     mode: z.enum(["learn", "review", "quiz", "test"]).default("learn"),
     targetMinutes: z.number().int().min(1).max(180).optional(),
     maxQuestions: z.number().int().min(1).max(50).default(12),
@@ -848,8 +849,10 @@ app.get("/connection.json", (req, res) => {
       "optional audio transcription",
       "handwritten-note image transcription",
       "retention insights and streaks",
-      "audio study",
+      "conversational podcast",
+      "content-based study game",
       "study rooms",
+      "family entitlement synchronization",
       "optional Anki",
     ],
   });
@@ -967,6 +970,33 @@ app.post("/api/v1/insights", async (req, res) => {
       .object({ learnerId: z.string().min(3).max(200) })
       .parse(req.body ?? {});
     res.json(await studyEngine.insights(input.learnerId));
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/study-game", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        learnerId: z.string().min(3).max(200),
+        materialId: z.string().uuid(),
+      })
+      .parse(req.body ?? {});
+
+    const material = await materialStore.get(input.learnerId, input.materialId);
+    if (!material) {
+      res.status(404).json({ error: "material_not_found" });
+      return;
+    }
+
+    const game = buildStudyGame(material.title, material.assets);
+    if (!game.pairCount) {
+      res.status(422).json({ error: "study_game_requires_flashcards" });
+      return;
+    }
+
+    res.json(game);
   } catch (error) {
     sendApiError(res, error);
   }
@@ -1110,6 +1140,9 @@ app.post("/api/v1/study/prepare", async (req, res) => {
       ...input,
       contentText: combinedText || undefined,
     });
+    if (input.learnerId && input.billingPlan) {
+      await studyEntitlements.setPlan(input.learnerId, input.billingPlan);
+    }
     const usage = input.learnerId
       ? await studyEntitlements.consume(input.learnerId, input.mode)
       : undefined;
@@ -1480,6 +1513,12 @@ app.get("/health", (_req, res) => {
       enabled: true,
       plus: { learnRoundsPerMonth: 20, practiceTestsPerMonth: 3 },
       unlimited: { learnRoundsPerMonth: null, practiceTestsPerMonth: null },
+      family: {
+        seats: 5,
+        inheritedPlan: "unlimited",
+        learnRoundsPerMonth: null,
+        practiceTestsPerMonth: null,
+      },
     },
     security: {
       apiAuthConfigured: configuredSecret(API_KEY),

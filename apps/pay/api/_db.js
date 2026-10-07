@@ -52,6 +52,19 @@ export async function ensureSchema() {
       await q`CREATE INDEX IF NOT EXISTS billing_entitlements_email_idx ON billing_entitlements (LOWER(email))`;
       await q`CREATE INDEX IF NOT EXISTS billing_entitlements_customer_idx ON billing_entitlements (paddle_customer_id)`;
       await q`CREATE INDEX IF NOT EXISTS billing_entitlements_subscription_idx ON billing_entitlements (paddle_subscription_id)`;
+      await q`
+        CREATE TABLE IF NOT EXISTS billing_family_members (
+          owner_key TEXT NOT NULL,
+          owner_user_ref TEXT,
+          owner_email TEXT,
+          member_email TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'active',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          PRIMARY KEY (owner_key, member_email)
+        )
+      `;
+      await q`CREATE INDEX IF NOT EXISTS billing_family_members_member_idx ON billing_family_members (LOWER(member_email))`;
     })();
   }
   return schemaPromise;
@@ -136,4 +149,138 @@ export async function databaseHealthy() {
   const q = sql();
   await q`SELECT 1 AS ok`;
   return true;
+}
+
+
+function ownerKey(identity) {
+  return String(identity?.userRef || identity?.email || "").trim().toLowerCase();
+}
+
+export async function hasActiveFamilyEntitlement(identity) {
+  await ensureSchema();
+  const q = sql();
+  const rows = await q`
+    SELECT 1
+    FROM billing_entitlements
+    WHERE entitlement_key = 'instant_study.family'
+      AND active = TRUE
+      AND (
+        (${identity?.userRef || null}::text IS NOT NULL AND user_ref = ${identity?.userRef || null})
+        OR
+        (${identity?.email || null}::text IS NOT NULL AND LOWER(email) = LOWER(${identity?.email || null}))
+      )
+    LIMIT 1
+  `;
+  return rows.length > 0;
+}
+
+export async function listFamilyMembers(identity) {
+  await ensureSchema();
+  const q = sql();
+  const key = ownerKey(identity);
+  if (!key) return [];
+  return q`
+    SELECT member_email, status, created_at, updated_at
+    FROM billing_family_members
+    WHERE owner_key = ${key}
+      AND status = 'active'
+    ORDER BY created_at ASC
+  `;
+}
+
+export async function addFamilyMember(identity, memberEmail) {
+  await ensureSchema();
+  const q = sql();
+  const key = ownerKey(identity);
+  const email = String(memberEmail || "").trim().toLowerCase();
+  if (!key || !email) throw new Error("family_identity_missing");
+  if (!(await hasActiveFamilyEntitlement(identity))) {
+    const error = new Error("family_plan_required");
+    error.code = "family_plan_required";
+    throw error;
+  }
+  if (identity?.email && email === String(identity.email).toLowerCase()) {
+    const error = new Error("family_owner_cannot_invite_self");
+    error.code = "family_owner_cannot_invite_self";
+    throw error;
+  }
+
+  const countRows = await q`
+    SELECT COUNT(*)::int AS count
+    FROM billing_family_members
+    WHERE owner_key = ${key}
+      AND status = 'active'
+      AND LOWER(member_email) <> LOWER(${email})
+  `;
+  if (Number(countRows[0]?.count || 0) >= 4) {
+    const error = new Error("family_member_limit_reached");
+    error.code = "family_member_limit_reached";
+    throw error;
+  }
+
+  await q`
+    INSERT INTO billing_family_members (
+      owner_key, owner_user_ref, owner_email, member_email, status, updated_at
+    )
+    VALUES (
+      ${key},
+      ${identity?.userRef || null},
+      ${identity?.email || null},
+      ${email},
+      'active',
+      NOW()
+    )
+    ON CONFLICT (owner_key, member_email) DO UPDATE SET
+      status = 'active',
+      owner_user_ref = COALESCE(EXCLUDED.owner_user_ref, billing_family_members.owner_user_ref),
+      owner_email = COALESCE(EXCLUDED.owner_email, billing_family_members.owner_email),
+      updated_at = NOW()
+  `;
+
+  return listFamilyMembers(identity);
+}
+
+export async function removeFamilyMember(identity, memberEmail) {
+  await ensureSchema();
+  const q = sql();
+  const key = ownerKey(identity);
+  const email = String(memberEmail || "").trim().toLowerCase();
+  if (!key || !email) throw new Error("family_identity_missing");
+
+  await q`
+    UPDATE billing_family_members
+    SET status = 'removed', updated_at = NOW()
+    WHERE owner_key = ${key}
+      AND LOWER(member_email) = LOWER(${email})
+  `;
+
+  return listFamilyMembers(identity);
+}
+
+export async function familyAccessForIdentity(identity) {
+  await ensureSchema();
+  const q = sql();
+  const email = String(identity?.email || "").trim().toLowerCase();
+  if (!email) return null;
+
+  const rows = await q`
+    SELECT fm.owner_key
+    FROM billing_family_members fm
+    WHERE LOWER(fm.member_email) = LOWER(${email})
+      AND fm.status = 'active'
+      AND EXISTS (
+        SELECT 1
+        FROM billing_entitlements be
+        WHERE be.entitlement_key = 'instant_study.family'
+          AND be.active = TRUE
+          AND (
+            (fm.owner_user_ref IS NOT NULL AND be.user_ref = fm.owner_user_ref)
+            OR
+            (fm.owner_email IS NOT NULL AND LOWER(be.email) = LOWER(fm.owner_email))
+          )
+      )
+    LIMIT 1
+  `;
+
+  return rows[0] ? { ownerKey: String(rows[0].owner_key) } : null;
 }

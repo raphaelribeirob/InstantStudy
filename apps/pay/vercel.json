@@ -7,6 +7,10 @@
     {
       "source": "/v1/billing/health",
       "destination": "/api/health"
+    },
+    {
+      "source": "/v1/billing/family",
+      "destination": "/api/family"
     }
   ],
   "headers": [
