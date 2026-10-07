@@ -148,6 +148,27 @@ export function SoftwareApp() {
     [library, selectedId],
   );
 
+  function materialFromRoom(value: StudyRoom): StudyMaterial {
+    const now = new Date().toISOString();
+    return {
+      id: `room-${value.code}`,
+      learnerId: "",
+      title: value.title,
+      content: [value.summary, ...value.concepts].join("\n\n"),
+      sourceType: "paste",
+      sourceNames: [],
+      assets: {
+        summary: value.summary,
+        outline: value.concepts,
+        keyConcepts: value.concepts,
+        flashcards: [],
+        generatedBy: "study-room",
+      },
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
   const filteredLibrary = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase();
     if (!needle) return library;
@@ -442,6 +463,9 @@ export function SoftwareApp() {
       });
       setRoom(result.room);
       setRoomCode(result.room.code);
+      const shared = materialFromRoom(result.room);
+      setLibrary((current) => [shared, ...current.filter((item) => item.id !== shared.id)]);
+      setSelectedId(shared.id);
       setRoomMessage(`Joined ${result.room.title}.`);
     } catch (error) {
       setRoomMessage(error instanceof Error ? error.message : "Could not join room.");
@@ -1044,7 +1068,13 @@ export function SoftwareApp() {
                     </article>
                   ))}
                 </div>
-                <button className="software-room-study" onClick={() => { setView("learn"); void startMode("learn"); }}>
+                <button className="software-room-study" onClick={() => {
+                  const shared = materialFromRoom(room);
+                  setLibrary((current) => [shared, ...current.filter((item) => item.id !== shared.id)]);
+                  setSelectedId(shared.id);
+                  setView("learn");
+                  void startMode("learn", shared);
+                }}>
                   Study this material together
                 </button>
               </div>
