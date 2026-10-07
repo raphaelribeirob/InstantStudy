@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { neon } from "@neondatabase/serverless";
+import {
+  databaseUrl,
+  durableDatabaseRequired,
+  DurableDatabaseRequiredError,
+} from "./databasePolicy.js";
 import type { StudyAssets } from "./studyAssets.js";
 
 export type StudyMaterial = {
@@ -178,10 +183,30 @@ class NeonMaterialStore implements MaterialStore {
   }
 }
 
+class UnavailableMaterialStore implements MaterialStore {
+  private unavailable(): never {
+    throw new DurableDatabaseRequiredError();
+  }
+
+  async save(_input: Omit<StudyMaterial, "id" | "createdAt" | "updatedAt">) {
+    return this.unavailable();
+  }
+
+  async list(_learnerId: string, _query = "", _limit = 100) {
+    return this.unavailable();
+  }
+
+  async get(_learnerId: string, _id: string) {
+    return this.unavailable();
+  }
+}
+
 export function createMaterialStore(): MaterialStore {
-  const databaseUrl = process.env.DATABASE_URL?.trim();
-  return databaseUrl
-    ? new NeonMaterialStore(databaseUrl)
+  const url = databaseUrl();
+  if (url) return new NeonMaterialStore(url);
+
+  return durableDatabaseRequired()
+    ? new UnavailableMaterialStore()
     : new MemoryMaterialStore();
 }
 
