@@ -27,6 +27,12 @@ const bridge = new BridgeQueue(TIMEOUT_MS);
 const contentSessions = new ContentSessionStore();
 const studyEngine = new StudyEngine();
 const API_KEY = (process.env.INSTANTSTUDY_API_KEY ?? "").trim();
+const MCP_KEY = (
+  process.env.INSTANTSTUDY_MCP_API_KEY ??
+  process.env.INSTANTSTUDY_API_KEY ??
+  ""
+).trim();
+const ADMIN_KEY = (process.env.INSTANTSTUDY_ADMIN_API_KEY ?? "").trim();
 const PUBLIC_URL = (process.env.INSTANTSTUDY_PUBLIC_URL ?? "").replace(/\/$/, "");
 const adapty = new AdaptyClient({
   publicApiKey: process.env.ADAPTY_PUBLIC_API_KEY,
@@ -721,6 +727,14 @@ function apiAuthorized(req: express.Request) {
   return bearerMatches(req, API_KEY);
 }
 
+function mcpAuthorized(req: express.Request) {
+  return bearerMatches(req, MCP_KEY);
+}
+
+function adminAuthorized(req: express.Request) {
+  return bearerMatches(req, ADMIN_KEY);
+}
+
 function requireApiAuth(
   req: express.Request,
   res: express.Response,
@@ -728,6 +742,18 @@ function requireApiAuth(
 ) {
   if (!apiAuthorized(req)) {
     res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  next();
+}
+
+function requireAdminAuth(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+) {
+  if (!adminAuthorized(req)) {
+    res.status(401).json({ error: "admin_unauthorized" });
     return;
   }
   next();
@@ -995,7 +1021,7 @@ app.get("/api/v1/account/usage", async (req, res) => {
   }
 });
 
-app.post("/api/v1/admin/entitlement", async (req, res) => {
+app.post("/api/v1/admin/entitlement", requireAdminAuth, async (req, res) => {
   try {
     const input = z
       .object({
@@ -1171,6 +1197,8 @@ app.get("/health", (_req, res) => {
     },
     security: {
       apiAuthConfigured: configuredSecret(API_KEY),
+      mcpAuthConfigured: configuredSecret(MCP_KEY),
+      adminAuthConfigured: configuredSecret(ADMIN_KEY),
       bridgeAuthConfigured: configuredSecret(BRIDGE_TOKEN),
       corsAllowlistConfigured: allowedOrigins.size > 0,
       rateLimiting: true,
@@ -1220,6 +1248,16 @@ app.post("/bridge/result", (req, res) => {
 });
 
 app.all("/mcp", async (req, res) => {
+  if (!mcpAuthorized(req)) {
+    res.setHeader("WWW-Authenticate", 'Bearer realm="InstantStudy MCP"');
+    res.status(401).json({
+      jsonrpc: "2.0",
+      error: { code: -32001, message: "Unauthorized" },
+      id: null,
+    });
+    return;
+  }
+
   const server = createMcpServer();
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
