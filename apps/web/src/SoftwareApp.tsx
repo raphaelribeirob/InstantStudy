@@ -276,8 +276,8 @@ export function SoftwareApp() {
         setFamily(null);
         setFamilyMessage(
           error instanceof Error && error.message === "family_plan_required"
-            ? "Family plan required to manage seats."
-            : "Sign in with an Instant account to manage Family.",
+            ? t("software.familyPlanRequired")
+            : t("software.signInFamily"),
         );
       })
       .finally(() => setFamilyBusy(false));
@@ -375,7 +375,7 @@ export function SoftwareApp() {
       setFeedback(
         testMode
           ? result.submission?.done
-            ? "Practice test complete."
+            ? t("software.testComplete")
             : "Answer recorded. Test feedback stays hidden until the end."
           : result.grade?.feedback || "Answer recorded.",
       );
@@ -580,9 +580,9 @@ export function SoftwareApp() {
       const next = await addInstantStudyFamilyMember(familyEmail.trim());
       setFamily(next);
       setFamilyEmail("");
-      setFamilyMessage("Family member added. Their own account keeps separate progress.");
+      setFamilyMessage(t("software.familyAdded"));
     } catch (error) {
-      setFamilyMessage(error instanceof Error ? error.message.replaceAll("_", " ") : "Could not add member.");
+      setFamilyMessage(error instanceof Error ? error.message.replaceAll("_", " ") : t("software.familyAddFailed"));
     } finally {
       setFamilyBusy(false);
     }
@@ -594,7 +594,7 @@ export function SoftwareApp() {
     try {
       setFamily(await removeInstantStudyFamilyMember(email));
     } catch (error) {
-      setFamilyMessage(error instanceof Error ? error.message.replaceAll("_", " ") : "Could not remove member.");
+      setFamilyMessage(error instanceof Error ? error.message.replaceAll("_", " ") : t("software.familyRemoveFailed"));
     } finally {
       setFamilyBusy(false);
     }
@@ -612,9 +612,9 @@ export function SoftwareApp() {
       });
       setRoom(result.room);
       setRoomCode(result.room.code);
-      setRoomMessage("Room created. Share the code with your study partners.");
+      setRoomMessage(t("software.roomCreated"));
     } catch (error) {
-      setRoomMessage(error instanceof Error ? error.message : "Could not create room.");
+      setRoomMessage(error instanceof Error ? error.message : t("software.roomCreateFailed"));
     } finally {
       setRoomBusy(false);
     }
@@ -635,9 +635,9 @@ export function SoftwareApp() {
       const shared = materialFromRoom(result.room);
       setLibrary((current) => [shared, ...current.filter((item) => item.id !== shared.id)]);
       setSelectedId(shared.id);
-      setRoomMessage(`Joined ${result.room.title}.`);
+      setRoomMessage(t("software.roomJoined", { title: result.room.title }));
     } catch (error) {
-      setRoomMessage(error instanceof Error ? error.message : "Could not join room.");
+      setRoomMessage(error instanceof Error ? error.message : t("software.roomJoinFailed"));
     } finally {
       setRoomBusy(false);
     }
@@ -667,7 +667,7 @@ export function SoftwareApp() {
       recorderRef.current = recorder;
       setRecording(true);
     } catch {
-      setCreateError("Microphone access is unavailable. Upload an audio file instead.");
+      setCreateError(t("software.microphoneUnavailable"));
     }
   }
 
@@ -1098,31 +1098,31 @@ export function SoftwareApp() {
         {view === "review" && (
           <section className="software-page">
             <div className="software-workspace-head">
-              <div><p>RIGHT-TIME RECALL</p><h1>Review</h1></div>
+              <div><p>{t("software.rightTimeRecall")}</p><h1>{t("common.review")}</h1></div>
             </div>
             {session?.next?.concept ? (
               <div className="software-study-stage">
-                <aside><span>DUE CONCEPT</span><p>{session.next.concept.label}</p></aside>
+                <aside><span>{t("software.dueConcept")}</span><p>{session.next.concept.label}</p></aside>
                 <article>
-                  <span className="software-question-type">Review</span>
+                  <span className="software-question-type">{t("common.review")}</span>
                   <h2>{session.next.question?.prompt || session.next.concept.label}</h2>
                   {feedback ? <div className="software-feedback">{feedback}</div> : null}
-                  <textarea value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder="Recall without looking…" />
-                  <button disabled={!answer.trim() || busy} onClick={() => void submitAnswer()}>{busy ? "Evaluating…" : "Submit answer"}</button>
+                  <textarea value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder={t("software.recallPlaceholder")} />
+                  <button disabled={!answer.trim() || busy} onClick={() => void submitAnswer()}>{busy ? t("software.evaluating") : t("software.submitAnswer")}</button>
                 </article>
               </div>
             ) : (
               <div className="software-review-list">
-                {reviewBusy ? <div className="software-loading">Loading due concepts…</div> : dueReviews.length ? (
+                {reviewBusy ? <div className="software-loading">{t("software.loadingDue")}</div> : dueReviews.length ? (
                   dueReviews.map((item) => (
                     <article key={`${item.sessionId}-${item.conceptId}`}>
                       <div><strong>{item.label}</strong><p>{item.title} · mastery {Math.round(item.mastery * 100)}%</p></div>
                       <span>{dueLabel(item.nextReviewAt, t)}</span>
-                      <button onClick={() => void startReview(item)}>Review</button>
+                      <button onClick={() => void startReview(item)}>{t("common.review")}</button>
                     </article>
                   ))
                 ) : (
-                  <div className="software-empty"><CheckCircle2 size={24}/><strong>Nothing due right now.</strong><p>Due concepts will appear here from your real review schedule.</p></div>
+                  <div className="software-empty"><CheckCircle2 size={24}/><strong>{t("software.nothingDue")}</strong><p>{t("software.nothingDueBody")}</p></div>
                 )}
               </div>
             )}
@@ -1132,33 +1132,33 @@ export function SoftwareApp() {
         {view === "insights" && (
           <section className="software-page">
             <div className="software-title-row">
-              <div><p>RETENTION</p><h1>Insights</h1></div>
+              <div><p>{t("software.retentionKicker")}</p><h1>{t("common.insights")}</h1></div>
             </div>
             {insightsBusy ? (
-              <div className="software-loading">Calculating mastery and retention…</div>
+              <div className="software-loading">{t("software.calculatingRetention")}</div>
             ) : insights ? (
               <>
                 <div className="software-insight-grid">
-                  <article><span>Mastery</span><strong>{Math.round(insights.averageMastery * 100)}%</strong><small>Current average</small></article>
-                  <article><span>Retention</span><strong>{Math.round(insights.retentionScore * 100)}%</strong><small>Concepts above 70%</small></article>
-                  <article><span>Streak</span><strong>{insights.streakDays}</strong><small>Study days</small></article>
-                  <article><span>Due now</span><strong>{insights.dueNow}</strong><small>Concepts to review</small></article>
-                  <article><span>Answers</span><strong>{insights.attempts}</strong><small>Active-recall attempts</small></article>
-                  <article><span>Study time</span><strong>{insights.minutesStudied}m</strong><small>Across {insights.sessions} sessions</small></article>
+                  <article><span>{t("software.mastery")}</span><strong>{Math.round(insights.averageMastery * 100)}%</strong><small>{t("software.currentAverage")}</small></article>
+                  <article><span>{t("software.retention")}</span><strong>{Math.round(insights.retentionScore * 100)}%</strong><small>{t("software.conceptsAbove")}</small></article>
+                  <article><span>{t("software.streak")}</span><strong>{insights.streakDays}</strong><small>{t("software.studyDays")}</small></article>
+                  <article><span>{t("software.dueNow")}</span><strong>{insights.dueNow}</strong><small>{t("software.conceptsReview")}</small></article>
+                  <article><span>{t("software.answers")}</span><strong>{insights.attempts}</strong><small>{t("software.activeRecallAttempts")}</small></article>
+                  <article><span>{t("software.studyTime")}</span><strong>{insights.minutesStudied}m</strong><small>{t("software.acrossSessions", { count: insights.sessions })}</small></article>
                 </div>
 
                 <div className="software-insight-columns">
                   <article>
-                    <span>WEAK CONCEPTS</span>
+                    <span>{t("software.weakConcepts")}</span>
                     {insights.weakConcepts.length ? insights.weakConcepts.map((concept) => (
                       <div key={concept.label}>
                         <strong>{concept.label}</strong>
                         <b>{Math.round(concept.mastery * 100)}%</b>
                       </div>
-                    )) : <p>No weak concepts yet.</p>}
+                    )) : <p>{t("software.noWeak")}</p>}
                   </article>
                   <article>
-                    <span>CHARMS</span>
+                    <span>{t("software.achievements")}</span>
                     {insights.charms.map((charm) => (
                       <div key={charm.id} className={charm.unlocked ? "unlocked" : ""}>
                         <Trophy size={18}/>
@@ -1179,7 +1179,7 @@ export function SoftwareApp() {
                 </div>
               </>
             ) : (
-              <div className="software-empty"><BarChart3/><strong>No learning history yet.</strong><p>Complete a Learn, Test or Review session to populate retention insights.</p></div>
+              <div className="software-empty"><BarChart3/><strong>{t("software.noHistory")}</strong><p>{t("software.noHistoryBody")}</p></div>
             )}
           </section>
         )}
@@ -1187,17 +1187,17 @@ export function SoftwareApp() {
         {view === "audio" && (
           <section className="software-page">
             <div className="software-title-row">
-              <div><p>LISTEN & RECALL</p><h1>Podcast</h1></div>
+              <div><p>{t("software.listenRecall")}</p><h1>{t("common.podcast")}</h1></div>
             </div>
             {!selected ? (
-              <div className="software-empty"><Headphones/><strong>Select study material first.</strong><button onClick={() => setView("library")}>Open library</button></div>
+              <div className="software-empty"><Headphones/><strong>{t("software.selectMaterial")}</strong><button onClick={() => setView("library")}>{t("software.openLibrary")}</button></div>
             ) : audioStudy ? (
               <div className="software-audio-study">
                 <aside>
                   <Headphones size={28}/>
                   <strong>{audioStudy.title}</strong>
-                  <span>~{audioStudy.estimatedMinutes} min · two voices · grounded in your material</span>
-                  <button onClick={toggleAudioStudy}>{audioPlaying ? "Stop podcast" : "Play podcast"}</button>
+                  <span>~{audioStudy.estimatedMinutes} min · {t("software.podcastBody")}</span>
+                  <button onClick={toggleAudioStudy}>{audioPlaying ? t("software.stopPodcast") : t("software.playPodcast")}</button>
                 </aside>
                 <article>
                   {audioStudy.segments.map((segment, index) => (
@@ -1209,7 +1209,7 @@ export function SoftwareApp() {
                 </article>
               </div>
             ) : (
-              <div className="software-loading">Building podcast from {selected.title}…</div>
+              <div className="software-loading">{t("software.buildingPodcast", { title: selected.title })}</div>
             )}
           </section>
         )}
@@ -1217,16 +1217,16 @@ export function SoftwareApp() {
         {view === "game" && (
           <section className="software-page">
             <div className="software-title-row">
-              <div><p>ACTIVE RECALL GAME</p><h1>Match the knowledge.</h1></div>
+              <div><p>{t("software.activeRecallGame")}</p><h1>{t("software.matchKnowledge")}</h1></div>
             </div>
             {!selected ? (
-              <div className="software-empty"><Puzzle/><strong>Select study material first.</strong><button onClick={() => setView("library")}>Open library</button></div>
+              <div className="software-empty"><Puzzle/><strong>{t("software.selectMaterial")}</strong><button onClick={() => setView("library")}>{t("software.openLibrary")}</button></div>
             ) : studyGame ? (
               <>
                 <div className="software-game-status">
-                  <span>{gameMatchedPairs.length} / {studyGame.pairCount} pairs</span>
-                  <strong>{gameMatchedPairs.length === studyGame.pairCount ? `Complete in ${gameMoves} moves` : `${gameMoves} moves`}</strong>
-                  <button onClick={() => { setGameOpenIds([]); setGameMatchedPairs([]); setGameMoves(0); }}>Reset</button>
+                  <span>{t("software.pairs", { matched: gameMatchedPairs.length, total: studyGame.pairCount })}</span>
+                  <strong>{gameMatchedPairs.length === studyGame.pairCount ? t("software.completeMoves", { count: gameMoves }) : t("software.moves", { count: gameMoves })}</strong>
+                  <button onClick={() => { setGameOpenIds([]); setGameMatchedPairs([]); setGameMoves(0); }}>{t("software.reset")}</button>
                 </div>
                 <div className="software-game-grid">
                   {studyGame.cards.map((card) => {
@@ -1239,15 +1239,15 @@ export function SoftwareApp() {
                         disabled={matched || gameLocked}
                         onClick={() => chooseGameCard(card.id)}
                       >
-                        <span>{open ? (card.kind === "prompt" ? "QUESTION" : "ANSWER") : "RECALL"}</span>
-                        <strong>{open ? card.text : "Reveal"}</strong>
+                        <span>{open ? (card.kind === "prompt" ? t("software.questionCard") : t("software.answerCard")) : t("software.recall")}</span>
+                        <strong>{open ? card.text : t("software.reveal")}</strong>
                       </button>
                     );
                   })}
                 </div>
               </>
             ) : (
-              <div className="software-loading">Building a deterministic game from {selected.title}…</div>
+              <div className="software-loading">{t("software.buildingGame", { title: selected.title })}</div>
             )}
           </section>
         )}
@@ -1255,35 +1255,35 @@ export function SoftwareApp() {
         {view === "friends" && (
           <section className="software-page">
             <div className="software-title-row">
-              <div><p>STUDY TOGETHER</p><h1>Study With Friends</h1></div>
+              <div><p>{t("software.studyTogether")}</p><h1>{t("common.friends")}</h1></div>
             </div>
 
             {!room ? (
               <div className="software-room-setup">
                 <article>
                   <Users size={26}/>
-                  <h2>Create a room</h2>
+                  <h2>{t("software.createRoom")}</h2>
                   <p>Share the current material and compare study progress without exposing your account credentials.</p>
-                  <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Your name" />
+                  <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder={t("software.yourName")} />
                   <button disabled={!selected || roomBusy || !displayName.trim()} onClick={() => void createRoom()}>
-                    {roomBusy ? "Creating…" : selected ? `Create room for ${selected.title}` : "Select material first"}
+                    {roomBusy ? t("software.creating") : selected ? t("software.createRoomFor", { title: selected.title }) : t("software.selectMaterialFirst")}
                   </button>
                 </article>
                 <article>
                   <Users size={26}/>
-                  <h2>Join a room</h2>
+                  <h2>{t("software.joinRoom")}</h2>
                   <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Your name" />
-                  <input value={roomCode} onChange={(event) => setRoomCode(event.target.value.toUpperCase())} placeholder="ROOM CODE" />
+                  <input value={roomCode} onChange={(event) => setRoomCode(event.target.value.toUpperCase())} placeholder={t("software.roomCode")} />
                   <button disabled={!roomCode.trim() || roomBusy || !displayName.trim()} onClick={() => void joinRoom()}>
-                    {roomBusy ? "Joining…" : "Join room"}
+                    {roomBusy ? t("software.joining") : t("software.joinRoom")}
                   </button>
                 </article>
               </div>
             ) : (
               <div className="software-room">
                 <div className="software-room-head">
-                  <div><span>ROOM</span><strong>{room.code}</strong><small>{room.title}</small></div>
-                  <button onClick={() => navigator.clipboard?.writeText(room.code)}>Copy code</button>
+                  <div><span>{t("software.room")}</span><strong>{room.code}</strong><small>{room.title}</small></div>
+                  <button onClick={() => navigator.clipboard?.writeText(room.code)}>{t("software.copyCode")}</button>
                 </div>
                 <p>{room.summary}</p>
                 <div className="software-room-members">
@@ -1302,7 +1302,7 @@ export function SoftwareApp() {
                   setView("learn");
                   void startMode("learn", shared);
                 }}>
-                  Study this material together
+                  {t("software.studyTogetherAction")}
                 </button>
               </div>
             )}
@@ -1313,14 +1313,14 @@ export function SoftwareApp() {
         {view === "family" && (
           <section className="software-page">
             <div className="software-title-row">
-              <div><p>FIVE INDEPENDENT LEARNERS</p><h1>Family</h1></div>
+              <div><p>{t("software.familyKicker")}</p><h1>{t("common.family")}</h1></div>
             </div>
             {familyBusy && !family ? (
-              <div className="software-loading">Loading family seats…</div>
+              <div className="software-loading">{t("software.familyLoading")}</div>
             ) : family ? (
               <div className="software-family">
                 <div className="software-family-head">
-                  <div><span>SEATS</span><strong>{family.seats.used} / {family.seats.total}</strong><small>Each account keeps its own library, mastery and review schedule.</small></div>
+                  <div><span>{t("software.seats")}</span><strong>{family.seats.used} / {family.seats.total}</strong><small>{t("software.separateProgress")}</small></div>
                 </div>
                 <div className="software-family-add">
                   <input
@@ -1334,12 +1334,12 @@ export function SoftwareApp() {
                   </button>
                 </div>
                 <div className="software-family-members">
-                  <article><strong>{family.owner}</strong><span>Owner · Unlimited</span></article>
+                  <article><strong>{family.owner}</strong><span>{t("software.ownerUnlimited")}</span></article>
                   {family.members.map((member) => (
                     <article key={member.member_email}>
                       <strong>{member.member_email}</strong>
-                      <span>Member · Unlimited</span>
-                      <button disabled={familyBusy} onClick={() => void removeFamilyMember(member.member_email)}>Remove</button>
+                      <span>{t("software.memberUnlimited")}</span>
+                      <button disabled={familyBusy} onClick={() => void removeFamilyMember(member.member_email)}>{t("software.remove")}</button>
                     </article>
                   ))}
                 </div>
@@ -1347,9 +1347,9 @@ export function SoftwareApp() {
             ) : (
               <div className="software-family-upgrade">
                 <UserRoundPlus size={32}/>
-                <h2>One plan. Five separate learning states.</h2>
-                <p>Family includes the owner plus four invited members. Everyone gets Unlimited while keeping independent progress.</p>
-                <button onClick={() => void openInstantStudyCheckout("family", true)}>Choose Family</button>
+                <h2>{t("software.familyUpgradeTitle")}</h2>
+                <p>{t("software.familyUpgradeBody")}</p>
+                <button onClick={() => void openInstantStudyCheckout("family", true)}>{t("software.chooseFamily")}</button>
               </div>
             )}
             {familyMessage ? <div className="software-feedback">{familyMessage}</div> : null}
@@ -1358,7 +1358,7 @@ export function SoftwareApp() {
 
         {view === "plugin" && (
           <section className="software-page">
-            <div className="software-title-row"><div><p>PLUGIN</p><h1>Take InstantStudy into your AI.</h1></div></div>
+            <div className="software-title-row"><div><p>{t("software.pluginKicker")}</p><h1>{t("software.pluginTitle")}</h1></div></div>
             <p className="software-lead">The software and plugin use the same study engine. Learn on the desktop, then continue from the same knowledge state inside a compatible AI agent.</p>
             <div className="software-plugin-endpoint"><span>Remote MCP endpoint</span><code>{mcpUrl()}</code></div>
             <div className="software-plugin-grid">
