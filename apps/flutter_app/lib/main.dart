@@ -1254,7 +1254,7 @@ class _MetricLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      minHeight: 62,
+      constraints: const BoxConstraints(minHeight: 62),
       decoration: const BoxDecoration(
         border: Border(
           top: BorderSide(color: Color(0x2E11110F)),
@@ -1362,8 +1362,9 @@ class _GrainPainter extends CustomPainter {
     for (var index = 0; index < count; index++) {
       final xSeed = ((index * 73 + 19) % 997) / 997;
       final ySeed = ((index * 151 + 41) % 991) / 991;
-      canvas.drawPoint(
+      canvas.drawCircle(
         Offset(size.width * xSeed, size.height * ySeed),
+        .35,
         paint,
       );
     }
