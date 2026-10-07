@@ -27,3 +27,28 @@ jobs:
       - run: npm run build
       - name: Production dependency audit
         run: npm run security:audit
+
+
+  flutter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        working-directory: apps/flutter_app
+        run: flutter pub get
+
+      - name: Analyze Flutter client
+        working-directory: apps/flutter_app
+        run: flutter analyze
+
+      - name: Test Flutter client
+        working-directory: apps/flutter_app
+        run: flutter test
