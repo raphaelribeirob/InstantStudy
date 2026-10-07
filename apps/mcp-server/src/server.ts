@@ -14,6 +14,8 @@ import { StudyEngine } from "./studyEngine.js";
 import { ingestFiles } from "./ingest.js";
 import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
+import { generateStudyAssets } from "./studyAssets.js";
+import { materialStore } from "./materialStore.js";
 
 const PORT = Number.parseInt(process.env.PORT ?? "8000", 10);
 const DEVICE_ID = process.env.INSTANTSTUDY_DEVICE_ID ?? "dev-device";
@@ -45,12 +47,32 @@ const openapiSpec = readFileSync(
   "utf8",
 );
 
-const studyFileSchema = z.object({
-  download_url: z.string().url(),
-  file_id: z.string().min(1),
-  mime_type: z.string().optional(),
-  file_name: z.string().optional(),
-});
+const studyFileSchema = z
+  .object({
+    download_url: z.string().url().optional(),
+    inline_base64: z.string().min(1).max(3_500_000).optional(),
+    file_id: z.string().min(1).max(200),
+    mime_type: z.string().max(200).optional(),
+    file_name: z.string().max(300).optional(),
+  })
+  .refine(
+    (file) => Boolean(file.download_url) !== Boolean(file.inline_base64),
+    { message: "Provide exactly one of download_url or inline_base64." },
+  );
+
+
+const materialImportSchema = z
+  .object({
+    learnerId: z.string().min(3).max(200),
+    title: z.string().min(1).max(200).optional(),
+    sourceType: z.enum(["paste", "upload", "drive", "audio"]).default("paste"),
+    contentText: z.string().max(200000).optional(),
+    files: z.array(studyFileSchema).max(10).default([]),
+  })
+  .refine(
+    (input) => Boolean(input.contentText?.trim()) || input.files.length > 0,
+    { message: "Provide contentText or at least one file." },
+  );
 
 const prepareStudySchema = z
   .object({
@@ -676,7 +698,7 @@ app.use(
     maxAge: 600,
   }),
 );
-app.use(express.json({ limit: "1mb", strict: true }));
+app.use(express.json({ limit: "4mb", strict: true }));
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -816,6 +838,98 @@ app.get("/openapi.yaml", (req, res) => {
 });
 
 app.use("/api/v1", apiLimiter, requireApiAuth);
+
+app.post("/api/v1/materials/import", async (req, res) => {
+  try {
+    const input = materialImportSchema.parse(req.body ?? {});
+    const ingested = input.files.length
+      ? await ingestFiles(input.files)
+      : { text: "", files: [] };
+    const content = [input.contentText?.trim(), ingested.text.trim()]
+      .filter(Boolean)
+      .join("\n\n")
+      .slice(0, 200000);
+
+    if (!content) {
+      res.status(422).json({
+        error: "material_has_no_text",
+        ingestion: ingested.files,
+      });
+      return;
+    }
+
+    const assets = generateStudyAssets(content);
+    const material = await materialStore.save({
+      learnerId: input.learnerId,
+      title:
+        input.title?.trim() ||
+        input.files[0]?.file_name?.trim() ||
+        "Untitled study material",
+      content,
+      sourceType: input.sourceType,
+      sourceNames: input.files
+        .map((file) => file.file_name?.trim())
+        .filter((name): name is string => Boolean(name)),
+      assets,
+    });
+
+    res.json({ material, ingestion: ingested.files });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/materials/list", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        learnerId: z.string().min(3).max(200),
+        query: z.string().max(200).default(""),
+        limit: z.number().int().min(1).max(100).default(50),
+      })
+      .parse(req.body ?? {});
+
+    const materials = await materialStore.list(
+      input.learnerId,
+      input.query,
+      input.limit,
+    );
+    res.json({ materials });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/materials/get", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        learnerId: z.string().min(3).max(200),
+        id: z.string().uuid(),
+      })
+      .parse(req.body ?? {});
+
+    const material = await materialStore.get(input.learnerId, input.id);
+    if (!material) {
+      res.status(404).json({ error: "material_not_found" });
+      return;
+    }
+    res.json({ material });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/assets/generate", async (req, res) => {
+  try {
+    const input = z
+      .object({ contentText: z.string().min(1).max(200000) })
+      .parse(req.body ?? {});
+    res.json(generateStudyAssets(input.contentText));
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
 
 app.post("/api/v1/study/prepare", async (req, res) => {
   try {
