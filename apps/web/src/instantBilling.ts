@@ -71,3 +71,48 @@ export async function openInstantStudyCheckout(plan: 'plus' | 'unlimited' | 'fam
   window.location.assign(url.toString());
   return true;
 }
+
+
+export type InstantStudyFamily = {
+  owner: string;
+  seats: { total: number; used: number; remaining: number };
+  members: Array<{
+    member_email: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+  }>;
+};
+
+async function familyRequest(method: "GET" | "POST" | "DELETE", email?: string) {
+  const session = readInstantAccountSession();
+  if (!session) throw new Error("instant_account_required");
+
+  const response = await fetch("/api/family", {
+    method,
+    headers: {
+      accept: "application/json",
+      authorization: "Bearer " + session.accessToken,
+      ...(method === "GET" ? {} : { "content-type": "application/json" }),
+    },
+    body: method === "GET" ? undefined : JSON.stringify({ email }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(String(payload.error || "family_request_failed"));
+  }
+  return payload as InstantStudyFamily;
+}
+
+export function getInstantStudyFamily() {
+  return familyRequest("GET");
+}
+
+export function addInstantStudyFamilyMember(email: string) {
+  return familyRequest("POST", email);
+}
+
+export function removeInstantStudyFamilyMember(email: string) {
+  return familyRequest("DELETE", email);
+}
