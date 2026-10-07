@@ -883,7 +883,7 @@ export function SoftwareApp() {
               <div>
                 <span>
                   {sourceType === "paste"
-                    ? t("software.characters", { count: draft.length.toLocaleString(i18n.language) })
+                    ? t("software.characters", { value: draft.length.toLocaleString(i18n.language) })
                     : t("software.webUploadLimit")
                 </span>
                 <button disabled={!hasCreateInput || busy} onClick={() => void createMaterial()}>
