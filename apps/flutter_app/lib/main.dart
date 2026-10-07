@@ -483,8 +483,11 @@ class _StudyHomeState extends State<StudyHome> {
         policy is Map ? policy['type']?.toString() ?? 'adaptive' : 'adaptive';
 
     return _DarkStudyScene(
-      eyebrow:
-          'QUESTION ${_next?['questionIndex'] ?? '–'} OF ${_next?['totalPlanned'] ?? '–'} · ${type.toUpperCase()}',
+      eyebrow: context.tr('questionProgress', {
+        'current': _next?['questionIndex'] ?? '–',
+        'total': _next?['totalPlanned'] ?? '–',
+        'type': type.toUpperCase(),
+      }),
       title: prompt,
       feedback: _feedback,
       child: _choices.isNotEmpty
@@ -688,6 +691,14 @@ class _StudyHomeState extends State<StudyHome> {
                   onInsights: _showInsights,
                   onPodcast: _materialId == null ? null : _showPodcast,
                   onGame: _materialId == null ? null : _showGame,
+                  onLanguage: () {
+                    final locale = Localizations.localeOf(context);
+                    widget.onLocaleChanged(
+                      locale.languageCode == 'pt'
+                          ? const Locale('en')
+                          : const Locale('pt', 'BR'),
+                    );
+                  },
                 ),
                 Expanded(
                   child: ListView(
@@ -760,6 +771,7 @@ class _ProductMasthead extends StatelessWidget {
     required this.onInsights,
     required this.onPodcast,
     required this.onGame,
+    required this.onLanguage,
   });
 
   final Color primary;
@@ -768,6 +780,7 @@ class _ProductMasthead extends StatelessWidget {
   final VoidCallback onInsights;
   final VoidCallback? onPodcast;
   final VoidCallback? onGame;
+  final VoidCallback onLanguage;
 
   @override
   Widget build(BuildContext context) {
@@ -783,9 +796,9 @@ class _ProductMasthead extends StatelessWidget {
         children: [
           _InstantOrb(primary: primary, secondary: secondary, size: 28),
           const SizedBox(width: 10),
-          const Text(
-            'InstantStudy™',
-            style: TextStyle(
+          Text(
+            context.tr('product'),
+            style: const TextStyle(
               color: InstantStudyApp.ink,
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -802,9 +815,9 @@ class _ProductMasthead extends StatelessWidget {
                 side: BorderSide(color: Color(0x2E11110F)),
               ),
             ),
-            child: const Text(
-              'Insights',
-              style: TextStyle(fontSize: 10, letterSpacing: .4),
+            child: Text(
+              context.tr('insights'),
+              style: const TextStyle(fontSize: 10, letterSpacing: .4),
             ),
           ),
           IconButton(
@@ -816,6 +829,11 @@ class _ProductMasthead extends StatelessWidget {
             tooltip: context.tr('studyGame'),
             onPressed: busy ? null : onGame,
             icon: const Icon(Icons.extension_outlined, size: 18),
+          ),
+          IconButton(
+            tooltip: context.tr('language'),
+            onPressed: busy ? null : onLanguage,
+            icon: const Icon(Icons.language, size: 18),
           ),
         ],
       ),
@@ -924,7 +942,7 @@ class _ModeRail extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  mode.toUpperCase(),
+                  context.tr(mode),
                   style: TextStyle(
                     color: active
                         ? InstantStudyApp.paper
