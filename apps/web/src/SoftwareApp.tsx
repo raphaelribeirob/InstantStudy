@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   BookOpen,
   Brain,
@@ -107,7 +108,7 @@ function navItem(view: View, active: View, icon: ReactNode, label: string, setVi
   );
 }
 
-function dueLabel(value: string, t: (key: string, options?: Record<string, unknown>) => string) {
+function dueLabel(value: string, t: TFunction) {
   const date = new Date(value);
   const delta = date.getTime() - Date.now();
   if (delta <= 0) return t("software.dueNow");
@@ -1116,7 +1117,7 @@ export function SoftwareApp() {
                   dueReviews.map((item) => (
                     <article key={`${item.sessionId}-${item.conceptId}`}>
                       <div><strong>{item.label}</strong><p>{item.title} · mastery {Math.round(item.mastery * 100)}%</p></div>
-                      <span>{dueLabel(item.nextReviewAt)}</span>
+                      <span>{dueLabel(item.nextReviewAt, t)}</span>
                       <button onClick={() => void startReview(item)}>Review</button>
                     </article>
                   ))
