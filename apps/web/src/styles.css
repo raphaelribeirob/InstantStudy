@@ -1187,3 +1187,44 @@ footer > span { justify-self: center; }
     transition: none !important;
   }
 }
+
+
+.language-switcher{
+  display:inline-flex;
+  align-items:center;
+  gap:2px;
+  padding:3px;
+  border:1px solid rgba(17,17,15,.18);
+  border-radius:999px;
+  background:rgba(242,240,234,.72);
+}
+.language-switcher button{
+  border:0;
+  border-radius:999px;
+  background:transparent;
+  color:#6e6b64;
+  min-width:34px;
+  height:28px;
+  padding:0 9px;
+  font:600 10px/1 Inter,system-ui,sans-serif;
+  letter-spacing:.06em;
+  cursor:pointer;
+}
+.language-switcher button.active{
+  background:#11110f;
+  color:#f2f0ea;
+}
+.language-switcher.compact{
+  flex:0 0 auto;
+}
+.sr-only{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  padding:0!important;
+  margin:-1px!important;
+  overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;
+  white-space:nowrap!important;
+  border:0!important;
+}

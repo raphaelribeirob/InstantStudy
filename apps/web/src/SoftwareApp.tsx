@@ -1,4 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   BookOpen,
   Brain,
@@ -50,6 +52,7 @@ import {
   type TestQuestionType,
 } from "./study";
 import { agentPresets, mcpUrl } from "./connection";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 import {
   googleDrivePrivateConfigured,
   pickPrivateGoogleDriveFile,
@@ -105,16 +108,17 @@ function navItem(view: View, active: View, icon: ReactNode, label: string, setVi
   );
 }
 
-function dueLabel(value: string) {
+function dueLabel(value: string, t: TFunction) {
   const date = new Date(value);
   const delta = date.getTime() - Date.now();
-  if (delta <= 0) return "Due now";
+  if (delta <= 0) return t("software.dueNow");
   const days = Math.ceil(delta / 86_400_000);
-  if (days <= 1) return "Tomorrow";
-  return `In ${days} days`;
+  if (days <= 1) return t("software.dueTomorrow");
+  return t("software.dueInDays", { count: days });
 }
 
 export function SoftwareApp() {
+  const { t, i18n } = useTranslation();
   const cached = readCachedLibrary();
   const [view, setView] = useState<View>("home");
   const [library, setLibrary] = useState<StudyMaterial[]>(cached);
@@ -272,8 +276,8 @@ export function SoftwareApp() {
         setFamily(null);
         setFamilyMessage(
           error instanceof Error && error.message === "family_plan_required"
-            ? "Family plan required to manage seats."
-            : "Sign in with an Instant account to manage Family.",
+            ? t("software.familyPlanRequired")
+            : t("software.signInFamily"),
         );
       })
       .finally(() => setFamilyBusy(false));
@@ -371,7 +375,7 @@ export function SoftwareApp() {
       setFeedback(
         testMode
           ? result.submission?.done
-            ? "Practice test complete."
+            ? t("software.testComplete")
             : "Answer recorded. Test feedback stays hidden until the end."
           : result.grade?.feedback || "Answer recorded.",
       );
@@ -576,9 +580,9 @@ export function SoftwareApp() {
       const next = await addInstantStudyFamilyMember(familyEmail.trim());
       setFamily(next);
       setFamilyEmail("");
-      setFamilyMessage("Family member added. Their own account keeps separate progress.");
+      setFamilyMessage(t("software.familyAdded"));
     } catch (error) {
-      setFamilyMessage(error instanceof Error ? error.message.replaceAll("_", " ") : "Could not add member.");
+      setFamilyMessage(error instanceof Error ? error.message.replaceAll("_", " ") : t("software.familyAddFailed"));
     } finally {
       setFamilyBusy(false);
     }
@@ -590,7 +594,7 @@ export function SoftwareApp() {
     try {
       setFamily(await removeInstantStudyFamilyMember(email));
     } catch (error) {
-      setFamilyMessage(error instanceof Error ? error.message.replaceAll("_", " ") : "Could not remove member.");
+      setFamilyMessage(error instanceof Error ? error.message.replaceAll("_", " ") : t("software.familyRemoveFailed"));
     } finally {
       setFamilyBusy(false);
     }
@@ -608,9 +612,9 @@ export function SoftwareApp() {
       });
       setRoom(result.room);
       setRoomCode(result.room.code);
-      setRoomMessage("Room created. Share the code with your study partners.");
+      setRoomMessage(t("software.roomCreated"));
     } catch (error) {
-      setRoomMessage(error instanceof Error ? error.message : "Could not create room.");
+      setRoomMessage(error instanceof Error ? error.message : t("software.roomCreateFailed"));
     } finally {
       setRoomBusy(false);
     }
@@ -631,9 +635,9 @@ export function SoftwareApp() {
       const shared = materialFromRoom(result.room);
       setLibrary((current) => [shared, ...current.filter((item) => item.id !== shared.id)]);
       setSelectedId(shared.id);
-      setRoomMessage(`Joined ${result.room.title}.`);
+      setRoomMessage(t("software.roomJoined", { title: result.room.title }));
     } catch (error) {
-      setRoomMessage(error instanceof Error ? error.message : "Could not join room.");
+      setRoomMessage(error instanceof Error ? error.message : t("software.roomJoinFailed"));
     } finally {
       setRoomBusy(false);
     }
@@ -663,7 +667,7 @@ export function SoftwareApp() {
       recorderRef.current = recorder;
       setRecording(true);
     } catch {
-      setCreateError("Microphone access is unavailable. Upload an audio file instead.");
+      setCreateError(t("software.microphoneUnavailable"));
     }
   }
 
@@ -684,32 +688,32 @@ export function SoftwareApp() {
         </a>
 
         <button className="software-create" onClick={() => setView("create")}>
-          <FilePlus2 size={17}/> Create
+          <FilePlus2 size={17}/> {t("common.create")}
         </button>
 
         <nav>
-          {navItem("home", view, <Home size={17}/>, "Home", setView)}
-          {navItem("library", view, <Library size={17}/>, "Library", setView)}
-          <div className="software-nav-label">STUDY</div>
-          {navItem("guide", view, <BookOpen size={17}/>, "Study Guide", setView)}
-          {navItem("flashcards", view, <FileText size={17}/>, "Flashcards", setView)}
-          {navItem("learn", view, <Brain size={17}/>, "Learn", setView)}
-          {navItem("test", view, <GraduationCap size={17}/>, "Practice Test", setView)}
-          {navItem("ask", view, <MessageCircle size={17}/>, "Ask", setView)}
-          {navItem("review", view, <BookOpen size={17}/>, "Review", setView)}
-          {navItem("insights", view, <BarChart3 size={17}/>, "Insights", setView)}
-          {navItem("audio", view, <Headphones size={17}/>, "Podcast", setView)}
-          {navItem("game", view, <Puzzle size={17}/>, "Study Game", setView)}
-          {navItem("friends", view, <Users size={17}/>, "Study With Friends", setView)}
-          {navItem("family", view, <UserRoundPlus size={17}/>, "Family", setView)}
-          <div className="software-nav-label">AI</div>
-          {navItem("plugin", view, <Plug size={17}/>, "Plugin", setView)}
+          {navItem("home", view, <Home size={17}/>, t("common.home"), setView)}
+          {navItem("library", view, <Library size={17}/>, t("common.library"), setView)}
+          <div className="software-nav-label">{t("software.study")}</div>
+          {navItem("guide", view, <BookOpen size={17}/>, t("common.guide"), setView)}
+          {navItem("flashcards", view, <FileText size={17}/>, t("common.flashcards"), setView)}
+          {navItem("learn", view, <Brain size={17}/>, t("common.learn"), setView)}
+          {navItem("test", view, <GraduationCap size={17}/>, t("common.test"), setView)}
+          {navItem("ask", view, <MessageCircle size={17}/>, t("common.ask"), setView)}
+          {navItem("review", view, <BookOpen size={17}/>, t("common.review"), setView)}
+          {navItem("insights", view, <BarChart3 size={17}/>, t("common.insights"), setView)}
+          {navItem("audio", view, <Headphones size={17}/>, t("common.podcast"), setView)}
+          {navItem("game", view, <Puzzle size={17}/>, t("common.studyGame"), setView)}
+          {navItem("friends", view, <Users size={17}/>, t("common.friends"), setView)}
+          {navItem("family", view, <UserRoundPlus size={17}/>, t("common.family"), setView)}
+          <div className="software-nav-label">{t("software.ai")}</div>
+          {navItem("plugin", view, <Plug size={17}/>, t("common.plugin"), setView)}
         </nav>
 
         <div className="software-plan">
-          <span>InstantStudy Free</span>
-          <small>Upgrade removes Learn and Test limits.</small>
-          <a href="/#pricing">View plans</a>
+          <span>{t("software.freePlan")}</span>
+          <small>{t("software.upgradeLimits")}</small>
+          <a href="/#pricing">{t("software.viewPlans")}</a>
         </div>
       </aside>
 
@@ -723,55 +727,56 @@ export function SoftwareApp() {
               onKeyDown={(event) => {
                 if (event.key === "Enter") void searchLibrary();
               }}
-              placeholder="Search your study library"
+              placeholder={t("software.searchLibrary")}
             />
           </div>
-          <span className="software-sync"><CheckCircle2 size={14}/> Persistent learning state</span>
+          <LanguageSwitcher compact />
+          <span className="software-sync"><CheckCircle2 size={14}/> {t("software.persistentState")}</span>
         </header>
 
         {view === "home" && (
           <section className="software-page">
             <div className="software-hero">
-              <p>THE FUTURE OF LEARNING</p>
-              <h1>What do you want to learn?</h1>
-              <span>Turn any material into study guides, flashcards, adaptive Learn, tests and real due review.</span>
-              <button onClick={() => setView("create")}><Sparkles size={17}/> Create from your material</button>
+              <p>{t("software.futureLearning")}</p>
+              <h1>{t("software.homeTitle")}</h1>
+              <span>{t("software.homeBody")}</span>
+              <button onClick={() => setView("create")}><Sparkles size={17}/> {t("software.createMaterial")}</button>
             </div>
 
-            <div className="software-section-head"><h2>Continue studying</h2><button onClick={() => setView("library")}>View library</button></div>
+            <div className="software-section-head"><h2>{t("software.continueStudying")}</h2><button onClick={() => setView("library")}>{t("software.viewLibrary")}</button></div>
             <div className="software-library-grid">
               {filteredLibrary.length ? filteredLibrary.slice(0, 6).map((item) => (
                 <button className="software-material-card" key={item.id} onClick={() => openMaterial(item)}>
                   <span><FileText size={18}/></span>
                   <strong>{item.title}</strong>
-                  <small>{new Date(item.updatedAt || item.createdAt).toLocaleDateString()}</small>
+                  <small>{new Date(item.updatedAt || item.createdAt).toLocaleDateString(i18n.language)}</small>
                 </button>
               )) : (
                 <div className="software-empty">
                   <Upload size={24}/>
-                  <strong>Your library starts with one source.</strong>
-                  <p>Paste text, upload a file, use a public Drive link or record a lecture.</p>
+                  <strong>{t("software.libraryEmptyTitle")}</strong>
+                  <p>{t("software.libraryEmptyBody")}</p>
                 </div>
               )}
             </div>
 
             <div className="software-feature-grid">
-              <button onClick={() => setView("guide")}><BookOpen/><strong>Study Guide</strong><span>Summary + key ideas</span></button>
-              <button onClick={() => setView("flashcards")}><FileText/><strong>Flashcards</strong><span>Semantic active recall</span></button>
-              <button onClick={() => setView("learn")}><Brain/><strong>Learn</strong><span>Adaptive questions</span></button>
-              <button onClick={() => setView("test")}><GraduationCap/><strong>Practice Test</strong><span>Configurable exam rehearsal</span></button>
+              <button onClick={() => setView("guide")}><BookOpen/><strong>{t("common.guide")}</strong><span>{t("software.guideDetail")}</span></button>
+              <button onClick={() => setView("flashcards")}><FileText/><strong>{t("common.flashcards")}</strong><span>{t("software.flashcardsDetail")}</span></button>
+              <button onClick={() => setView("learn")}><Brain/><strong>{t("common.learn")}</strong><span>{t("software.learnDetail")}</span></button>
+              <button onClick={() => setView("test")}><GraduationCap/><strong>{t("common.test")}</strong><span>{t("software.testDetail")}</span></button>
               <button onClick={() => setView("insights")}><BarChart3/><strong>Retention Insights</strong><span>Mastery, streaks and weak concepts</span></button>
-              <button onClick={() => setView("audio")}><Headphones/><strong>Podcast</strong><span>Two-voice conversational review</span></button>
-              <button onClick={() => setView("game")}><Puzzle/><strong>Study Game</strong><span>Match concepts from your own material</span></button>
-              <button onClick={() => setView("friends")}><Users/><strong>Study With Friends</strong><span>Share a room and progress together</span></button>
-              <button onClick={() => setView("family")}><UserRoundPlus/><strong>Family</strong><span>Five independent learner accounts</span></button>
+              <button onClick={() => setView("audio")}><Headphones/><strong>{t("common.podcast")}</strong><span>{t("software.podcastBody")}</span></button>
+              <button onClick={() => setView("game")}><Puzzle/><strong>{t("common.studyGame")}</strong><span>{t("software.matchKnowledge")}</span></button>
+              <button onClick={() => setView("friends")}><Users/><strong>{t("common.friends")}</strong><span>{t("software.studyTogether")}</span></button>
+              <button onClick={() => setView("family")}><UserRoundPlus/><strong>{t("common.family")}</strong><span>{t("software.familyKicker")}</span></button>
             </div>
           </section>
         )}
 
         {view === "library" && (
           <section className="software-page">
-            <div className="software-title-row"><div><p>YOUR MATERIAL</p><h1>Library</h1></div><button onClick={() => setView("create")}>Create</button></div>
+            <div className="software-title-row"><div><p>{t("software.yourMaterial")}</p><h1>{t("software.titleLibrary")}</h1></div><button onClick={() => setView("create")}>{t("common.create")}</button></div>
             <div className="software-library-list">
               {filteredLibrary.map((item) => (
                 <button key={item.id} onClick={() => openMaterial(item)}>
@@ -786,7 +791,7 @@ export function SoftwareApp() {
 
         {view === "create" && (
           <section className="software-page software-create-page">
-            <div className="software-title-row"><div><p>CREATE</p><h1>Turn material into learning.</h1></div></div>
+            <div className="software-title-row"><div><p>{t("software.createKicker")}</p><h1>{t("software.createTitle")}</h1></div></div>
             <div className="software-import-tabs">
               {(["paste","upload","drive","audio","scan"] as SourceType[]).map((type) => (
                 <button
@@ -797,21 +802,21 @@ export function SoftwareApp() {
                     setCreateError("");
                   }}
                 >
-                  {type === "paste" ? "Paste text" : type === "upload" ? "Upload files" : type === "drive" ? "Google Drive" : type === "audio" ? "Record audio" : "Scan notes"}
+                  {type === "paste" ? t("landing.paste") : type === "upload" ? t("landing.upload") : type === "drive" ? t("landing.drive") : type === "audio" ? t("landing.audio") : t("landing.scan")}
                 </button>
               ))}
             </div>
             <div className="software-editor">
-              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("software.titleOptional")} />
 
               {sourceType === "paste" && (
-                <textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Paste notes, a reading, lecture transcript, or anything you need to learn…" />
+                <textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("software.pastePlaceholder")} />
               )}
 
               {sourceType === "upload" && (
                 <label className="software-upload-control">
                   <Upload size={20}/>
-                  <strong>{selectedFiles.length ? selectedFiles.map((file) => file.name).join(", ") : "Choose PDF, DOCX, PPTX or text files"}</strong>
+                  <strong>{selectedFiles.length ? selectedFiles.map((file) => file.name).join(", ") : t("software.chooseUpload")}</strong>
                   <input
                     type="file"
                     multiple
@@ -828,18 +833,18 @@ export function SoftwareApp() {
                     disabled={!googleDrivePrivateConfigured() || busy}
                     onClick={() => void importPrivateDrive()}
                   >
-                    <Upload size={17}/> Choose private Drive file
+                    <Upload size={17}/> {t("software.privateDrive")}
                   </button>
                   <span>
                     {googleDrivePrivateConfigured()
-                      ? "Google Picker uses file-scoped OAuth access."
-                      : "Private Drive needs Google Picker environment configuration."}
+                      ? t("software.driveScoped")
+                      : t("software.driveConfig")}
                   </span>
-                  <div className="software-drive-divider">OR PUBLIC LINK</div>
+                  <div className="software-drive-divider">{t("software.publicLink")}</div>
                   <input
                     value={driveUrl}
                     onChange={(event) => setDriveUrl(event.target.value)}
-                    placeholder="Paste a public Google Drive file link"
+                    placeholder={t("software.publicDrivePlaceholder")}
                   />
                 </div>
               )}
@@ -847,8 +852,8 @@ export function SoftwareApp() {
               {sourceType === "scan" && (
                 <label className="software-upload-control">
                   <Camera size={20}/>
-                  <strong>{selectedFiles[0]?.name || "Take a photo or choose handwritten notes"}</strong>
-                  <span>Image text is transcribed, then converted into the same study system.</span>
+                  <strong>{selectedFiles[0]?.name || t("software.scanPrompt")}</strong>
+                  <span>{t("software.scanDetail")}</span>
                   <input
                     type="file"
                     accept="image/*,.png,.jpg,.jpeg,.webp"
@@ -861,10 +866,10 @@ export function SoftwareApp() {
               {sourceType === "audio" && (
                 <div className="software-audio-import">
                   <button type="button" onClick={() => void toggleRecording()}>
-                    <Mic size={17}/> {recording ? "Stop recording" : "Record lecture"}
+                    <Mic size={17}/> {recording ? t("software.stopRecording") : t("software.recordLecture")}
                   </button>
                   <label>
-                    Or upload audio
+                    {t("software.uploadAudio")}
                     <input
                       type="file"
                       accept="audio/*,.mp3,.m4a,.wav,.webm,.ogg"
@@ -879,20 +884,20 @@ export function SoftwareApp() {
               <div>
                 <span>
                   {sourceType === "paste"
-                    ? `${draft.length.toLocaleString()} / 200,000 characters`
-                    : "Web uploads: up to 2.5 MB per file"}
+                    ? t("software.characters", { value: draft.length.toLocaleString(i18n.language) })
+                    : t("software.webUploadLimit")}
                 </span>
                 <button disabled={!hasCreateInput || busy} onClick={() => void createMaterial()}>
-                  {busy ? "Building…" : "Generate study material"}
+                  {busy ? t("software.building") : t("software.generateMaterial")}
                 </button>
               </div>
             </div>
             <div className="software-output-preview">
-              <span>FROM ONE SOURCE</span>
-              <div><strong>Study Guide</strong><small>Summary + outline + concepts</small></div>
-              <div><strong>Flashcards</strong><small>Question/answer active recall</small></div>
-              <div><strong>Learn</strong><small>Concrete adaptive questions</small></div>
-              <div><strong>Practice Test</strong><small>Question mix + timer + final score</small></div>
+              <span>{t("software.fromOneSource")}</span>
+              <div><strong>{t("common.guide")}</strong><small>{t("software.guideDetail")}</small></div>
+              <div><strong>{t("common.flashcards")}</strong><small>{t("software.flashcardsDetail")}</small></div>
+              <div><strong>{t("common.learn")}</strong><small>{t("software.learnDetail")}</small></div>
+              <div><strong>{t("common.test")}</strong><small>{t("software.testDetail")}</small></div>
             </div>
           </section>
         )}
@@ -900,33 +905,33 @@ export function SoftwareApp() {
         {["guide","flashcards","learn","test","ask"].includes(view) && (
           <section className="software-page">
             {!selected ? (
-              <div className="software-empty large"><Brain size={28}/><h2>Add study material first.</h2><button onClick={() => setView("create")}>Create material</button></div>
+              <div className="software-empty large"><Brain size={28}/><h2>{t("software.addMaterialFirst")}</h2><button onClick={() => setView("create")}>{t("software.createMaterial")}</button></div>
             ) : (
               <>
                 <div className="software-workspace-head">
-                  <div><p>{selected.title}</p><h1>{view === "test" ? "Practice Test" : view[0].toUpperCase() + view.slice(1)}</h1></div>
+                  <div><p>{selected.title}</p><h1>{view === "test" ? t("common.test") : view === "guide" ? t("common.guide") : view === "flashcards" ? t("common.flashcards") : view === "learn" ? t("common.learn") : t("common.ask")}</h1></div>
                   <div className="software-mode-switch">
-                    <button onClick={() => setView("guide")}>Guide</button>
-                    <button onClick={() => setView("flashcards")}>Flashcards</button>
-                    <button onClick={() => { setView("learn"); void startMode("learn"); }}>Learn</button>
-                    <button onClick={() => { setView("test"); setSession(null); setSummary(null); }}>Test</button>
-                    <button onClick={() => setView("ask")}>Ask</button>
+                    <button onClick={() => setView("guide")}>{t("common.guide")}</button>
+                    <button onClick={() => setView("flashcards")}>{t("common.flashcards")}</button>
+                    <button onClick={() => { setView("learn"); void startMode("learn"); }}>{t("common.learn")}</button>
+                    <button onClick={() => { setView("test"); setSession(null); setSummary(null); }}>{t("common.test")}</button>
+                    <button onClick={() => setView("ask")}>{t("common.ask")}</button>
                   </div>
                 </div>
 
                 {view === "guide" && (
                   <div className="software-guide">
                     <article>
-                      <span>SUMMARY</span>
+                      <span>{t("software.summary")}</span>
                       <h2>{selected.title}</h2>
                       <p>{selected.assets.summary}</p>
                     </article>
                     <aside>
-                      <span>KEY IDEAS</span>
+                      <span>{t("software.keyIdeas")}</span>
                       {selected.assets.outline.map((idea, index) => (
                         <div key={`${index}-${idea}`}><b>{String(index + 1).padStart(2, "0")}</b><p>{idea}</p></div>
                       ))}
-                      <span>KEY CONCEPTS</span>
+                      <span>{t("software.keyConcepts")}</span>
                       <p>{selected.assets.keyConcepts.join(" · ")}</p>
                     </aside>
                   </div>
@@ -945,7 +950,7 @@ export function SoftwareApp() {
                         }}
                       >
                         <span>{flippedCard === card.id ? card.concept : card.front}</span>
-                        <p>{flippedCard === card.id ? card.back : "Click to reveal"}</p>
+                        <p>{flippedCard === card.id ? card.back : t("software.clickReveal")}</p>
                       </article>
                     ))}
                   </div>
@@ -953,15 +958,15 @@ export function SoftwareApp() {
 
                 {view === "test" && !session && !busy && !summary && (
                   <div className="software-test-builder">
-                    <h2>Build your practice test</h2>
+                    <h2>{t("software.buildTest")}</h2>
                     <label>
-                      Questions
+                      {t("software.questions")}
                       <select value={testQuestions} onChange={(event) => setTestQuestions(Number(event.target.value))}>
                         {[10,20,30,40].map((count) => <option key={count} value={count}>{count}</option>)}
                       </select>
                     </label>
                     <label>
-                      Time limit
+                      {t("software.timeLimit")}
                       <select value={testDuration} onChange={(event) => setTestDuration(Number(event.target.value))}>
                         {[15,30,45,60,90].map((minutes) => <option key={minutes} value={minutes}>{minutes} min</option>)}
                       </select>
@@ -977,40 +982,40 @@ export function SoftwareApp() {
                         </button>
                       ))}
                     </div>
-                    <button onClick={() => void startMode("test")}>Start practice test</button>
+                    <button onClick={() => void startMode("test")}>{t("software.startTest")}</button>
                   </div>
                 )}
 
                 {(view === "learn" || view === "test") && (session || busy || summary) && (
                   <div className="software-study-stage">
                     <aside>
-                      <span>STUDY GUIDE</span>
+                      <span>{t("software.studyGuide")}</span>
                       <p>{selected.assets.summary}</p>
                     </aside>
                     <article>
-                      {busy ? <div className="software-loading">Building your adaptive session…</div> : summary ? (
+                      {busy ? <div className="software-loading">{t("software.buildingSession")}</div> : summary ? (
                         <div className="software-test-result">
-                          <span>SESSION COMPLETE</span>
-                          <h2>{summary.testResult ? `${summary.testResult.scorePercent ?? 0}%` : "Round complete"}</h2>
+                          <span>{t("software.sessionComplete")}</span>
+                          <h2>{summary.testResult ? `${summary.testResult.scorePercent ?? 0}%` : t("software.roundComplete")}</h2>
                           <p>
                             {summary.testResult
                               ? `${summary.testResult.answered ?? 0} of ${summary.testResult.totalQuestions ?? testQuestions} questions answered.`
-                              : `Average mastery: ${Math.round((summary.averageMastery ?? 0) * 100)}%`}
+                              : t("software.averageMastery", { value: Math.round((summary.averageMastery ?? 0) * 100) })}
                           </p>
                           {summary.weakConcepts?.length ? (
                             <div>
-                              <strong>Review mistakes</strong>
+                              <strong>{t("software.reviewMistakes")}</strong>
                               {summary.weakConcepts.map((concept) => (
                                 <p key={concept.id}>{concept.label} · {Math.round((concept.mastery ?? 0) * 100)}%</p>
                               ))}
                             </div>
                           ) : null}
-                          <button onClick={() => { setSession(null); setSummary(null); }}>Start another round</button>
+                          <button onClick={() => { setSession(null); setSummary(null); }}>{t("software.startAnother")}</button>
                         </div>
                       ) : session?.next?.concept ? (
                         <>
                           <span className="software-question-type">
-                            Question {session.next.questionIndex ?? "–"} of {session.next.totalPlanned ?? "–"} · {session.next.questionPolicy?.type || "adaptive"}
+                            {t("software.questionProgress", { current: session.next.questionIndex ?? "–", total: session.next.totalPlanned ?? "–" })} · {session.next.questionPolicy?.type || "adaptive"}
                           </span>
                           <h2>{session.next.question?.prompt || session.next.concept.label}</h2>
                           {feedback ? <div className="software-feedback">{feedback}</div> : null}
@@ -1032,19 +1037,19 @@ export function SoftwareApp() {
                               <textarea
                                 value={answer}
                                 onChange={(e) => setAnswer(e.target.value)}
-                                placeholder="Type your answer…"
+                                placeholder={t("software.typeAnswer")}
                                 disabled={busy}
                               />
                               <button disabled={!answer.trim() || busy} onClick={() => void submitAnswer()}>
-                                {busy ? "Evaluating…" : "Submit answer"}
+                                {busy ? t("software.evaluating") : t("software.submitAnswer")}
                               </button>
                             </>
                           )}
                         </>
                       ) : (
                         <>
-                          <h2>Session complete.</h2>
-                          <button onClick={() => void startMode(view === "test" ? "test" : "learn")}>Start again</button>
+                          <h2>{t("software.sessionDone")}</h2>
+                          <button onClick={() => void startMode(view === "test" ? "test" : "learn")}>{t("software.startAgain")}</button>
                         </>
                       )}
                     </article>
@@ -1053,22 +1058,22 @@ export function SoftwareApp() {
 
                 {view === "learn" && !session && !busy && !summary && (
                   <div className="software-study-stage">
-                    <aside><span>STUDY GUIDE</span><p>{selected.assets.summary}</p></aside>
-                    <article><h2>Ready to study.</h2><p>Questions are generated from your material and adapt after every answer.</p><button onClick={() => void startMode("learn")}>Start Learn</button></article>
+                    <aside><span>{t("software.studyGuide")}</span><p>{selected.assets.summary}</p></aside>
+                    <article><h2>{t("software.readyStudy")}</h2><p>{t("software.readyStudyBody")}</p><button onClick={() => void startMode("learn")}>{t("software.startLearn")}</button></article>
                   </div>
                 )}
 
                 {view === "ask" && (
                   <div className="software-ask">
-                    <div className="software-ask-context"><Sparkles size={18}/><span>Answers stay grounded in <strong>{selected.title}</strong>.</span></div>
+                    <div className="software-ask-context"><Sparkles size={18}/><span>{t("software.groundedIn", { title: selected.title })}</span></div>
                     {askAnswer ? (
                       <div className="software-ask-answer">
                         <span>INSTANTSTUDY</span>
                         <p>{askAnswer}</p>
-                        <button onClick={() => { setView("learn"); void startMode("learn"); }}>Quiz me on this</button>
+                        <button onClick={() => { setView("learn"); void startMode("learn"); }}>{t("software.quizMe")}</button>
                       </div>
                     ) : (
-                      <div className="software-chat-empty"><MessageCircle size={28}/><h2>Ask anything about this material.</h2><p>Explanations stay grounded in your material and can lead directly back into active study.</p></div>
+                      <div className="software-chat-empty"><MessageCircle size={28}/><h2>{t("software.askAnything")}</h2><p>{t("software.askBody")}</p></div>
                     )}
                     <div className="software-ask-box">
                       <input
@@ -1077,10 +1082,10 @@ export function SoftwareApp() {
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && !askBusy) void askMaterial();
                         }}
-                        placeholder="What would you like to understand?"
+                        placeholder={t("software.askPlaceholder")}
                       />
                       <button disabled={!question.trim() || askBusy} onClick={() => void askMaterial()}>
-                        {askBusy ? "Thinking…" : "Ask"}
+                        {askBusy ? t("software.thinking") : t("common.ask")}
                       </button>
                     </div>
                   </div>
@@ -1093,31 +1098,31 @@ export function SoftwareApp() {
         {view === "review" && (
           <section className="software-page">
             <div className="software-workspace-head">
-              <div><p>RIGHT-TIME RECALL</p><h1>Review</h1></div>
+              <div><p>{t("software.rightTimeRecall")}</p><h1>{t("common.review")}</h1></div>
             </div>
             {session?.next?.concept ? (
               <div className="software-study-stage">
-                <aside><span>DUE CONCEPT</span><p>{session.next.concept.label}</p></aside>
+                <aside><span>{t("software.dueConcept")}</span><p>{session.next.concept.label}</p></aside>
                 <article>
-                  <span className="software-question-type">Review</span>
+                  <span className="software-question-type">{t("common.review")}</span>
                   <h2>{session.next.question?.prompt || session.next.concept.label}</h2>
                   {feedback ? <div className="software-feedback">{feedback}</div> : null}
-                  <textarea value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder="Recall without looking…" />
-                  <button disabled={!answer.trim() || busy} onClick={() => void submitAnswer()}>{busy ? "Evaluating…" : "Submit answer"}</button>
+                  <textarea value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder={t("software.recallPlaceholder")} />
+                  <button disabled={!answer.trim() || busy} onClick={() => void submitAnswer()}>{busy ? t("software.evaluating") : t("software.submitAnswer")}</button>
                 </article>
               </div>
             ) : (
               <div className="software-review-list">
-                {reviewBusy ? <div className="software-loading">Loading due concepts…</div> : dueReviews.length ? (
+                {reviewBusy ? <div className="software-loading">{t("software.loadingDue")}</div> : dueReviews.length ? (
                   dueReviews.map((item) => (
                     <article key={`${item.sessionId}-${item.conceptId}`}>
                       <div><strong>{item.label}</strong><p>{item.title} · mastery {Math.round(item.mastery * 100)}%</p></div>
-                      <span>{dueLabel(item.nextReviewAt)}</span>
-                      <button onClick={() => void startReview(item)}>Review</button>
+                      <span>{dueLabel(item.nextReviewAt, t)}</span>
+                      <button onClick={() => void startReview(item)}>{t("common.review")}</button>
                     </article>
                   ))
                 ) : (
-                  <div className="software-empty"><CheckCircle2 size={24}/><strong>Nothing due right now.</strong><p>Due concepts will appear here from your real review schedule.</p></div>
+                  <div className="software-empty"><CheckCircle2 size={24}/><strong>{t("software.nothingDue")}</strong><p>{t("software.nothingDueBody")}</p></div>
                 )}
               </div>
             )}
@@ -1127,33 +1132,33 @@ export function SoftwareApp() {
         {view === "insights" && (
           <section className="software-page">
             <div className="software-title-row">
-              <div><p>RETENTION</p><h1>Insights</h1></div>
+              <div><p>{t("software.retentionKicker")}</p><h1>{t("common.insights")}</h1></div>
             </div>
             {insightsBusy ? (
-              <div className="software-loading">Calculating mastery and retention…</div>
+              <div className="software-loading">{t("software.calculatingRetention")}</div>
             ) : insights ? (
               <>
                 <div className="software-insight-grid">
-                  <article><span>Mastery</span><strong>{Math.round(insights.averageMastery * 100)}%</strong><small>Current average</small></article>
-                  <article><span>Retention</span><strong>{Math.round(insights.retentionScore * 100)}%</strong><small>Concepts above 70%</small></article>
-                  <article><span>Streak</span><strong>{insights.streakDays}</strong><small>Study days</small></article>
-                  <article><span>Due now</span><strong>{insights.dueNow}</strong><small>Concepts to review</small></article>
-                  <article><span>Answers</span><strong>{insights.attempts}</strong><small>Active-recall attempts</small></article>
-                  <article><span>Study time</span><strong>{insights.minutesStudied}m</strong><small>Across {insights.sessions} sessions</small></article>
+                  <article><span>{t("software.mastery")}</span><strong>{Math.round(insights.averageMastery * 100)}%</strong><small>{t("software.currentAverage")}</small></article>
+                  <article><span>{t("software.retention")}</span><strong>{Math.round(insights.retentionScore * 100)}%</strong><small>{t("software.conceptsAbove")}</small></article>
+                  <article><span>{t("software.streak")}</span><strong>{insights.streakDays}</strong><small>{t("software.studyDays")}</small></article>
+                  <article><span>{t("software.dueNow")}</span><strong>{insights.dueNow}</strong><small>{t("software.conceptsReview")}</small></article>
+                  <article><span>{t("software.answers")}</span><strong>{insights.attempts}</strong><small>{t("software.activeRecallAttempts")}</small></article>
+                  <article><span>{t("software.studyTime")}</span><strong>{insights.minutesStudied}m</strong><small>{t("software.acrossSessions", { count: insights.sessions })}</small></article>
                 </div>
 
                 <div className="software-insight-columns">
                   <article>
-                    <span>WEAK CONCEPTS</span>
+                    <span>{t("software.weakConcepts")}</span>
                     {insights.weakConcepts.length ? insights.weakConcepts.map((concept) => (
                       <div key={concept.label}>
                         <strong>{concept.label}</strong>
                         <b>{Math.round(concept.mastery * 100)}%</b>
                       </div>
-                    )) : <p>No weak concepts yet.</p>}
+                    )) : <p>{t("software.noWeak")}</p>}
                   </article>
                   <article>
-                    <span>CHARMS</span>
+                    <span>{t("software.achievements")}</span>
                     {insights.charms.map((charm) => (
                       <div key={charm.id} className={charm.unlocked ? "unlocked" : ""}>
                         <Trophy size={18}/>
@@ -1174,7 +1179,7 @@ export function SoftwareApp() {
                 </div>
               </>
             ) : (
-              <div className="software-empty"><BarChart3/><strong>No learning history yet.</strong><p>Complete a Learn, Test or Review session to populate retention insights.</p></div>
+              <div className="software-empty"><BarChart3/><strong>{t("software.noHistory")}</strong><p>{t("software.noHistoryBody")}</p></div>
             )}
           </section>
         )}
@@ -1182,17 +1187,17 @@ export function SoftwareApp() {
         {view === "audio" && (
           <section className="software-page">
             <div className="software-title-row">
-              <div><p>LISTEN & RECALL</p><h1>Podcast</h1></div>
+              <div><p>{t("software.listenRecall")}</p><h1>{t("common.podcast")}</h1></div>
             </div>
             {!selected ? (
-              <div className="software-empty"><Headphones/><strong>Select study material first.</strong><button onClick={() => setView("library")}>Open library</button></div>
+              <div className="software-empty"><Headphones/><strong>{t("software.selectMaterial")}</strong><button onClick={() => setView("library")}>{t("software.openLibrary")}</button></div>
             ) : audioStudy ? (
               <div className="software-audio-study">
                 <aside>
                   <Headphones size={28}/>
                   <strong>{audioStudy.title}</strong>
-                  <span>~{audioStudy.estimatedMinutes} min · two voices · grounded in your material</span>
-                  <button onClick={toggleAudioStudy}>{audioPlaying ? "Stop podcast" : "Play podcast"}</button>
+                  <span>~{audioStudy.estimatedMinutes} min · {t("software.podcastBody")}</span>
+                  <button onClick={toggleAudioStudy}>{audioPlaying ? t("software.stopPodcast") : t("software.playPodcast")}</button>
                 </aside>
                 <article>
                   {audioStudy.segments.map((segment, index) => (
@@ -1204,7 +1209,7 @@ export function SoftwareApp() {
                 </article>
               </div>
             ) : (
-              <div className="software-loading">Building podcast from {selected.title}…</div>
+              <div className="software-loading">{t("software.buildingPodcast", { title: selected.title })}</div>
             )}
           </section>
         )}
@@ -1212,16 +1217,16 @@ export function SoftwareApp() {
         {view === "game" && (
           <section className="software-page">
             <div className="software-title-row">
-              <div><p>ACTIVE RECALL GAME</p><h1>Match the knowledge.</h1></div>
+              <div><p>{t("software.activeRecallGame")}</p><h1>{t("software.matchKnowledge")}</h1></div>
             </div>
             {!selected ? (
-              <div className="software-empty"><Puzzle/><strong>Select study material first.</strong><button onClick={() => setView("library")}>Open library</button></div>
+              <div className="software-empty"><Puzzle/><strong>{t("software.selectMaterial")}</strong><button onClick={() => setView("library")}>{t("software.openLibrary")}</button></div>
             ) : studyGame ? (
               <>
                 <div className="software-game-status">
-                  <span>{gameMatchedPairs.length} / {studyGame.pairCount} pairs</span>
-                  <strong>{gameMatchedPairs.length === studyGame.pairCount ? `Complete in ${gameMoves} moves` : `${gameMoves} moves`}</strong>
-                  <button onClick={() => { setGameOpenIds([]); setGameMatchedPairs([]); setGameMoves(0); }}>Reset</button>
+                  <span>{t("software.pairs", { matched: gameMatchedPairs.length, total: studyGame.pairCount })}</span>
+                  <strong>{gameMatchedPairs.length === studyGame.pairCount ? t("software.completeMoves", { count: gameMoves }) : t("software.moves", { count: gameMoves })}</strong>
+                  <button onClick={() => { setGameOpenIds([]); setGameMatchedPairs([]); setGameMoves(0); }}>{t("software.reset")}</button>
                 </div>
                 <div className="software-game-grid">
                   {studyGame.cards.map((card) => {
@@ -1234,15 +1239,15 @@ export function SoftwareApp() {
                         disabled={matched || gameLocked}
                         onClick={() => chooseGameCard(card.id)}
                       >
-                        <span>{open ? (card.kind === "prompt" ? "QUESTION" : "ANSWER") : "RECALL"}</span>
-                        <strong>{open ? card.text : "Reveal"}</strong>
+                        <span>{open ? (card.kind === "prompt" ? t("software.questionCard") : t("software.answerCard")) : t("software.recall")}</span>
+                        <strong>{open ? card.text : t("software.reveal")}</strong>
                       </button>
                     );
                   })}
                 </div>
               </>
             ) : (
-              <div className="software-loading">Building a deterministic game from {selected.title}…</div>
+              <div className="software-loading">{t("software.buildingGame", { title: selected.title })}</div>
             )}
           </section>
         )}
@@ -1250,35 +1255,35 @@ export function SoftwareApp() {
         {view === "friends" && (
           <section className="software-page">
             <div className="software-title-row">
-              <div><p>STUDY TOGETHER</p><h1>Study With Friends</h1></div>
+              <div><p>{t("software.studyTogether")}</p><h1>{t("common.friends")}</h1></div>
             </div>
 
             {!room ? (
               <div className="software-room-setup">
                 <article>
                   <Users size={26}/>
-                  <h2>Create a room</h2>
+                  <h2>{t("software.createRoom")}</h2>
                   <p>Share the current material and compare study progress without exposing your account credentials.</p>
-                  <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Your name" />
+                  <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder={t("software.yourName")} />
                   <button disabled={!selected || roomBusy || !displayName.trim()} onClick={() => void createRoom()}>
-                    {roomBusy ? "Creating…" : selected ? `Create room for ${selected.title}` : "Select material first"}
+                    {roomBusy ? t("software.creating") : selected ? t("software.createRoomFor", { title: selected.title }) : t("software.selectMaterialFirst")}
                   </button>
                 </article>
                 <article>
                   <Users size={26}/>
-                  <h2>Join a room</h2>
+                  <h2>{t("software.joinRoom")}</h2>
                   <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Your name" />
-                  <input value={roomCode} onChange={(event) => setRoomCode(event.target.value.toUpperCase())} placeholder="ROOM CODE" />
+                  <input value={roomCode} onChange={(event) => setRoomCode(event.target.value.toUpperCase())} placeholder={t("software.roomCode")} />
                   <button disabled={!roomCode.trim() || roomBusy || !displayName.trim()} onClick={() => void joinRoom()}>
-                    {roomBusy ? "Joining…" : "Join room"}
+                    {roomBusy ? t("software.joining") : t("software.joinRoom")}
                   </button>
                 </article>
               </div>
             ) : (
               <div className="software-room">
                 <div className="software-room-head">
-                  <div><span>ROOM</span><strong>{room.code}</strong><small>{room.title}</small></div>
-                  <button onClick={() => navigator.clipboard?.writeText(room.code)}>Copy code</button>
+                  <div><span>{t("software.room")}</span><strong>{room.code}</strong><small>{room.title}</small></div>
+                  <button onClick={() => navigator.clipboard?.writeText(room.code)}>{t("software.copyCode")}</button>
                 </div>
                 <p>{room.summary}</p>
                 <div className="software-room-members">
@@ -1297,7 +1302,7 @@ export function SoftwareApp() {
                   setView("learn");
                   void startMode("learn", shared);
                 }}>
-                  Study this material together
+                  {t("software.studyTogetherAction")}
                 </button>
               </div>
             )}
@@ -1308,14 +1313,14 @@ export function SoftwareApp() {
         {view === "family" && (
           <section className="software-page">
             <div className="software-title-row">
-              <div><p>FIVE INDEPENDENT LEARNERS</p><h1>Family</h1></div>
+              <div><p>{t("software.familyKicker")}</p><h1>{t("common.family")}</h1></div>
             </div>
             {familyBusy && !family ? (
-              <div className="software-loading">Loading family seats…</div>
+              <div className="software-loading">{t("software.familyLoading")}</div>
             ) : family ? (
               <div className="software-family">
                 <div className="software-family-head">
-                  <div><span>SEATS</span><strong>{family.seats.used} / {family.seats.total}</strong><small>Each account keeps its own library, mastery and review schedule.</small></div>
+                  <div><span>{t("software.seats")}</span><strong>{family.seats.used} / {family.seats.total}</strong><small>{t("software.separateProgress")}</small></div>
                 </div>
                 <div className="software-family-add">
                   <input
@@ -1329,12 +1334,12 @@ export function SoftwareApp() {
                   </button>
                 </div>
                 <div className="software-family-members">
-                  <article><strong>{family.owner}</strong><span>Owner · Unlimited</span></article>
+                  <article><strong>{family.owner}</strong><span>{t("software.ownerUnlimited")}</span></article>
                   {family.members.map((member) => (
                     <article key={member.member_email}>
                       <strong>{member.member_email}</strong>
-                      <span>Member · Unlimited</span>
-                      <button disabled={familyBusy} onClick={() => void removeFamilyMember(member.member_email)}>Remove</button>
+                      <span>{t("software.memberUnlimited")}</span>
+                      <button disabled={familyBusy} onClick={() => void removeFamilyMember(member.member_email)}>{t("software.remove")}</button>
                     </article>
                   ))}
                 </div>
@@ -1342,9 +1347,9 @@ export function SoftwareApp() {
             ) : (
               <div className="software-family-upgrade">
                 <UserRoundPlus size={32}/>
-                <h2>One plan. Five separate learning states.</h2>
-                <p>Family includes the owner plus four invited members. Everyone gets Unlimited while keeping independent progress.</p>
-                <button onClick={() => void openInstantStudyCheckout("family", true)}>Choose Family</button>
+                <h2>{t("software.familyUpgradeTitle")}</h2>
+                <p>{t("software.familyUpgradeBody")}</p>
+                <button onClick={() => void openInstantStudyCheckout("family", true)}>{t("software.chooseFamily")}</button>
               </div>
             )}
             {familyMessage ? <div className="software-feedback">{familyMessage}</div> : null}
@@ -1353,7 +1358,7 @@ export function SoftwareApp() {
 
         {view === "plugin" && (
           <section className="software-page">
-            <div className="software-title-row"><div><p>PLUGIN</p><h1>Take InstantStudy into your AI.</h1></div></div>
+            <div className="software-title-row"><div><p>{t("software.pluginKicker")}</p><h1>{t("software.pluginTitle")}</h1></div></div>
             <p className="software-lead">The software and plugin use the same study engine. Learn on the desktop, then continue from the same knowledge state inside a compatible AI agent.</p>
             <div className="software-plugin-endpoint"><span>Remote MCP endpoint</span><code>{mcpUrl()}</code></div>
             <div className="software-plugin-grid">

@@ -3,15 +3,18 @@ import 'dart:math';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'i18n.dart';
 import 'instantstudy_api.dart';
 
 void main() {
   runApp(const InstantStudyApp());
 }
 
-class InstantStudyApp extends StatelessWidget {
+class InstantStudyApp extends StatefulWidget {
   const InstantStudyApp({super.key});
 
   static const ink = Color(0xFF11110F);
@@ -25,32 +28,87 @@ class InstantStudyApp extends StatelessWidget {
   static const muted = Color(0xFF6E6B64);
 
   @override
+  State<InstantStudyApp> createState() => _InstantStudyAppState();
+}
+
+class _InstantStudyAppState extends State<InstantStudyApp> {
+  static const _localeKey = 'instantstudy.locale';
+  Locale? _locale;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocale();
+  }
+
+  Future<void> _loadLocale() async {
+    final preferences = await SharedPreferences.getInstance();
+    final stored = preferences.getString(_localeKey);
+    if (!mounted || stored == null) return;
+    setState(() {
+      _locale = stored.toLowerCase().startsWith('pt')
+          ? const Locale('pt', 'BR')
+          : const Locale('en');
+    });
+  }
+
+  Future<void> _setLocale(Locale locale) async {
+    final normalized = locale.languageCode == 'pt'
+        ? const Locale('pt', 'BR')
+        : const Locale('en');
+    setState(() => _locale = normalized);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      _localeKey,
+      normalized.languageCode == 'pt' ? 'pt-BR' : 'en',
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'InstantStudy',
       debugShowCheckedModeBanner: false,
+      locale: _locale,
+      supportedLocales: supportedInstantStudyLocales,
+      localizationsDelegates: const [
+        AppStrings.delegate,
+        ...GlobalMaterialLocalizations.delegates,
+      ],
+      localeResolutionCallback: (deviceLocale, supported) {
+        if (_locale != null) return _locale;
+        if (deviceLocale?.languageCode == 'pt') {
+          return const Locale('pt', 'BR');
+        }
+        return const Locale('en');
+      },
       theme: ThemeData(
         fontFamily: 'Inter',
-        scaffoldBackgroundColor: paper2,
+        scaffoldBackgroundColor: InstantStudyApp.paper2,
         colorScheme: const ColorScheme.light(
-          primary: ink,
-          secondary: orange,
-          surface: paper,
-          onSurface: ink,
+          primary: InstantStudyApp.ink,
+          secondary: InstantStudyApp.orange,
+          surface: InstantStudyApp.paper,
+          onSurface: InstantStudyApp.ink,
         ),
         textSelectionTheme: const TextSelectionThemeData(
-          cursorColor: electric,
+          cursorColor: InstantStudyApp.electric,
           selectionColor: Color(0x335B6CFF),
         ),
         useMaterial3: true,
       ),
-      home: const StudyHome(),
+      home: StudyHome(onLocaleChanged: _setLocale),
     );
   }
 }
 
 class StudyHome extends StatefulWidget {
-  const StudyHome({super.key});
+  const StudyHome({
+    super.key,
+    required this.onLocaleChanged,
+  });
+
+  final ValueChanged<Locale> onLocaleChanged;
 
   @override
   State<StudyHome> createState() => _StudyHomeState();
@@ -140,11 +198,11 @@ class _StudyHomeState extends State<StudyHome> {
       final file = result.files.single;
       final bytes = file.bytes;
       if (bytes == null) {
-        throw InstantStudyApiException('Could not read the selected file.');
+        throw InstantStudyApiException(context.tr('couldNotRead'));
       }
       if (bytes.length > 2500000) {
         throw InstantStudyApiException(
-          'Flutter imports are limited to 2.5 MB per file in this release.',
+          context.tr('uploadLimit'),
         );
       }
 
@@ -167,7 +225,7 @@ class _StudyHomeState extends State<StudyHome> {
       final material = imported['material'];
       if (material is! Map) {
         throw InstantStudyApiException(
-          'Material import returned an invalid payload.',
+          context.tr('invalidImport'),
         );
       }
 
@@ -288,7 +346,7 @@ class _StudyHomeState extends State<StudyHome> {
   Future<void> _showPodcast() async {
     final materialId = _materialId;
     if (materialId == null) {
-      setState(() => _error = 'Save or import material before opening Podcast.');
+      setState(() => _error = context.tr('saveFirstPodcast'));
       return;
     }
 
@@ -353,7 +411,7 @@ class _StudyHomeState extends State<StudyHome> {
   Future<void> _showGame() async {
     final materialId = _materialId;
     if (materialId == null) {
-      setState(() => _error = 'Save or import material before opening Study Game.');
+      setState(() => _error = context.tr('saveFirstGame'));
       return;
     }
 
@@ -425,8 +483,11 @@ class _StudyHomeState extends State<StudyHome> {
         policy is Map ? policy['type']?.toString() ?? 'adaptive' : 'adaptive';
 
     return _DarkStudyScene(
-      eyebrow:
-          'QUESTION ${_next?['questionIndex'] ?? '–'} OF ${_next?['totalPlanned'] ?? '–'} · ${type.toUpperCase()}',
+      eyebrow: context.tr('questionProgress', {
+        'current': _next?['questionIndex'] ?? '–',
+        'total': _next?['totalPlanned'] ?? '–',
+        'type': type.toUpperCase(),
+      }),
       title: prompt,
       feedback: _feedback,
       child: _choices.isNotEmpty
@@ -450,14 +511,14 @@ class _StudyHomeState extends State<StudyHome> {
               children: [
                 _LineField(
                   controller: _answer,
-                  hint: 'Type your answer…',
+                  hint: context.tr('typeAnswer'),
                   minLines: 4,
                   maxLines: 10,
                   dark: true,
                 ),
                 const SizedBox(height: 14),
                 _SignalButton(
-                  label: _busy ? 'Evaluating…' : 'Submit answer',
+                  label: _busy ? context.tr('evaluating') : context.tr('submitAnswer'),
                   onPressed: _busy ? null : _submit,
                   light: true,
                 ),
@@ -470,9 +531,9 @@ class _StudyHomeState extends State<StudyHome> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'THE FUTURE OF LEARNING',
-          style: TextStyle(
+        Text(
+          context.tr('futureLearning'),
+          style: const TextStyle(
             color: InstantStudyApp.orange,
             fontSize: 10,
             fontWeight: FontWeight.w700,
@@ -480,9 +541,9 @@ class _StudyHomeState extends State<StudyHome> {
           ),
         ),
         const SizedBox(height: 12),
-        const Text(
-          'Learn from\nanything.',
-          style: TextStyle(
+        Text(
+          context.tr('learnAnything'),
+          style: const TextStyle(
             color: InstantStudyApp.ink,
             fontSize: 66,
             height: .82,
@@ -491,9 +552,9 @@ class _StudyHomeState extends State<StudyHome> {
           ),
         ),
         const SizedBox(height: 22),
-        const Text(
-          'One material becomes a living knowledge state: practice, testing, mastery and right-time review.',
-          style: TextStyle(
+        Text(
+          context.tr('entryBody'),
+          style: const TextStyle(
             color: Color(0xFF46443F),
             fontSize: 18,
             height: 1.28,
@@ -501,30 +562,29 @@ class _StudyHomeState extends State<StudyHome> {
           ),
         ),
         const SizedBox(height: 36),
-        const _SectionRule(label: 'YOUR MATERIAL'),
+        _SectionRule(label: context.tr('yourMaterial')),
         _LineField(
           controller: _title,
-          hint: 'Title (optional)',
+          hint: context.tr('titleOptional'),
           minLines: 1,
           maxLines: 1,
         ),
         const SizedBox(height: 1),
         _LineField(
           controller: _material,
-          hint: 'Paste notes, a reading or lecture transcript…',
+          hint: context.tr('pasteMaterial'),
           minLines: 7,
           maxLines: 14,
         ),
         const SizedBox(height: 12),
         _SignalButton(
-          label: _sourceLabel ??
-              'Import file, audio, photo or handwritten notes',
+          label: _sourceLabel ?? context.tr('importMaterial'),
           icon: Icons.upload_file_outlined,
           onPressed: _busy ? null : _pickFile,
           outlined: true,
         ),
         const SizedBox(height: 28),
-        const _SectionRule(label: 'STUDY MODE'),
+        _SectionRule(label: context.tr('studyMode')),
         _ModeRail(
           selected: _mode,
           onSelected: (value) => setState(() => _mode = value),
@@ -540,7 +600,7 @@ class _StudyHomeState extends State<StudyHome> {
         ],
         const SizedBox(height: 30),
         _SignalButton(
-          label: _busy ? 'Building…' : 'Start InstantStudy',
+          label: _busy ? context.tr('building') : context.tr('start'),
           onPressed: _busy ? null : _start,
         ),
       ],
@@ -551,7 +611,7 @@ class _StudyHomeState extends State<StudyHome> {
     final testResult = _summary?['testResult'];
     final value = testResult is Map
         ? '${testResult['scorePercent'] ?? 0}%'
-        : 'Complete';
+        : context.tr('complete');
     final copy = testResult is Map
         ? '${testResult['answered'] ?? 0} of ${testResult['totalQuestions'] ?? _testQuestions} questions answered.'
         : 'Your knowledge state has been updated. Review will bring concepts back when they begin to fade.';
@@ -564,9 +624,9 @@ class _StudyHomeState extends State<StudyHome> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'KNOWLEDGE STATE UPDATED',
-            style: TextStyle(
+          Text(
+            context.tr('knowledgeUpdated'),
+            style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.4,
@@ -593,7 +653,7 @@ class _StudyHomeState extends State<StudyHome> {
           ),
           const SizedBox(height: 34),
           _SignalButton(
-            label: 'Study another source',
+            label: context.tr('studyAnother'),
             onPressed: () => setState(() {
               _session = null;
               _summary = null;
@@ -631,6 +691,14 @@ class _StudyHomeState extends State<StudyHome> {
                   onInsights: _showInsights,
                   onPodcast: _materialId == null ? null : _showPodcast,
                   onGame: _materialId == null ? null : _showGame,
+                  onLanguage: () {
+                    final locale = Localizations.localeOf(context);
+                    widget.onLocaleChanged(
+                      locale.languageCode == 'pt'
+                          ? const Locale('en')
+                          : const Locale('pt', 'BR'),
+                    );
+                  },
                 ),
                 Expanded(
                   child: ListView(
@@ -703,6 +771,7 @@ class _ProductMasthead extends StatelessWidget {
     required this.onInsights,
     required this.onPodcast,
     required this.onGame,
+    required this.onLanguage,
   });
 
   final Color primary;
@@ -711,6 +780,7 @@ class _ProductMasthead extends StatelessWidget {
   final VoidCallback onInsights;
   final VoidCallback? onPodcast;
   final VoidCallback? onGame;
+  final VoidCallback onLanguage;
 
   @override
   Widget build(BuildContext context) {
@@ -726,9 +796,9 @@ class _ProductMasthead extends StatelessWidget {
         children: [
           _InstantOrb(primary: primary, secondary: secondary, size: 28),
           const SizedBox(width: 10),
-          const Text(
-            'InstantStudy™',
-            style: TextStyle(
+          Text(
+            context.tr('product'),
+            style: const TextStyle(
               color: InstantStudyApp.ink,
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -745,20 +815,25 @@ class _ProductMasthead extends StatelessWidget {
                 side: BorderSide(color: Color(0x2E11110F)),
               ),
             ),
-            child: const Text(
-              'Insights',
-              style: TextStyle(fontSize: 10, letterSpacing: .4),
+            child: Text(
+              context.tr('insights'),
+              style: const TextStyle(fontSize: 10, letterSpacing: .4),
             ),
           ),
           IconButton(
-            tooltip: 'Podcast',
+            tooltip: context.tr('podcast'),
             onPressed: busy ? null : onPodcast,
             icon: const Icon(Icons.headphones_outlined, size: 18),
           ),
           IconButton(
-            tooltip: 'Study Game',
+            tooltip: context.tr('studyGame'),
             onPressed: busy ? null : onGame,
             icon: const Icon(Icons.extension_outlined, size: 18),
+          ),
+          IconButton(
+            tooltip: context.tr('language'),
+            onPressed: busy ? null : onLanguage,
+            icon: const Icon(Icons.language, size: 18),
           ),
         ],
       ),
@@ -867,7 +942,7 @@ class _ModeRail extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  mode.toUpperCase(),
+                  context.tr(mode),
                   style: TextStyle(
                     color: active
                         ? InstantStudyApp.paper
@@ -905,7 +980,7 @@ class _TestControls extends StatelessWidget {
       children: [
         Expanded(
           child: _ChoiceSelect(
-            label: 'Questions',
+            label: context.tr('questions'),
             value: questions,
             values: const [10, 20, 30, 40],
             formatter: (value) => '$value',
@@ -915,7 +990,7 @@ class _TestControls extends StatelessWidget {
         const SizedBox(width: 1),
         Expanded(
           child: _ChoiceSelect(
-            label: 'Time',
+            label: context.tr('time'),
             value: duration,
             values: const [15, 30, 45, 60, 90],
             formatter: (value) => '$value min',
@@ -1291,9 +1366,9 @@ class _InsightsScene extends StatelessWidget {
                     size: 30,
                   ),
                   const SizedBox(width: 10),
-                  const Text(
-                    'KNOWLEDGE STATE',
-                    style: TextStyle(
+                  Text(
+                    context.tr('knowledgeState'),
+                    style: const TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.2,
@@ -1317,42 +1392,42 @@ class _InsightsScene extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'overall mastery',
-                style: TextStyle(
+              Text(
+                context.tr('overallMastery'),
+                style: const TextStyle(
                   color: InstantStudyApp.muted,
                   fontSize: 12,
                 ),
               ),
               const SizedBox(height: 36),
               _MetricLine(
-                label: 'Retention',
+                label: context.tr('retention'),
                 value: '${retention.round()}%',
                 accent: InstantStudyApp.green,
               ),
               _MetricLine(
-                label: 'Study streak',
-                value: '${data['streakDays'] ?? 0} days',
+                label: context.tr('studyStreak'),
+                value: context.tr('days', {'count': data['streakDays'] ?? 0}),
                 accent: InstantStudyApp.electric,
               ),
               _MetricLine(
-                label: 'Due now',
+                label: context.tr('dueNow'),
                 value: '${data['dueNow'] ?? 0}',
                 accent: InstantStudyApp.orange,
               ),
               _MetricLine(
-                label: 'Active recall',
-                value: '${data['attempts'] ?? 0} answers',
+                label: context.tr('activeRecall'),
+                value: context.tr('answers', {'count': data['attempts'] ?? 0}),
                 accent: InstantStudyApp.ink,
               ),
               const SizedBox(height: 34),
-              const _SectionRule(label: 'WHAT NEEDS YOU'),
+              _SectionRule(label: context.tr('whatNeedsYou')),
               if (weak.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Text(
-                    'Complete a study session to reveal weak concepts.',
-                    style: TextStyle(color: InstantStudyApp.muted),
+                    context.tr('noWeak'),
+                    style: const TextStyle(color: InstantStudyApp.muted),
                   ),
                 )
               else
@@ -1496,9 +1571,9 @@ class _PodcastScene extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(22, 26, 22, 34),
             children: [
-              const Text(
-                'INSTANTSTUDY PODCAST',
-                style: TextStyle(
+              Text(
+                context.tr('podcastKicker'),
+                style: const TextStyle(
                   color: InstantStudyApp.orangeSoft,
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
@@ -1518,12 +1593,12 @@ class _PodcastScene extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                '~$estimatedMinutes min · two-speaker grounded review',
+                context.tr('podcastMeta', {'minutes': estimatedMinutes}),
                 style: const TextStyle(color: Color(0xFF8F8A81)),
               ),
               const SizedBox(height: 22),
               _SignalButton(
-                label: playing ? 'Stop podcast' : 'Play podcast',
+                label: playing ? context.tr('stopPodcast') : context.tr('playPodcast'),
                 onPressed: onPlay,
                 light: true,
               ),
@@ -1643,9 +1718,9 @@ class _StudyGameSceneState extends State<_StudyGameScene> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 24, 18, 34),
             children: [
-              const Text(
-                'ACTIVE RECALL GAME',
-                style: TextStyle(
+              Text(
+                context.tr('gameKicker'),
+                style: const TextStyle(
                   color: InstantStudyApp.orange,
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
@@ -1654,7 +1729,9 @@ class _StudyGameSceneState extends State<_StudyGameScene> {
               ),
               const SizedBox(height: 12),
               Text(
-                complete ? 'Matched in $_moves moves.' : 'Match the knowledge.',
+                complete
+                    ? context.tr('matchedMoves', {'moves': _moves})
+                    : context.tr('matchKnowledge'),
                 style: const TextStyle(
                   fontSize: 44,
                   height: .92,
@@ -1694,7 +1771,7 @@ class _StudyGameSceneState extends State<_StudyGameScene> {
                           Text(
                             open
                                 ? (card['kind']?.toString() ?? 'card').toUpperCase()
-                                : 'RECALL',
+                                : context.tr('recall'),
                             style: TextStyle(
                               color: open
                                   ? InstantStudyApp.orange
@@ -1706,7 +1783,7 @@ class _StudyGameSceneState extends State<_StudyGameScene> {
                           ),
                           const Spacer(),
                           Text(
-                            open ? card['text']?.toString() ?? '' : 'Reveal',
+                            open ? card['text']?.toString() ?? '' : context.tr('reveal'),
                             style: TextStyle(
                               color: open
                                   ? InstantStudyApp.ink

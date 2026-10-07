@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { SoftwareApp } from "./SoftwareApp";
+import "./i18n";
 import "./styles.css";
 
 const isSoftware = window.location.pathname === "/app" || window.location.pathname.startsWith("/app/");
