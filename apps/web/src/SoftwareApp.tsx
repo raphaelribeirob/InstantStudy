@@ -508,6 +508,9 @@ export function SoftwareApp() {
           {navItem("test", view, <GraduationCap size={17}/>, "Practice Test", setView)}
           {navItem("ask", view, <MessageCircle size={17}/>, "Ask", setView)}
           {navItem("review", view, <BookOpen size={17}/>, "Review", setView)}
+          {navItem("insights", view, <BarChart3 size={17}/>, "Insights", setView)}
+          {navItem("audio", view, <Headphones size={17}/>, "Audio Study", setView)}
+          {navItem("friends", view, <Users size={17}/>, "Study With Friends", setView)}
           <div className="software-nav-label">AI</div>
           {navItem("plugin", view, <Plug size={17}/>, "Plugin", setView)}
         </nav>
@@ -566,6 +569,9 @@ export function SoftwareApp() {
               <button onClick={() => setView("flashcards")}><FileText/><strong>Flashcards</strong><span>Semantic active recall</span></button>
               <button onClick={() => setView("learn")}><Brain/><strong>Learn</strong><span>Adaptive questions</span></button>
               <button onClick={() => setView("test")}><GraduationCap/><strong>Practice Test</strong><span>Configurable exam rehearsal</span></button>
+              <button onClick={() => setView("insights")}><BarChart3/><strong>Retention Insights</strong><span>Mastery, streaks and weak concepts</span></button>
+              <button onClick={() => setView("audio")}><Headphones/><strong>Audio Study</strong><span>Turn notes into a guided review</span></button>
+              <button onClick={() => setView("friends")}><Users/><strong>Study With Friends</strong><span>Share a room and progress together</span></button>
             </div>
           </section>
         )}
@@ -589,7 +595,7 @@ export function SoftwareApp() {
           <section className="software-page software-create-page">
             <div className="software-title-row"><div><p>CREATE</p><h1>Turn material into learning.</h1></div></div>
             <div className="software-import-tabs">
-              {(["paste","upload","drive","audio"] as SourceType[]).map((type) => (
+              {(["paste","upload","drive","audio","scan"] as SourceType[]).map((type) => (
                 <button
                   key={type}
                   className={sourceType === type ? "active" : ""}
@@ -598,7 +604,7 @@ export function SoftwareApp() {
                     setCreateError("");
                   }}
                 >
-                  {type === "paste" ? "Paste text" : type === "upload" ? "Upload files" : type === "drive" ? "Google Drive" : "Record audio"}
+                  {type === "paste" ? "Paste text" : type === "upload" ? "Upload files" : type === "drive" ? "Google Drive" : type === "audio" ? "Record audio" : "Scan notes"}
                 </button>
               ))}
             </div>
@@ -628,6 +634,20 @@ export function SoftwareApp() {
                   onChange={(event) => setDriveUrl(event.target.value)}
                   placeholder="Paste a public Google Drive file link"
                 />
+              )}
+
+              {sourceType === "scan" && (
+                <label className="software-upload-control">
+                  <Camera size={20}/>
+                  <strong>{selectedFiles[0]?.name || "Take a photo or choose handwritten notes"}</strong>
+                  <span>Image text is transcribed, then converted into the same study system.</span>
+                  <input
+                    type="file"
+                    accept="image/*,.png,.jpg,.jpeg,.webp"
+                    capture="environment"
+                    onChange={(event) => setSelectedFiles(Array.from(event.target.files ?? []).slice(0, 1))}
+                  />
+                </label>
               )}
 
               {sourceType === "audio" && (
@@ -893,6 +913,143 @@ export function SoftwareApp() {
                 )}
               </div>
             )}
+          </section>
+        )}
+
+        {view === "insights" && (
+          <section className="software-page">
+            <div className="software-title-row">
+              <div><p>RETENTION</p><h1>Insights</h1></div>
+            </div>
+            {insightsBusy ? (
+              <div className="software-loading">Calculating mastery and retention…</div>
+            ) : insights ? (
+              <>
+                <div className="software-insight-grid">
+                  <article><span>Mastery</span><strong>{Math.round(insights.averageMastery * 100)}%</strong><small>Current average</small></article>
+                  <article><span>Retention</span><strong>{Math.round(insights.retentionScore * 100)}%</strong><small>Concepts above 70%</small></article>
+                  <article><span>Streak</span><strong>{insights.streakDays}</strong><small>Study days</small></article>
+                  <article><span>Due now</span><strong>{insights.dueNow}</strong><small>Concepts to review</small></article>
+                  <article><span>Answers</span><strong>{insights.attempts}</strong><small>Active-recall attempts</small></article>
+                  <article><span>Study time</span><strong>{insights.minutesStudied}m</strong><small>Across {insights.sessions} sessions</small></article>
+                </div>
+
+                <div className="software-insight-columns">
+                  <article>
+                    <span>WEAK CONCEPTS</span>
+                    {insights.weakConcepts.length ? insights.weakConcepts.map((concept) => (
+                      <div key={concept.label}>
+                        <strong>{concept.label}</strong>
+                        <b>{Math.round(concept.mastery * 100)}%</b>
+                      </div>
+                    )) : <p>No weak concepts yet.</p>}
+                  </article>
+                  <article>
+                    <span>CHARMS</span>
+                    {insights.charms.map((charm) => (
+                      <div key={charm.id} className={charm.unlocked ? "unlocked" : ""}>
+                        <Trophy size={18}/>
+                        <span><strong>{charm.title}</strong><small>{charm.description}</small></span>
+                      </div>
+                    ))}
+                  </article>
+                </div>
+
+                <div className="software-activity-strip">
+                  {insights.activity7d.map((day) => (
+                    <div key={day.date}>
+                      <span>{new Date(day.date + "T00:00:00Z").toLocaleDateString(undefined,{weekday:"short"})}</span>
+                      <i style={{height: Math.max(6, Math.min(80, day.attempts * 7))}} />
+                      <small>{day.attempts}</small>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="software-empty"><BarChart3/><strong>No learning history yet.</strong><p>Complete a Learn, Test or Review session to populate retention insights.</p></div>
+            )}
+          </section>
+        )}
+
+        {view === "audio" && (
+          <section className="software-page">
+            <div className="software-title-row">
+              <div><p>LISTEN & RECALL</p><h1>Audio Study</h1></div>
+            </div>
+            {!selected ? (
+              <div className="software-empty"><Headphones/><strong>Select study material first.</strong><button onClick={() => setView("library")}>Open library</button></div>
+            ) : audioStudy ? (
+              <div className="software-audio-study">
+                <aside>
+                  <Headphones size={28}/>
+                  <strong>{audioStudy.title}</strong>
+                  <span>~{audioStudy.estimatedMinutes} min guided review</span>
+                  <button onClick={toggleAudioStudy}>{audioPlaying ? "Stop" : "Play audio study"}</button>
+                </aside>
+                <article>
+                  {audioStudy.segments.map((segment, index) => (
+                    <div key={`${index}-${segment.speaker}`} className={segment.speaker === "Learner" ? "recall" : ""}>
+                      <span>{segment.speaker}</span>
+                      <p>{segment.text}</p>
+                    </div>
+                  ))}
+                </article>
+              </div>
+            ) : (
+              <div className="software-loading">Building audio review from {selected.title}…</div>
+            )}
+          </section>
+        )}
+
+        {view === "friends" && (
+          <section className="software-page">
+            <div className="software-title-row">
+              <div><p>STUDY TOGETHER</p><h1>Study With Friends</h1></div>
+            </div>
+
+            {!room ? (
+              <div className="software-room-setup">
+                <article>
+                  <Users size={26}/>
+                  <h2>Create a room</h2>
+                  <p>Share the current material and compare study progress without exposing your account credentials.</p>
+                  <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Your name" />
+                  <button disabled={!selected || roomBusy || !displayName.trim()} onClick={() => void createRoom()}>
+                    {roomBusy ? "Creating…" : selected ? `Create room for ${selected.title}` : "Select material first"}
+                  </button>
+                </article>
+                <article>
+                  <Users size={26}/>
+                  <h2>Join a room</h2>
+                  <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Your name" />
+                  <input value={roomCode} onChange={(event) => setRoomCode(event.target.value.toUpperCase())} placeholder="ROOM CODE" />
+                  <button disabled={!roomCode.trim() || roomBusy || !displayName.trim()} onClick={() => void joinRoom()}>
+                    {roomBusy ? "Joining…" : "Join room"}
+                  </button>
+                </article>
+              </div>
+            ) : (
+              <div className="software-room">
+                <div className="software-room-head">
+                  <div><span>ROOM</span><strong>{room.code}</strong><small>{room.title}</small></div>
+                  <button onClick={() => navigator.clipboard?.writeText(room.code)}>Copy code</button>
+                </div>
+                <p>{room.summary}</p>
+                <div className="software-room-members">
+                  {room.members.map((member) => (
+                    <article key={member.learnerId}>
+                      <div><strong>{member.displayName}</strong><small>{member.attempts} answers</small></div>
+                      <div className="software-room-progress"><i style={{width:`${Math.round(member.progress * 100)}%`}} /></div>
+                      <b>{Math.round(member.progress * 100)}%</b>
+                    </article>
+                  ))}
+                </div>
+                <button className="software-room-study" onClick={() => { setView("learn"); void startMode("learn"); }}>
+                  Study this material together
+                </button>
+              </div>
+            )}
+            {roomMessage ? <div className="software-feedback">{roomMessage}</div> : null}
           </section>
         )}
 
