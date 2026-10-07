@@ -492,6 +492,11 @@ class _StudyHomeState extends State<StudyHome> {
 
   @override
   Widget build(BuildContext context) {
+    final motionDuration =
+        MediaQuery.maybeOf(context)?.disableAnimations == true
+            ? Duration.zero
+            : const Duration(milliseconds: 320);
+
     return Scaffold(
       body: Stack(
         children: [
@@ -515,7 +520,7 @@ class _StudyHomeState extends State<StudyHome> {
                     padding: const EdgeInsets.fromLTRB(18, 32, 18, 54),
                     children: [
                       AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 320),
+                        duration: motionDuration,
                         switchInCurve: Curves.easeOutCubic,
                         switchOutCurve: Curves.easeInCubic,
                         child: _session == null && _summary == null
@@ -643,6 +648,11 @@ class _InstantOrb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final motionDuration =
+        MediaQuery.maybeOf(context)?.disableAnimations == true
+            ? Duration.zero
+            : const Duration(milliseconds: 460);
+
     return Semantics(
       label: 'InstantStudy learning state',
       child: SizedBox.square(
@@ -654,7 +664,7 @@ class _InstantOrb extends StatelessWidget {
               clipBehavior: Clip.hardEdge,
               children: [
                 AnimatedPositioned(
-                  duration: const Duration(milliseconds: 460),
+                  duration: motionDuration,
                   curve: Curves.easeOutCubic,
                   left: -size * .04,
                   bottom: -size * .03,
@@ -668,7 +678,7 @@ class _InstantOrb extends StatelessWidget {
                   ),
                 ),
                 AnimatedPositioned(
-                  duration: const Duration(milliseconds: 460),
+                  duration: motionDuration,
                   curve: Curves.easeOutCubic,
                   right: -size * .01,
                   top: -size * .01,
@@ -972,7 +982,7 @@ class _ChoiceRow extends StatelessWidget {
     return InkWell(
       onTap: enabled ? onTap : null,
       child: Container(
-        minHeight: 66,
+        constraints: const BoxConstraints(minHeight: 66),
         padding: const EdgeInsets.all(14),
         decoration: const BoxDecoration(
           color: Color(0xFF191917),
