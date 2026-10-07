@@ -1473,6 +1473,7 @@ app.get("/health", (_req, res) => {
       pptx: true,
       text: true,
       audioTranscription: Boolean(process.env.OPENAI_API_KEY),
+      imageTranscription: Boolean(process.env.OPENAI_API_KEY),
       maxFileMb: 25,
     },
     entitlements: {
