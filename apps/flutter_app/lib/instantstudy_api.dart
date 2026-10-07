@@ -79,6 +79,52 @@ class InstantStudyApi {
     });
   }
 
+  Future<Map<String, dynamic>> insights({
+    required String learnerId,
+  }) {
+    return _post({
+      'action': 'insights',
+      'learnerId': learnerId,
+    });
+  }
+
+  Future<Map<String, dynamic>> audioStudy({
+    required String learnerId,
+    required String materialId,
+  }) {
+    return _post({
+      'action': 'audio_study',
+      'learnerId': learnerId,
+      'materialId': materialId,
+    });
+  }
+
+  Future<Map<String, dynamic>> createRoom({
+    required String learnerId,
+    required String materialId,
+    required String displayName,
+  }) {
+    return _post({
+      'action': 'room_create',
+      'learnerId': learnerId,
+      'materialId': materialId,
+      'displayName': displayName,
+    });
+  }
+
+  Future<Map<String, dynamic>> joinRoom({
+    required String learnerId,
+    required String code,
+    required String displayName,
+  }) {
+    return _post({
+      'action': 'room_join',
+      'learnerId': learnerId,
+      'code': code,
+      'displayName': displayName,
+    });
+  }
+
   Future<Map<String, dynamic>> answer({
     required String studySessionId,
     required String conceptId,
