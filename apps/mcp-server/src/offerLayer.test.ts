@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { buildAudioStudy, buildRetentionInsights } from "./offerLayer.js";
 import type { AdaptiveStudySession } from "./studyEngine.js";
 
 function session(overrides: Partial<AdaptiveStudySession> = {}): AdaptiveStudySession {
   return {
-    id: crypto.randomUUID(),
-    contentSessionId: crypto.randomUUID(),
+    id: randomUUID(),
+    contentSessionId: randomUUID(),
     learnerId: "learner-a",
     title: "Biology",
     mode: "learn",
@@ -17,7 +18,7 @@ function session(overrides: Partial<AdaptiveStudySession> = {}): AdaptiveStudySe
     maxQuestions: 2,
     concepts: [
       {
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         label: "Photosynthesis",
         sourceExcerpt: "Photosynthesis converts light energy into chemical energy.",
         mastery: 0.84,
@@ -35,7 +36,7 @@ function session(overrides: Partial<AdaptiveStudySession> = {}): AdaptiveStudySe
     ],
     attempts: [
       {
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         conceptId: "c1",
         questionIndex: 1,
         createdAt: new Date().toISOString(),
@@ -45,7 +46,7 @@ function session(overrides: Partial<AdaptiveStudySession> = {}): AdaptiveStudySe
         missingConcepts: [],
       },
       {
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         conceptId: "c1",
         questionIndex: 2,
         createdAt: new Date().toISOString(),
