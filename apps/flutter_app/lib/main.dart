@@ -109,7 +109,7 @@ class _StudyHomeState extends State<StudyHome> {
     });
 
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         allowMultiple: false,
         withData: true,
         type: FileType.custom,
@@ -419,7 +419,7 @@ class _StudyHomeState extends State<StudyHome> {
               if (_mode == 'test') ...[
                 const SizedBox(height: 16),
                 DropdownButtonFormField<int>(
-                  value: _testQuestions,
+                  initialValue: _testQuestions,
                   decoration: const InputDecoration(labelText: 'Questions'),
                   items: const [10, 20, 30, 40]
                       .map((value) => DropdownMenuItem(
@@ -433,7 +433,7 @@ class _StudyHomeState extends State<StudyHome> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<int>(
-                  value: _testDuration,
+                  initialValue: _testDuration,
                   decoration: const InputDecoration(labelText: 'Time limit'),
                   items: const [15, 30, 45, 60, 90]
                       .map((value) => DropdownMenuItem(
