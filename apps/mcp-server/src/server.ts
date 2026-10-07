@@ -740,6 +740,12 @@ function requireApiAuth(
   res: express.Response,
   next: express.NextFunction,
 ) {
+  // Administrative routes have their own isolated credential boundary.
+  if (req.path.startsWith("/admin/")) {
+    next();
+    return;
+  }
+
   if (!apiAuthorized(req)) {
     res.status(401).json({ error: "unauthorized" });
     return;
