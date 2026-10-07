@@ -1,4 +1,4 @@
-import { entitlementsForIdentity } from "./_db.js";
+import { entitlementsForIdentity, familyAccessForIdentity } from "./_db.js";
 
 function json(res, status, body) {
   res.setHeader("content-type", "application/json; charset=utf-8");
@@ -30,7 +30,7 @@ async function identityFromBearer(req) {
   return { userRef: userRef || null, email: email || null };
 }
 
-function expanded(rows) {
+function expanded(rows, familyAccess = null) {
   const output = rows.map((row) => ({
     key: row.entitlement_key,
     active: Boolean(row.active),
@@ -38,6 +38,33 @@ function expanded(rows) {
     expires_at: row.expires_at || null,
     status: row.status,
   }));
+
+  if (output.some((item) => item.key === "instant_study.family" && item.active)) {
+    output.push({
+      key: "instant_study.unlimited",
+      active: true,
+      provider: "instant_study_family",
+      expires_at: null,
+      status: "family_owner",
+    });
+  }
+
+  if (familyAccess) {
+    output.push({
+      key: "instant_study.family_member",
+      active: true,
+      provider: "instant_study_family",
+      expires_at: null,
+      status: "family_member",
+    });
+    output.push({
+      key: "instant_study.unlimited",
+      active: true,
+      provider: "instant_study_family",
+      expires_at: null,
+      status: "family_member",
+    });
+  }
 
   if (output.some((item) => item.key === "instant_one.all" && item.active)) {
     const bundle = [
@@ -75,8 +102,11 @@ export default async function handler(req, res) {
       return json(res, 403, { error: "identity_mismatch" });
     }
 
-    const rows = await entitlementsForIdentity(identity);
-    return json(res, 200, { entitlements: expanded(rows) });
+    const [rows, familyAccess] = await Promise.all([
+      entitlementsForIdentity(identity),
+      familyAccessForIdentity(identity),
+    ]);
+    return json(res, 200, { entitlements: expanded(rows, familyAccess) });
   } catch (error) {
     if (error?.message === "identity_not_configured") {
       return json(res, 503, { error: "identity_not_configured" });
