@@ -1114,3 +1114,73 @@ footer > span { justify-self: center; }
   .generated-stack { padding: 24px 20px; }
   .learn-preview { padding: 20px; }
 }
+
+
+/* Future of Learning v2 motion: signal propagation, never spectacle. */
+@keyframes futureReveal {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes futureOrbSignal {
+  0% { transform: scale(.985) rotate(-2deg); }
+  55% { transform: scale(1.018) rotate(3deg); }
+  100% { transform: scale(1) rotate(1deg); }
+}
+@keyframes futureBarSignal {
+  from { transform: scaleX(0); opacity: .45; }
+  to { transform: scaleX(1); opacity: 1; }
+}
+
+.future-kicker {
+  animation: futureReveal 520ms 40ms cubic-bezier(.2,.7,.2,1) both;
+}
+.future-title > span:first-child {
+  animation: futureReveal 720ms 90ms cubic-bezier(.2,.7,.2,1) both;
+}
+.future-title > span:nth-child(2) {
+  animation: futureReveal 760ms 150ms cubic-bezier(.2,.7,.2,1) both;
+}
+.future-title::after {
+  animation: futureOrbSignal 8s 600ms ease-in-out infinite alternate;
+}
+.future-intro {
+  animation: futureReveal 620ms 220ms cubic-bezier(.2,.7,.2,1) both;
+}
+.generator {
+  animation: futureReveal 680ms 290ms cubic-bezier(.2,.7,.2,1) both;
+}
+.hero-product {
+  animation: futureReveal 760ms 360ms cubic-bezier(.2,.7,.2,1) both;
+}
+.rail-progress i b,
+.concept-meter i b,
+.review-mastery i b,
+.test-progress i {
+  transform-origin: left center;
+  animation: futureBarSignal 760ms 520ms cubic-bezier(.2,.7,.2,1) both;
+}
+.brand-orb i,
+.brand-orb b {
+  transition: transform 420ms cubic-bezier(.2,.7,.2,1);
+}
+.brand:hover .brand-orb i { transform: scale(1.08); }
+.brand:hover .brand-orb b { transform: scale(.9); }
+
+@media (prefers-reduced-motion: reduce) {
+  .future-kicker,
+  .future-title > span,
+  .future-title::after,
+  .future-intro,
+  .generator,
+  .hero-product,
+  .rail-progress i b,
+  .concept-meter i b,
+  .review-mastery i b,
+  .test-progress i {
+    animation: none !important;
+  }
+  .brand-orb i,
+  .brand-orb b {
+    transition: none !important;
+  }
+}
