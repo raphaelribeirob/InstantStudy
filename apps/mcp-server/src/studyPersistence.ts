@@ -1,4 +1,9 @@
 import { neon } from "@neondatabase/serverless";
+import {
+  databaseUrl,
+  durableDatabaseRequired,
+  DurableDatabaseRequiredError,
+} from "./databasePolicy.js";
 import type { AdaptiveStudySession, ConceptState } from "./studyEngine.js";
 
 export type DueReview = {
@@ -243,12 +248,36 @@ class NeonStudyPersistence implements StudyPersistence {
   }
 }
 
-export function createStudyPersistence(): StudyPersistence {
-  const databaseUrl = process.env.DATABASE_URL?.trim();
-
-  if (databaseUrl) {
-    return new NeonStudyPersistence(databaseUrl);
+class UnavailableStudyPersistence implements StudyPersistence {
+  private unavailable(): never {
+    throw new DurableDatabaseRequiredError();
   }
 
-  return new MemoryStudyPersistence();
+  async get(_sessionId: string) {
+    return this.unavailable();
+  }
+
+  async save(_session: AdaptiveStudySession) {
+    return this.unavailable();
+  }
+
+  async priorConcepts(_learnerId: string, _labels: string[]) {
+    return this.unavailable();
+  }
+
+  async dueReviews(_learnerId: string, _beforeIso: string, _limit: number) {
+    return this.unavailable();
+  }
+}
+
+export function createStudyPersistence(): StudyPersistence {
+  const url = databaseUrl();
+
+  if (url) {
+    return new NeonStudyPersistence(url);
+  }
+
+  return durableDatabaseRequired()
+    ? new UnavailableStudyPersistence()
+    : new MemoryStudyPersistence();
 }
