@@ -33,6 +33,13 @@ const resources = {
       },
       landing: {
         kicker: "THE FUTURE OF LEARNING",
+        introduce: "Introducing InstantStudy™",
+        adaptivePersistent: "Adaptive learning · Persistent memory",
+        futureLine1: "The future",
+        futureLine2: "of learning.",
+        openSoftware: "Open the software",
+        experienceLoop: "Experience the loop",
+        oneSystem: "One learning system, wherever you think.",
         heroTitle: "Learn from anything.",
         heroBody:
           "Turn any material into a living knowledge state: active practice, testing, mastery and right-time review.",
@@ -258,6 +265,13 @@ const resources = {
       },
       landing: {
         kicker: "O FUTURO DO APRENDIZADO",
+        introduce: "Apresentamos o InstantStudy™",
+        adaptivePersistent: "Aprendizado adaptativo · Memória persistente",
+        futureLine1: "O futuro",
+        futureLine2: "do aprendizado.",
+        openSoftware: "Abrir o software",
+        experienceLoop: "Experimentar o ciclo",
+        oneSystem: "Um sistema de aprendizado, onde quer que você pense.",
         heroTitle: "Aprenda com qualquer coisa.",
         heroBody:
           "Transforme qualquer material em um estado vivo de conhecimento: prática ativa, testes, domínio e revisão no momento certo.",
