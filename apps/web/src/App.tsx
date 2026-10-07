@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
   BookOpenCheck,
@@ -16,6 +17,7 @@ import {
 import { agentPresets, mcpUrl, type AgentId } from "./connection";
 import { loadOffer, type FunnelOffer } from "./offer";
 import { instantBillingConfigured, openInstantStudyCheckout } from "./instantBilling";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 const modes = [
   {
@@ -95,26 +97,26 @@ function Logo() {
 }
 
 function StudyGenerator() {
+  const { t } = useTranslation();
   const [source, setSource] = useState<"paste" | "upload" | "drive" | "audio" | "scan">("upload");
 
   const labels = {
-    paste: "Paste text",
-    upload: "Upload files",
-    drive: "Google Drive",
-    audio: "Record audio",
-    scan: "Scan notes",
+    paste: t("landing.paste"),
+    upload: t("landing.upload"),
+    drive: t("landing.drive"),
+    audio: t("landing.audio"),
+    scan: t("landing.scan"),
   };
 
   return (
     <section className="generator" id="generator">
       <div className="generator-head">
         <div>
-          <p className="eyebrow">Start with your own material</p>
-          <h2>Turn one source into a complete study loop.</h2>
+          <p className="eyebrow">{t("landing.startOwn")}</p>
+          <h2>{t("landing.generatorTitle")}</h2>
         </div>
         <p>
-          Bring the material once. InstantStudy™ structures it into active practice
-          instead of making you rebuild the same content in separate tools.
+          {t("landing.generatorBody")}
         </p>
       </div>
 
@@ -136,27 +138,27 @@ function StudyGenerator() {
           <div className="drop-zone">
             <span className="drop-icon"><FileText size={24} /></span>
             <strong>
-              {source === "paste" && "Paste the material you need to learn"}
-              {source === "upload" && "Drop notes, readings or lecture slides"}
-              {source === "drive" && "Choose a document from your Drive"}
-              {source === "audio" && "Record or add lecture material"}
-              {source === "scan" && "Photograph handwritten notes"}
+              {source === "paste" && t("landing.pastePrompt")}
+              {source === "upload" && t("landing.uploadPrompt")}
+              {source === "drive" && t("landing.drivePrompt")}
+              {source === "audio" && t("landing.audioPrompt")}
+              {source === "scan" && t("landing.scanPrompt")}
             </strong>
             <p>
-              PDF, DOCX, PPTX, text, audio and photographed notes enter the same learning system.
+              {t("landing.supportedSources")}
             </p>
             <button type="button">
-              {source === "paste" ? "Paste text" : source === "drive" ? "Choose file" : source === "audio" ? "Record audio" : source === "scan" ? "Scan notes" : "Browse files"}
+              {source === "paste" ? t("landing.paste") : source === "drive" ? t("landing.chooseFile") : source === "audio" ? t("landing.audio") : source === "scan" ? t("landing.scan") : t("landing.browseFiles")}
             </button>
           </div>
 
           <div className="generated-stack">
-            <span className="generated-label">From this material</span>
-            <div><Brain size={17} /><span><strong>Learn</strong><small>Adaptive questions that get harder with mastery</small></span></div>
-            <div><FlaskConical size={17} /><span><strong>Quiz</strong><small>Fast recall with immediate feedback</small></span></div>
-            <div><GraduationCap size={17} /><span><strong>Practice Test</strong><small>Exam-style questions, timer and final score</small></span></div>
-            <div><BookOpenCheck size={17} /><span><strong>Review</strong><small>Return to weak concepts when they are due</small></span></div>
-            <div><Sparkles size={17} /><span><strong>Retention</strong><small>See what is strong, fading and due next</small></span></div>
+            <span className="generated-label">{t("landing.fromMaterial")}</span>
+            <div><Brain size={17} /><span><strong>{t("common.learn")}</strong><small>{t("landing.learnDetail")}</small></span></div>
+            <div><FlaskConical size={17} /><span><strong>Quiz</strong><small>{t("landing.quizDetail")}</small></span></div>
+            <div><GraduationCap size={17} /><span><strong>{t("common.test")}</strong><small>{t("landing.testDetail")}</small></span></div>
+            <div><BookOpenCheck size={17} /><span><strong>{t("common.review")}</strong><small>{t("landing.reviewDetail")}</small></span></div>
+            <div><Sparkles size={17} /><span><strong>{t("landing.retention")}</strong><small>{t("landing.retentionDetail")}</small></span></div>
           </div>
         </div>
       </div>
@@ -373,12 +375,13 @@ function ConnectAgent() {
 }
 
 function Pricing() {
+  const { t, i18n } = useTranslation();
   const [offer, setOffer] = useState<FunnelOffer | null>(null);
   const [annual, setAnnual] = useState(true);
 
   useEffect(() => {
-    void loadOffer(navigator.language || "en").then(setOffer);
-  }, []);
+    void loadOffer(i18n.language || navigator.language || "en").then(setOffer);
+  }, [i18n.language]);
 
   const unlimitedAnnual = offer?.annualPrice ?? "$44.99 / year";
   const unlimitedMonthly = offer?.monthlyPrice ?? "$6.99 / month";
@@ -390,8 +393,8 @@ function Pricing() {
   return (
     <section className="section pricing-section" id="pricing">
       <div className="section-heading pricing-heading">
-        <p className="eyebrow">Upgrade after you feel the value</p>
-        <h2>Start free. Pay when you want the limits gone.</h2>
+        <p className="eyebrow">{t("landing.pricingKicker")}</p>
+        <h2>{t("landing.pricingTitle")}</h2>
         <p>
           The free experience gets you into the learning loop. Plus increases
           your monthly study allowance. Unlimited removes the core Learn and Test caps.
@@ -400,17 +403,17 @@ function Pricing() {
 
       <div className="billing-switch" aria-label="Billing interval">
         <button type="button" className={!annual ? "active" : ""} onClick={() => setAnnual(false)}>
-          Monthly
+          {t("landing.monthly")}
         </button>
         <button type="button" className={annual ? "active" : ""} onClick={() => setAnnual(true)}>
-          Annual <span>7-day trial</span>
+          {t("landing.annual")} <span>{t("landing.trial7")}</span>
         </button>
       </div>
 
       <div className="pricing-grid quizlet-pricing-grid">
         <article className="pricing-card free-card">
           <div>
-            <span className="plan-name">Free</span>
+            <span className="plan-name">{t("landing.free")}</span>
             <h3>$0</h3>
             <p>Start with your own material and experience the study loop.</p>
           </div>
@@ -425,7 +428,7 @@ function Pricing() {
 
         <article className="pricing-card plus-card">
           <div>
-            <span className="plan-name">Plus</span>
+            <span className="plan-name">{t("landing.plus")}</span>
             <h3>{annual ? annualPlusEquivalent : plusMonthly}</h3>
             <p>{annual ? `Billed at ${plusAnnual} · 7-day free trial.` : "Cancel anytime."}</p>
           </div>
@@ -453,9 +456,9 @@ function Pricing() {
         </article>
 
         <article className="pricing-card unlimited-card">
-          <div className="most-popular">Most popular</div>
+          <div className="most-popular">{t("landing.mostPopular")}</div>
           <div>
-            <span className="plan-name">Unlimited</span>
+            <span className="plan-name">{t("landing.unlimited")}</span>
             <h3>{annual ? annualUnlimitedEquivalent : unlimitedMonthly}</h3>
             <p>{annual ? `Billed at ${unlimitedAnnual} · ${offer?.trial ?? "7 days free"}.` : "Cancel anytime."}</p>
           </div>
@@ -511,7 +514,7 @@ function Pricing() {
               });
             }}
           >
-            Choose Family
+            {t("landing.chooseFamily")}
           </a>
         </article>
       </div>
@@ -554,16 +557,19 @@ function FAQ() {
 }
 
 export function App() {
+  const { t } = useTranslation();
+
   return (
     <main id="top">
       <header className="nav-shell">
         <Logo />
         <nav>
-          <a href="#generator">Create</a>
-          <a href="#learn">Learn</a>
-          <a href="#test">Test</a>
+          <a href="#generator">{t("common.create")}</a>
+          <a href="#learn">{t("common.learn")}</a>
+          <a href="#test">{t("common.test")}</a>
           <a href="#pricing">Upgrade</a>
         </nav>
+        <LanguageSwitcher compact />
         <a className="nav-cta" href="/app">
           Open InstantStudy™ <ArrowRight size={14} />
         </a>
