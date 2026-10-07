@@ -1,15 +1,47 @@
-const MAX_BODY_BYTES = 1024 * 1024;
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
+const MAX_INLINE_BASE64 = 3_500_000;
+const ANON_ID = /^(web|flutter)-[A-Za-z0-9-]{8,200}$/;
 
 function json(res, status, body) {
   res.status(status);
   res.setHeader("content-type", "application/json; charset=utf-8");
   res.setHeader("cache-control", "no-store");
+  res.setHeader("x-content-type-options", "nosniff");
   return res.end(JSON.stringify(body));
 }
 
 function cleanId(value, max = 200) {
   const text = typeof value === "string" ? value.trim() : "";
   return text && text.length <= max ? text : "";
+}
+
+function cleanFiles(value) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 10).map((item, index) => {
+    const file = item && typeof item === "object" ? item : {};
+    const inline =
+      typeof file.inline_base64 === "string"
+        ? file.inline_base64.slice(0, MAX_INLINE_BASE64)
+        : undefined;
+    const downloadUrl =
+      typeof file.download_url === "string"
+        ? file.download_url.slice(0, 2000)
+        : undefined;
+
+    return {
+      file_id: cleanId(file.file_id, 200) || `upload-${index + 1}`,
+      file_name:
+        typeof file.file_name === "string"
+          ? file.file_name.slice(0, 300)
+          : undefined,
+      mime_type:
+        typeof file.mime_type === "string"
+          ? file.mime_type.slice(0, 200)
+          : undefined,
+      inline_base64: inline,
+      download_url: downloadUrl,
+    };
+  }).filter((file) => Boolean(file.inline_base64) !== Boolean(file.download_url));
 }
 
 async function upstream(base, apiKey, path, payload) {
@@ -20,10 +52,62 @@ async function upstream(base, apiKey, path, payload) {
       "content-type": "application/json",
     },
     body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(25_000),
+    signal: AbortSignal.timeout(30_000),
   });
   const data = await response.json().catch(() => ({}));
   return { response, data };
+}
+
+async function upstreamGet(base, apiKey, path, params) {
+  const url = new URL(`${base}${path}`);
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && String(value)) {
+      url.searchParams.set(key, String(value));
+    }
+  }
+
+  const response = await fetch(url, {
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      accept: "application/json",
+    },
+    signal: AbortSignal.timeout(20_000),
+  });
+  const data = await response.json().catch(() => ({}));
+  return { response, data };
+}
+
+async function verifiedLearner(body) {
+  const learnerId = cleanId(body.learnerId);
+  if (!learnerId) return "";
+
+  if (ANON_ID.test(learnerId)) return learnerId;
+
+  const accountUserId = cleanId(body.accountUserId);
+  const accessToken = cleanId(body.accountAccessToken, 4000);
+  if (!accountUserId || !accessToken || accountUserId !== learnerId) return "";
+
+  const payBase = String(
+    process.env.INSTANT_PAY_URL ||
+      process.env.VITE_INSTANT_PAY_URL ||
+      "https://instant-pay-gamma.vercel.app",
+  ).replace(/\/$/, "");
+
+  try {
+    const response = await fetch(
+      `${payBase}/v1/billing/entitlements?user_id=${encodeURIComponent(accountUserId)}`,
+      {
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          accept: "application/json",
+        },
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+    return response.ok ? learnerId : "";
+  } catch {
+    return "";
+  }
 }
 
 export default async function handler(req, res) {
@@ -37,9 +121,18 @@ export default async function handler(req, res) {
   if (!base || !apiKey) return json(res, 503, { error: "study_api_not_configured" });
 
   const body = req.body && typeof req.body === "object" ? req.body : {};
-  const action = ["prepare", "answer", "ask", "next", "finish"].includes(body.action)
-    ? body.action
-    : "prepare";
+  const allowedActions = [
+    "prepare",
+    "answer",
+    "ask",
+    "next",
+    "finish",
+    "due",
+    "material_import",
+    "material_list",
+    "material_get",
+  ];
+  const action = allowedActions.includes(body.action) ? body.action : "prepare";
 
   try {
     let result;
@@ -52,7 +145,23 @@ export default async function handler(req, res) {
       const mode = ["learn", "review", "quiz", "test"].includes(body.mode)
         ? body.mode
         : "learn";
-      const learnerId = cleanId(body.learnerId);
+      const learnerId = await verifiedLearner(body);
+      const maxQuestions = Number.isInteger(body.maxQuestions)
+        ? Math.max(1, Math.min(Number(body.maxQuestions), 50))
+        : mode === "test" ? 20 : 12;
+      const testDurationMinutes = Number.isInteger(body.testDurationMinutes)
+        ? Math.max(1, Math.min(Number(body.testDurationMinutes), 180))
+        : undefined;
+      const validTypes = new Set([
+        "multiple_choice",
+        "true_false",
+        "short_answer",
+        "free_recall",
+        "application",
+      ]);
+      const testQuestionTypes = Array.isArray(body.testQuestionTypes)
+        ? body.testQuestionTypes.filter((item) => validTypes.has(item)).slice(0, 5)
+        : undefined;
 
       if (!contentText.trim()) {
         return json(res, 400, { error: "content_required" });
@@ -63,7 +172,9 @@ export default async function handler(req, res) {
         title,
         mode,
         learnerId: learnerId || undefined,
-        maxQuestions: mode === "test" ? 20 : 12,
+        maxQuestions,
+        testDurationMinutes,
+        testQuestionTypes: testQuestionTypes?.length ? testQuestionTypes : undefined,
       });
     } else if (action === "answer") {
       const studySessionId = cleanId(body.studySessionId, 64);
@@ -98,10 +209,59 @@ export default async function handler(req, res) {
       const studySessionId = cleanId(body.studySessionId, 64);
       if (!studySessionId) return json(res, 400, { error: "session_required" });
       result = await upstream(base, apiKey, "/api/v1/study/next", { studySessionId });
-    } else {
+    } else if (action === "finish") {
       const studySessionId = cleanId(body.studySessionId, 64);
       if (!studySessionId) return json(res, 400, { error: "session_required" });
       result = await upstream(base, apiKey, "/api/v1/study/finish", { studySessionId });
+    } else if (action === "due") {
+      const learnerId = await verifiedLearner(body);
+      if (!learnerId) return json(res, 401, { error: "learner_identity_required" });
+      result = await upstreamGet(base, apiKey, "/api/v1/study/due", {
+        learnerId,
+        limit: Math.max(1, Math.min(Number(body.limit || 20), 100)),
+      });
+    } else if (action === "material_import") {
+      const learnerId = await verifiedLearner(body);
+      if (!learnerId) return json(res, 401, { error: "learner_identity_required" });
+
+      const sourceType = ["paste", "upload", "drive", "audio"].includes(body.sourceType)
+        ? body.sourceType
+        : "paste";
+      const contentText =
+        typeof body.contentText === "string" ? body.contentText.slice(0, 200000) : "";
+      const files = cleanFiles(body.files);
+
+      if (!contentText.trim() && !files.length) {
+        return json(res, 400, { error: "material_input_required" });
+      }
+
+      result = await upstream(base, apiKey, "/api/v1/materials/import", {
+        learnerId,
+        title:
+          typeof body.title === "string" ? body.title.slice(0, 200) : undefined,
+        sourceType,
+        contentText: contentText || undefined,
+        files,
+      });
+    } else if (action === "material_list") {
+      const learnerId = await verifiedLearner(body);
+      if (!learnerId) return json(res, 401, { error: "learner_identity_required" });
+
+      result = await upstream(base, apiKey, "/api/v1/materials/list", {
+        learnerId,
+        query: typeof body.query === "string" ? body.query.slice(0, 200) : "",
+        limit: Math.max(1, Math.min(Number(body.limit || 50), 100)),
+      });
+    } else {
+      const learnerId = await verifiedLearner(body);
+      const id = cleanId(body.id, 64);
+      if (!learnerId || !id) {
+        return json(res, 400, { error: "material_get_invalid" });
+      }
+      result = await upstream(base, apiKey, "/api/v1/materials/get", {
+        learnerId,
+        id,
+      });
     }
 
     if (!result.response.ok) {
@@ -109,6 +269,7 @@ export default async function handler(req, res) {
         error: result.data?.error || "study_api_error",
         message: result.data?.message,
         usage: result.data?.usage,
+        ingestion: result.data?.ingestion,
       });
     }
 
