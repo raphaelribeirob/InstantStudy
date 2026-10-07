@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import cors from "cors";
 import express from "express";
-import helmet from "helmet";
+import { helmet } from "helmet";
 import { rateLimit } from "express-rate-limit";
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
