@@ -45,7 +45,7 @@ function rotate<T>(items: T[], shift: number) {
 }
 
 export function generateQuestion(input: {
-  type: "multiple_choice" | "true_false" | "short_answer" | "free_recall" | "application";
+  type: "multiple_choice" | "true_false" | "short_answer" | "free_recall" | "application" | "explain_why";
   concept: ConceptLike;
   alternatives?: ConceptLike[];
   questionIndex?: number;
@@ -112,6 +112,14 @@ export function generateQuestion(input: {
   if (input.type === "free_recall") {
     return {
       prompt: `Without looking back, explain ${concept} in your own words and include the most important detail.`,
+      answerMode: "text",
+      generatedBy: "deterministic",
+    };
+  }
+
+  if (input.type === "explain_why") {
+    return {
+      prompt: `Why does ${concept} matter in this material? Explain the relationship, not just the definition.`,
       answerMode: "text",
       generatedBy: "deterministic",
     };
