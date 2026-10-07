@@ -1,4 +1,9 @@
 import { neon } from "@neondatabase/serverless";
+import {
+  databaseUrl,
+  durableDatabaseRequired,
+  DurableDatabaseRequiredError,
+} from "./databasePolicy.js";
 import type { StudyMode } from "./contentSessions.js";
 
 export type StudyPlan = "free" | "plus" | "unlimited";
@@ -239,11 +244,36 @@ class NeonEntitlementStore implements EntitlementStore {
   }
 }
 
+class UnavailableEntitlementStore implements EntitlementStore {
+  private unavailable(): never {
+    throw new DurableDatabaseRequiredError();
+  }
+
+  async get(_learnerId: string) {
+    return this.unavailable();
+  }
+
+  async saveUsage(_row: UsageRow) {
+    return this.unavailable();
+  }
+
+  async setPlan(_learnerId: string, _plan: StudyPlan) {
+    return this.unavailable();
+  }
+}
+
+function createEntitlementStore(): EntitlementStore {
+  const url = databaseUrl();
+  if (url) return new NeonEntitlementStore(url);
+
+  return durableDatabaseRequired()
+    ? new UnavailableEntitlementStore()
+    : new MemoryEntitlementStore();
+}
+
 export class EntitlementService {
   constructor(
-    private store: EntitlementStore = process.env.DATABASE_URL?.trim()
-      ? new NeonEntitlementStore(process.env.DATABASE_URL.trim())
-      : new MemoryEntitlementStore(),
+    private store: EntitlementStore = createEntitlementStore(),
   ) {}
 
   async getStatus(learnerId: string) {
