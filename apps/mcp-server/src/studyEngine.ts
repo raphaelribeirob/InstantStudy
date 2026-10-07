@@ -6,6 +6,7 @@ import {
   type StudyPersistence,
 } from "./studyPersistence.js";
 import { generateQuestion } from "./questionGenerator.js";
+import { buildRetentionInsights } from "./offerLayer.js";
 
 export type TestQuestionType =
   | "multiple_choice"
@@ -591,6 +592,11 @@ export class StudyEngine {
       options?.before ?? new Date().toISOString(),
       Math.max(1, Math.min(options?.limit ?? 20, 100)),
     );
+  }
+
+  async insights(learnerId: string) {
+    const sessions = await this.persistence.recentSessions(learnerId, 200);
+    return buildRetentionInsights(sessions);
   }
 
   private async requireActive(sessionId: string) {
