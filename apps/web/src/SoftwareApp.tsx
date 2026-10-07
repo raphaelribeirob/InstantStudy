@@ -511,7 +511,7 @@ export function SoftwareApp() {
         : selectedFiles.length > 0;
 
   return (
-    <div className="software-shell">
+    <div className={`software-shell software-view-${view}`}>
       <aside className="software-sidebar">
         <a className="software-brand" href="/">
           <span className="software-mark"><i /></span>
