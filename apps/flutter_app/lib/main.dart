@@ -125,6 +125,10 @@ class _StudyHomeState extends State<StudyHome> {
           'wav',
           'webm',
           'ogg',
+          'png',
+          'jpg',
+          'jpeg',
+          'webp',
         ],
       );
 
@@ -259,6 +263,48 @@ class _StudyHomeState extends State<StudyHome> {
     }
   }
 
+  Future<void> _showInsights() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final data = await _api.insights(learnerId: _learnerId);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          final mastery = ((data['averageMastery'] as num?)?.toDouble() ?? 0) * 100;
+          final retention = ((data['retentionScore'] as num?)?.toDouble() ?? 0) * 100;
+          return AlertDialog(
+            title: const Text('Retention Insights'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Mastery: ${mastery.round()}%'),
+                Text('Retention: ${retention.round()}%'),
+                Text('Streak: ${data['streakDays'] ?? 0} days'),
+                Text('Due now: ${data['dueNow'] ?? 0}'),
+                Text('Answers: ${data['attempts'] ?? 0}'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Widget _buildQuestion() {
     final prompt =
         _question?['prompt']?.toString() ?? _concept?['label']?.toString() ?? '';
@@ -357,6 +403,13 @@ class _StudyHomeState extends State<StudyHome> {
             letterSpacing: -0.8,
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Retention Insights',
+            onPressed: _busy ? null : _showInsights,
+            icon: const Icon(Icons.insights_outlined),
+          ),
+        ],
       ),
       body: SafeArea(
         child: ListView(
@@ -401,7 +454,7 @@ class _StudyHomeState extends State<StudyHome> {
               OutlinedButton.icon(
                 onPressed: _busy ? null : _pickFile,
                 icon: const Icon(Icons.upload_file),
-                label: Text(_sourceLabel ?? 'Import PDF, DOCX, PPTX, text or audio'),
+                label: Text(_sourceLabel ?? 'Import file, audio, photo or handwritten notes'),
               ),
               const SizedBox(height: 16),
               SegmentedButton<String>(

@@ -2,10 +2,13 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   Brain,
+  BarChart3,
+  Camera,
   CheckCircle2,
   FilePlus2,
   FileText,
   GraduationCap,
+  Headphones,
   Home,
   Library,
   MessageCircle,
@@ -13,19 +16,30 @@ import {
   Plug,
   Search,
   Sparkles,
+  Trophy,
   Upload,
+  Users,
 } from "lucide-react";
 import {
   askStudyMaterial,
   fileToStudyInput,
+  getAudioStudy,
   getDueReviews,
+  getRetentionInsights,
+  getStudyRoom,
   googleDriveStudyInput,
   importStudyMaterial,
+  joinStudyRoom,
   listStudyMaterials,
   prepareStudy,
+  createStudyRoom,
   submitStudyAnswer,
+  updateStudyRoomProgress,
+  type AudioStudy,
   type DueReview,
+  type RetentionInsights,
   type StudyMaterial,
+  type StudyRoom,
   type StudyMode,
   type StudySummary,
   type TestQuestionType,
@@ -43,9 +57,12 @@ type View =
   | "test"
   | "ask"
   | "review"
+  | "insights"
+  | "audio"
+  | "friends"
   | "plugin";
 
-type SourceType = "paste" | "upload" | "drive" | "audio";
+type SourceType = "paste" | "upload" | "drive" | "audio" | "scan";
 
 const STORAGE_KEY = "instantstudy.library.v2";
 
@@ -113,11 +130,44 @@ export function SoftwareApp() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const [recording, setRecording] = useState(false);
+  const [insights, setInsights] = useState<RetentionInsights | null>(null);
+  const [insightsBusy, setInsightsBusy] = useState(false);
+  const [audioStudy, setAudioStudy] = useState<AudioStudy | null>(null);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [room, setRoom] = useState<StudyRoom | null>(null);
+  const [roomCode, setRoomCode] = useState("");
+  const [displayName, setDisplayName] = useState(
+    () => localStorage.getItem("instantstudy.display_name") || "Learner",
+  );
+  const [roomBusy, setRoomBusy] = useState(false);
+  const [roomMessage, setRoomMessage] = useState("");
+
 
   const selected = useMemo(
     () => library.find((item) => item.id === selectedId) ?? library[0] ?? null,
     [library, selectedId],
   );
+
+  function materialFromRoom(value: StudyRoom): StudyMaterial {
+    const now = new Date().toISOString();
+    return {
+      id: `room-${value.code}`,
+      learnerId: "",
+      title: value.title,
+      content: [value.summary, ...value.concepts].join("\n\n"),
+      sourceType: "paste",
+      sourceNames: [],
+      assets: {
+        summary: value.summary,
+        outline: value.concepts,
+        keyConcepts: value.concepts,
+        flashcards: [],
+        generatedBy: "study-room",
+      },
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
 
   const filteredLibrary = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase();
@@ -155,13 +205,45 @@ export function SoftwareApp() {
       .finally(() => setReviewBusy(false));
   }, [view]);
 
+  useEffect(() => {
+    if (view !== "insights") return;
+    setInsightsBusy(true);
+    void getRetentionInsights()
+      .then(setInsights)
+      .catch(() => setInsights(null))
+      .finally(() => setInsightsBusy(false));
+  }, [view]);
+
+  useEffect(() => {
+    if (view !== "audio" || !selected) return;
+    setAudioStudy(null);
+    void getAudioStudy(selected.id)
+      .then(setAudioStudy)
+      .catch(() => setAudioStudy(null));
+  }, [view, selectedId]);
+
+  useEffect(() => {
+    if (view !== "friends" || !room?.code) return;
+    const timer = window.setInterval(() => {
+      void getStudyRoom(room.code)
+        .then(({ room: next }) => setRoom(next))
+        .catch(() => undefined);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [view, room?.code]);
+
+  useEffect(() => {
+    return () => window.speechSynthesis?.cancel();
+  }, []);
+
+
   async function createMaterial() {
     setBusy(true);
     setCreateError("");
 
     try {
       const files =
-        sourceType === "upload" || sourceType === "audio"
+        sourceType === "upload" || sourceType === "audio" || sourceType === "scan"
           ? await Promise.all(selectedFiles.map(fileToStudyInput))
           : sourceType === "drive"
             ? [googleDriveStudyInput(driveUrl)]
@@ -169,7 +251,7 @@ export function SoftwareApp() {
 
       const result = await importStudyMaterial({
         title: title.trim() || undefined,
-        sourceType,
+        sourceType: sourceType === "scan" ? "upload" : sourceType,
         contentText: sourceType === "paste" ? draft.trim() : undefined,
         files,
       });
@@ -244,6 +326,18 @@ export function SoftwareApp() {
       } else if (result.submission?.done) {
         setSession({ ...session, next: undefined });
       }
+
+      if (room?.code) {
+        const nextIndex = result.next?.questionIndex ?? session.next?.questionIndex ?? 1;
+        const total = result.next?.totalPlanned ?? session.next?.totalPlanned ?? 1;
+        void updateStudyRoomProgress({
+          code: room.code,
+          progress: result.submission?.done ? 1 : Math.min(1, nextIndex / Math.max(1, total)),
+          attempts: nextIndex,
+        })
+          .then(({ room: updated }) => setRoom(updated))
+          .catch(() => undefined);
+      }
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Could not evaluate this answer.");
     } finally {
@@ -316,6 +410,70 @@ export function SoftwareApp() {
     }
   }
 
+
+  function toggleAudioStudy() {
+    if (!audioStudy || !("speechSynthesis" in window)) return;
+    if (audioPlaying) {
+      window.speechSynthesis.cancel();
+      setAudioPlaying(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(
+      audioStudy.segments
+        .map((segment) => `${segment.speaker}: ${segment.text}`)
+        .join("  "),
+    );
+    utterance.rate = 0.96;
+    utterance.onend = () => setAudioPlaying(false);
+    utterance.onerror = () => setAudioPlaying(false);
+    setAudioPlaying(true);
+    window.speechSynthesis.speak(utterance);
+  }
+
+  async function createRoom() {
+    if (!selected || !displayName.trim()) return;
+    setRoomBusy(true);
+    setRoomMessage("");
+    localStorage.setItem("instantstudy.display_name", displayName.trim());
+    try {
+      const result = await createStudyRoom({
+        materialId: selected.id,
+        displayName: displayName.trim(),
+      });
+      setRoom(result.room);
+      setRoomCode(result.room.code);
+      setRoomMessage("Room created. Share the code with your study partners.");
+    } catch (error) {
+      setRoomMessage(error instanceof Error ? error.message : "Could not create room.");
+    } finally {
+      setRoomBusy(false);
+    }
+  }
+
+  async function joinRoom() {
+    if (!roomCode.trim() || !displayName.trim()) return;
+    setRoomBusy(true);
+    setRoomMessage("");
+    localStorage.setItem("instantstudy.display_name", displayName.trim());
+    try {
+      const result = await joinStudyRoom({
+        code: roomCode.trim(),
+        displayName: displayName.trim(),
+      });
+      setRoom(result.room);
+      setRoomCode(result.room.code);
+      const shared = materialFromRoom(result.room);
+      setLibrary((current) => [shared, ...current.filter((item) => item.id !== shared.id)]);
+      setSelectedId(shared.id);
+      setRoomMessage(`Joined ${result.room.title}.`);
+    } catch (error) {
+      setRoomMessage(error instanceof Error ? error.message : "Could not join room.");
+    } finally {
+      setRoomBusy(false);
+    }
+  }
+
   async function toggleRecording() {
     if (recording) {
       recorderRef.current?.stop();
@@ -374,6 +532,9 @@ export function SoftwareApp() {
           {navItem("test", view, <GraduationCap size={17}/>, "Practice Test", setView)}
           {navItem("ask", view, <MessageCircle size={17}/>, "Ask", setView)}
           {navItem("review", view, <BookOpen size={17}/>, "Review", setView)}
+          {navItem("insights", view, <BarChart3 size={17}/>, "Insights", setView)}
+          {navItem("audio", view, <Headphones size={17}/>, "Audio Study", setView)}
+          {navItem("friends", view, <Users size={17}/>, "Study With Friends", setView)}
           <div className="software-nav-label">AI</div>
           {navItem("plugin", view, <Plug size={17}/>, "Plugin", setView)}
         </nav>
@@ -432,6 +593,9 @@ export function SoftwareApp() {
               <button onClick={() => setView("flashcards")}><FileText/><strong>Flashcards</strong><span>Semantic active recall</span></button>
               <button onClick={() => setView("learn")}><Brain/><strong>Learn</strong><span>Adaptive questions</span></button>
               <button onClick={() => setView("test")}><GraduationCap/><strong>Practice Test</strong><span>Configurable exam rehearsal</span></button>
+              <button onClick={() => setView("insights")}><BarChart3/><strong>Retention Insights</strong><span>Mastery, streaks and weak concepts</span></button>
+              <button onClick={() => setView("audio")}><Headphones/><strong>Audio Study</strong><span>Turn notes into a guided review</span></button>
+              <button onClick={() => setView("friends")}><Users/><strong>Study With Friends</strong><span>Share a room and progress together</span></button>
             </div>
           </section>
         )}
@@ -455,7 +619,7 @@ export function SoftwareApp() {
           <section className="software-page software-create-page">
             <div className="software-title-row"><div><p>CREATE</p><h1>Turn material into learning.</h1></div></div>
             <div className="software-import-tabs">
-              {(["paste","upload","drive","audio"] as SourceType[]).map((type) => (
+              {(["paste","upload","drive","audio","scan"] as SourceType[]).map((type) => (
                 <button
                   key={type}
                   className={sourceType === type ? "active" : ""}
@@ -464,7 +628,7 @@ export function SoftwareApp() {
                     setCreateError("");
                   }}
                 >
-                  {type === "paste" ? "Paste text" : type === "upload" ? "Upload files" : type === "drive" ? "Google Drive" : "Record audio"}
+                  {type === "paste" ? "Paste text" : type === "upload" ? "Upload files" : type === "drive" ? "Google Drive" : type === "audio" ? "Record audio" : "Scan notes"}
                 </button>
               ))}
             </div>
@@ -494,6 +658,20 @@ export function SoftwareApp() {
                   onChange={(event) => setDriveUrl(event.target.value)}
                   placeholder="Paste a public Google Drive file link"
                 />
+              )}
+
+              {sourceType === "scan" && (
+                <label className="software-upload-control">
+                  <Camera size={20}/>
+                  <strong>{selectedFiles[0]?.name || "Take a photo or choose handwritten notes"}</strong>
+                  <span>Image text is transcribed, then converted into the same study system.</span>
+                  <input
+                    type="file"
+                    accept="image/*,.png,.jpg,.jpeg,.webp"
+                    capture="environment"
+                    onChange={(event) => setSelectedFiles(Array.from(event.target.files ?? []).slice(0, 1))}
+                  />
+                </label>
               )}
 
               {sourceType === "audio" && (
@@ -759,6 +937,149 @@ export function SoftwareApp() {
                 )}
               </div>
             )}
+          </section>
+        )}
+
+        {view === "insights" && (
+          <section className="software-page">
+            <div className="software-title-row">
+              <div><p>RETENTION</p><h1>Insights</h1></div>
+            </div>
+            {insightsBusy ? (
+              <div className="software-loading">Calculating mastery and retention…</div>
+            ) : insights ? (
+              <>
+                <div className="software-insight-grid">
+                  <article><span>Mastery</span><strong>{Math.round(insights.averageMastery * 100)}%</strong><small>Current average</small></article>
+                  <article><span>Retention</span><strong>{Math.round(insights.retentionScore * 100)}%</strong><small>Concepts above 70%</small></article>
+                  <article><span>Streak</span><strong>{insights.streakDays}</strong><small>Study days</small></article>
+                  <article><span>Due now</span><strong>{insights.dueNow}</strong><small>Concepts to review</small></article>
+                  <article><span>Answers</span><strong>{insights.attempts}</strong><small>Active-recall attempts</small></article>
+                  <article><span>Study time</span><strong>{insights.minutesStudied}m</strong><small>Across {insights.sessions} sessions</small></article>
+                </div>
+
+                <div className="software-insight-columns">
+                  <article>
+                    <span>WEAK CONCEPTS</span>
+                    {insights.weakConcepts.length ? insights.weakConcepts.map((concept) => (
+                      <div key={concept.label}>
+                        <strong>{concept.label}</strong>
+                        <b>{Math.round(concept.mastery * 100)}%</b>
+                      </div>
+                    )) : <p>No weak concepts yet.</p>}
+                  </article>
+                  <article>
+                    <span>CHARMS</span>
+                    {insights.charms.map((charm) => (
+                      <div key={charm.id} className={charm.unlocked ? "unlocked" : ""}>
+                        <Trophy size={18}/>
+                        <span><strong>{charm.title}</strong><small>{charm.description}</small></span>
+                      </div>
+                    ))}
+                  </article>
+                </div>
+
+                <div className="software-activity-strip">
+                  {insights.activity7d.map((day) => (
+                    <div key={day.date}>
+                      <span>{new Date(day.date + "T00:00:00Z").toLocaleDateString(undefined,{weekday:"short"})}</span>
+                      <i style={{height: Math.max(6, Math.min(80, day.attempts * 7))}} />
+                      <small>{day.attempts}</small>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="software-empty"><BarChart3/><strong>No learning history yet.</strong><p>Complete a Learn, Test or Review session to populate retention insights.</p></div>
+            )}
+          </section>
+        )}
+
+        {view === "audio" && (
+          <section className="software-page">
+            <div className="software-title-row">
+              <div><p>LISTEN & RECALL</p><h1>Audio Study</h1></div>
+            </div>
+            {!selected ? (
+              <div className="software-empty"><Headphones/><strong>Select study material first.</strong><button onClick={() => setView("library")}>Open library</button></div>
+            ) : audioStudy ? (
+              <div className="software-audio-study">
+                <aside>
+                  <Headphones size={28}/>
+                  <strong>{audioStudy.title}</strong>
+                  <span>~{audioStudy.estimatedMinutes} min guided review</span>
+                  <button onClick={toggleAudioStudy}>{audioPlaying ? "Stop" : "Play audio study"}</button>
+                </aside>
+                <article>
+                  {audioStudy.segments.map((segment, index) => (
+                    <div key={`${index}-${segment.speaker}`} className={segment.speaker === "Learner" ? "recall" : ""}>
+                      <span>{segment.speaker}</span>
+                      <p>{segment.text}</p>
+                    </div>
+                  ))}
+                </article>
+              </div>
+            ) : (
+              <div className="software-loading">Building audio review from {selected.title}…</div>
+            )}
+          </section>
+        )}
+
+        {view === "friends" && (
+          <section className="software-page">
+            <div className="software-title-row">
+              <div><p>STUDY TOGETHER</p><h1>Study With Friends</h1></div>
+            </div>
+
+            {!room ? (
+              <div className="software-room-setup">
+                <article>
+                  <Users size={26}/>
+                  <h2>Create a room</h2>
+                  <p>Share the current material and compare study progress without exposing your account credentials.</p>
+                  <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Your name" />
+                  <button disabled={!selected || roomBusy || !displayName.trim()} onClick={() => void createRoom()}>
+                    {roomBusy ? "Creating…" : selected ? `Create room for ${selected.title}` : "Select material first"}
+                  </button>
+                </article>
+                <article>
+                  <Users size={26}/>
+                  <h2>Join a room</h2>
+                  <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Your name" />
+                  <input value={roomCode} onChange={(event) => setRoomCode(event.target.value.toUpperCase())} placeholder="ROOM CODE" />
+                  <button disabled={!roomCode.trim() || roomBusy || !displayName.trim()} onClick={() => void joinRoom()}>
+                    {roomBusy ? "Joining…" : "Join room"}
+                  </button>
+                </article>
+              </div>
+            ) : (
+              <div className="software-room">
+                <div className="software-room-head">
+                  <div><span>ROOM</span><strong>{room.code}</strong><small>{room.title}</small></div>
+                  <button onClick={() => navigator.clipboard?.writeText(room.code)}>Copy code</button>
+                </div>
+                <p>{room.summary}</p>
+                <div className="software-room-members">
+                  {room.members.map((member) => (
+                    <article key={member.learnerId}>
+                      <div><strong>{member.displayName}</strong><small>{member.attempts} answers</small></div>
+                      <div className="software-room-progress"><i style={{width:`${Math.round(member.progress * 100)}%`}} /></div>
+                      <b>{Math.round(member.progress * 100)}%</b>
+                    </article>
+                  ))}
+                </div>
+                <button className="software-room-study" onClick={() => {
+                  const shared = materialFromRoom(room);
+                  setLibrary((current) => [shared, ...current.filter((item) => item.id !== shared.id)]);
+                  setSelectedId(shared.id);
+                  setView("learn");
+                  void startMode("learn", shared);
+                }}>
+                  Study this material together
+                </button>
+              </div>
+            )}
+            {roomMessage ? <div className="software-feedback">{roomMessage}</div> : null}
           </section>
         )}
 

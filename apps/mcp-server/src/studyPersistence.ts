@@ -30,6 +30,10 @@ export interface StudyPersistence {
     beforeIso: string,
     limit: number,
   ): Promise<DueReview[]>;
+  recentSessions(
+    learnerId: string,
+    limit: number,
+  ): Promise<AdaptiveStudySession[]>;
 }
 
 function key(label: string) {
@@ -101,6 +105,13 @@ class MemoryStudyPersistence implements StudyPersistence {
           new Date(b.nextReviewAt).getTime(),
       )
       .slice(0, limit);
+  }
+  async recentSessions(learnerId: string, limit: number) {
+    return [...this.sessions.values()]
+      .filter((session) => session.learnerId === learnerId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, Math.max(1, Math.min(limit, 200)))
+      .map((session) => structuredClone(session));
   }
 }
 
@@ -177,14 +188,15 @@ class NeonStudyPersistence implements StudyPersistence {
     `;
   }
 
-  private async recentSessions(learnerId: string) {
+  async recentSessions(learnerId: string, limit = 100) {
     await this.ready;
+    const safeLimit = Math.max(1, Math.min(limit, 200));
     const rows = await this.sql`
       SELECT session_json
       FROM instantstudy_sessions
       WHERE learner_id = ${learnerId}
       ORDER BY updated_at DESC
-      LIMIT 100
+      LIMIT ${safeLimit}
     `;
 
     return rows
@@ -193,7 +205,7 @@ class NeonStudyPersistence implements StudyPersistence {
   }
 
   async priorConcepts(learnerId: string, labels: string[]) {
-    const sessions = await this.recentSessions(learnerId);
+    const sessions = await this.recentSessions(learnerId, 100);
     const wanted = new Set(labels.map(key));
     const result = new Map<string, ConceptState>();
 
@@ -210,7 +222,7 @@ class NeonStudyPersistence implements StudyPersistence {
   }
 
   async dueReviews(learnerId: string, beforeIso: string, limit: number) {
-    const sessions = await this.recentSessions(learnerId);
+    const sessions = await this.recentSessions(learnerId, 100);
     const before = new Date(beforeIso).getTime();
     const seen = new Set<string>();
     const due: DueReview[] = [];
@@ -266,6 +278,10 @@ class UnavailableStudyPersistence implements StudyPersistence {
   }
 
   async dueReviews(_learnerId: string, _beforeIso: string, _limit: number) {
+    return this.unavailable();
+  }
+
+  async recentSessions(_learnerId: string, _limit: number) {
     return this.unavailable();
   }
 }

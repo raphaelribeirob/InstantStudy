@@ -16,6 +16,8 @@ import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
 import { generateStudyAssets } from "./studyAssets.js";
 import { materialStore } from "./materialStore.js";
+import { buildAudioStudy } from "./offerLayer.js";
+import { studyRoomStore } from "./studyRoomStore.js";
 import {
   databaseUrl,
   durableStorageMode,
@@ -844,6 +846,10 @@ app.get("/connection.json", (req, res) => {
       "native PDF/DOCX/PPTX ingestion",
       "monthly plan entitlements",
       "optional audio transcription",
+      "handwritten-note image transcription",
+      "retention insights and streaks",
+      "audio study",
+      "study rooms",
       "optional Anki",
     ],
   });
@@ -950,6 +956,140 @@ app.post("/api/v1/assets/generate", async (req, res) => {
       .object({ contentText: z.string().min(1).max(200000) })
       .parse(req.body ?? {});
     res.json(generateStudyAssets(input.contentText));
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/insights", async (req, res) => {
+  try {
+    const input = z
+      .object({ learnerId: z.string().min(3).max(200) })
+      .parse(req.body ?? {});
+    res.json(await studyEngine.insights(input.learnerId));
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/audio-study", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        learnerId: z.string().min(3).max(200),
+        materialId: z.string().uuid(),
+      })
+      .parse(req.body ?? {});
+
+    const material = await materialStore.get(input.learnerId, input.materialId);
+    if (!material) {
+      res.status(404).json({ error: "material_not_found" });
+      return;
+    }
+
+    res.json(buildAudioStudy(material.title, material.assets));
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/rooms/create", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        learnerId: z.string().min(3).max(200),
+        displayName: z.string().min(1).max(80),
+        materialId: z.string().uuid(),
+      })
+      .parse(req.body ?? {});
+
+    const material = await materialStore.get(input.learnerId, input.materialId);
+    if (!material) {
+      res.status(404).json({ error: "material_not_found" });
+      return;
+    }
+
+    const room = await studyRoomStore.create({
+      hostLearnerId: input.learnerId,
+      displayName: input.displayName,
+      title: material.title,
+      materialId: material.id,
+      summary: material.assets.summary,
+      concepts: material.assets.keyConcepts,
+    });
+    res.json({ room });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/rooms/join", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        learnerId: z.string().min(3).max(200),
+        displayName: z.string().min(1).max(80),
+        code: z.string().min(4).max(12),
+      })
+      .parse(req.body ?? {});
+
+    const room = await studyRoomStore.join({
+      code: input.code,
+      learnerId: input.learnerId,
+      displayName: input.displayName,
+    });
+    if (!room) {
+      res.status(404).json({ error: "study_room_not_found" });
+      return;
+    }
+    res.json({ room });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/rooms/get", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        learnerId: z.string().min(3).max(200),
+        code: z.string().min(4).max(12),
+      })
+      .parse(req.body ?? {});
+
+    const room = await studyRoomStore.get(input.code);
+    if (!room || !room.members.some((member) => member.learnerId === input.learnerId)) {
+      res.status(404).json({ error: "study_room_not_found" });
+      return;
+    }
+    res.json({ room });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/rooms/progress", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        learnerId: z.string().min(3).max(200),
+        code: z.string().min(4).max(12),
+        progress: z.number().min(0).max(1),
+        attempts: z.number().int().min(0).max(100000),
+      })
+      .parse(req.body ?? {});
+
+    const room = await studyRoomStore.progress({
+      code: input.code,
+      learnerId: input.learnerId,
+      progress: input.progress,
+      attempts: input.attempts,
+    });
+    if (!room) {
+      res.status(404).json({ error: "study_room_not_found" });
+      return;
+    }
+    res.json({ room });
   } catch (error) {
     sendApiError(res, error);
   }
@@ -1333,6 +1473,7 @@ app.get("/health", (_req, res) => {
       pptx: true,
       text: true,
       audioTranscription: Boolean(process.env.OPENAI_API_KEY),
+      imageTranscription: Boolean(process.env.OPENAI_API_KEY),
       maxFileMb: 25,
     },
     entitlements: {

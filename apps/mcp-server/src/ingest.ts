@@ -17,6 +17,13 @@ function isTextMime(mime = "") {
   );
 }
 
+function isImageMime(mime = "", name = "") {
+  return (
+    mime.startsWith("image/") ||
+    /\.(png|jpe?g|webp|heic|heif)$/i.test(name)
+  );
+}
+
 function isAudioMime(mime = "", name = "") {
   return (
     mime.startsWith("audio/") ||
@@ -38,6 +45,9 @@ function normalizeMime(file: StudyFile, responseMime = "") {
   if (name.endsWith(".pptx")) {
     return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
   }
+  if (name.endsWith(".png")) return "image/png";
+  if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
+  if (name.endsWith(".webp")) return "image/webp";
   return "";
 }
 
@@ -278,6 +288,74 @@ async function extractPptx(bytes: Uint8Array) {
   return slides.join("\n\n").slice(0, MAX_TEXT_CHARS);
 }
 
+
+async function extractImageText(
+  bytes: Uint8Array,
+  mime: string,
+) {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) return null;
+
+  const base64 = Buffer.from(bytes).toString("base64");
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model:
+        process.env.INSTANTSTUDY_VISION_MODEL?.trim() ||
+        "gpt-6-luna",
+      input: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text:
+                "Transcribe the readable study notes in this image. Preserve headings, bullets, equations, labels, and important punctuation. Return only the transcription. If text is genuinely unreadable, mark that span [unreadable] rather than inventing content.",
+            },
+            {
+              type: "input_image",
+              image_url: `data:${mime || "image/jpeg"};base64,${base64}`,
+              detail: "high",
+            },
+          ],
+        },
+      ],
+      max_output_tokens: 6000,
+    }),
+    signal: AbortSignal.timeout(120_000),
+  });
+
+  if (!response.ok) {
+    const detail = (await response.text()).slice(0, 500);
+    throw new Error(
+      `Image transcription failed: HTTP ${response.status} ${detail}`,
+    );
+  }
+
+  const payload = (await response.json()) as {
+    output_text?: string;
+    output?: Array<{
+      content?: Array<{ type?: string; text?: string }>;
+    }>;
+  };
+
+  const direct = payload.output_text?.trim();
+  if (direct) return direct.slice(0, MAX_TEXT_CHARS);
+
+  const nested = payload.output
+    ?.flatMap((item) => item.content ?? [])
+    .map((item) => item.text?.trim())
+    .filter((value): value is string => Boolean(value))
+    .join("\n")
+    .trim();
+
+  return nested?.slice(0, MAX_TEXT_CHARS) || null;
+}
+
 async function transcribeAudio(
   bytes: Uint8Array,
   mime: string,
@@ -347,7 +425,7 @@ export async function ingestFiles(files: StudyFile[]) {
     mimeType?: string;
     text?: string;
     status: "extracted" | "host_text_required" | "failed";
-    extraction?: "pdf" | "docx" | "pptx" | "text" | "audio";
+    extraction?: "pdf" | "docx" | "pptx" | "text" | "audio" | "image";
     error?: string;
   }> = [];
 
@@ -397,6 +475,19 @@ export async function ingestFiles(files: StudyFile[]) {
           mimeType: mime,
           text,
           extraction: "pptx",
+          status: text ? "extracted" : "host_text_required",
+        });
+        continue;
+      }
+
+      if (isImageMime(normalizedMime, name)) {
+        const text = await extractImageText(bytes, normalizedMime || "image/jpeg");
+        extracted.push({
+          fileId: file.file_id,
+          fileName: file.file_name,
+          mimeType: mime,
+          text: text || undefined,
+          extraction: "image",
           status: text ? "extracted" : "host_text_required",
         });
         continue;
