@@ -116,6 +116,7 @@ const prepareStudySchema = z
       .describe(
         "Stable authenticated learner/profile identifier. Supply it to preserve mastery and due reviews across sessions.",
       ),
+    billingPlan: z.enum(["free", "plus", "unlimited"]).optional(),
     mode: z.enum(["learn", "review", "quiz", "test"]).default("learn"),
     targetMinutes: z.number().int().min(1).max(180).optional(),
     maxQuestions: z.number().int().min(1).max(50).default(12),
@@ -1138,6 +1139,9 @@ app.post("/api/v1/study/prepare", async (req, res) => {
       ...input,
       contentText: combinedText || undefined,
     });
+    if (input.learnerId && input.billingPlan) {
+      await studyEntitlements.setPlan(input.learnerId, input.billingPlan);
+    }
     const usage = input.learnerId
       ? await studyEntitlements.consume(input.learnerId, input.mode)
       : undefined;
