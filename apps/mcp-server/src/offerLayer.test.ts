@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
-import { buildAudioStudy, buildRetentionInsights } from "./offerLayer.js";
+import { buildAudioStudy, buildRetentionInsights, buildStudyGame } from "./offerLayer.js";
 import type { AdaptiveStudySession } from "./studyEngine.js";
 
 function session(overrides: Partial<AdaptiveStudySession> = {}): AdaptiveStudySession {
@@ -87,4 +87,39 @@ test("audio study contains recall pauses and material grounding", () => {
   assert.ok(audio.segments.some((segment) => segment.speaker === "Learner"));
   assert.ok(audio.segments.some((segment) => /Chlorophyll/.test(segment.text)));
   assert.ok(audio.estimatedMinutes >= 1);
+});
+
+
+test("study game is deterministic and grounded in flashcards", () => {
+  const assets = {
+    summary: "Cells use ATP.",
+    outline: ["ATP stores chemical energy."],
+    keyConcepts: ["ATP"],
+    flashcards: [
+      { id: "a", concept: "ATP", front: "What stores usable cellular energy?", back: "ATP stores usable cellular energy." },
+      { id: "b", concept: "Mitochondria", front: "Where is most ATP made?", back: "Most ATP is made in mitochondria." },
+    ],
+    generatedBy: "deterministic" as const,
+  };
+
+  const first = buildStudyGame("Biology", assets);
+  const second = buildStudyGame("Biology", assets);
+  assert.deepEqual(first, second);
+  assert.equal(first.pairCount, 2);
+  assert.equal(first.cards.length, 4);
+  assert.ok(first.cards.every((card) => card.text.includes("ATP") || card.text.includes("mitochondria") || card.text.includes("energy")));
+});
+
+test("audio study is a two-speaker conversational podcast", () => {
+  const audio = buildAudioStudy("Biology", {
+    summary: "Photosynthesis stores light energy.",
+    outline: ["Chlorophyll absorbs light."],
+    keyConcepts: ["Chlorophyll"],
+    flashcards: [],
+    generatedBy: "deterministic",
+  });
+
+  assert.ok(audio.segments.some((segment) => segment.speaker === "Host"));
+  assert.ok(audio.segments.some((segment) => segment.speaker === "Coach"));
+  assert.ok(audio.segments.some((segment) => /challenge/i.test(segment.text)));
 });
