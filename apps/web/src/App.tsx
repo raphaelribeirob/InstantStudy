@@ -577,13 +577,13 @@ export function App() {
 
       <section className="hero future-hero">
         <div className="future-kicker">
-          <span><Sparkles size={13} /> Introducing InstantStudy™</span>
-          <span>Adaptive learning · Persistent memory</span>
+          <span><Sparkles size={13} /> {t("landing.introduce")}</span>
+          <span>{t("landing.adaptivePersistent")}</span>
         </div>
 
         <div className="future-title" aria-label="The future of learning">
-          <span>The future</span>
-          <span>of learning.</span>
+          <span>{t("landing.futureLine1")}</span>
+          <span>{t("landing.futureLine2")}</span>
         </div>
 
         <div className="future-intro">
@@ -594,9 +594,9 @@ export function App() {
           </p>
           <div className="hero-actions">
             <a className="hero-primary" href="/app">
-              Open the software <ArrowRight size={17} />
+              {t("landing.openSoftware")} <ArrowRight size={17} />
             </a>
-            <a className="hero-secondary" href="#demo">Experience the loop</a>
+            <a className="hero-secondary" href="#demo">{t("landing.experienceLoop")}</a>
           </div>
         </div>
 
@@ -605,7 +605,7 @@ export function App() {
       </section>
 
       <section className="trust-strip future-strip">
-        <span>One learning system, wherever you think.</span>
+        <span>{t("landing.oneSystem")}</span>
         <strong>ChatGPT</strong><strong>Claude</strong><strong>Cursor</strong><strong>Codex</strong><strong>Study Rooms</strong><strong>Any MCP agent</strong>
       </section>
 
