@@ -5,6 +5,7 @@ import {
   type DueReview,
   type StudyPersistence,
 } from "./studyPersistence.js";
+import { generateQuestion } from "./questionGenerator.js";
 
 export type TestQuestionType =
   | "multiple_choice"
@@ -388,6 +389,21 @@ export class StudyEngine {
 
     const concept = chooseConcept(session);
     const type = questionType(session, concept);
+    const question = generateQuestion({
+      type,
+      concept: {
+        label: concept.label,
+        sourceExcerpt: concept.sourceExcerpt,
+      },
+      alternatives: session.concepts
+        .filter((item) => item.id !== concept.id)
+        .map((item) => ({
+          label: item.label,
+          sourceExcerpt: item.sourceExcerpt,
+        })),
+      questionIndex: session.questionIndex,
+      difficulty: concept.difficulty,
+    });
 
     return {
       done: false as const,
@@ -411,6 +427,7 @@ export class StudyEngine {
         difficulty: concept.difficulty,
         nextReviewAt: concept.nextReviewAt,
       },
+      question,
       questionPolicy: {
         type,
         revealAnswerBeforeAttempt: false,
