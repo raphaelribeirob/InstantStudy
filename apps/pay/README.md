@@ -74,3 +74,23 @@ Temporary project hostname:
 
 Target custom domain after registration:
 `https://pay.instantcreative.app`
+
+
+## InstantStudy Family
+
+The annual Family offer resolves to `instant_study.family`.
+
+- the purchaser is the owner;
+- the owner receives InstantStudy Unlimited;
+- the owner can add up to four member emails through the authenticated Family API;
+- each member receives inherited Unlimited while the owner's Family entitlement remains active;
+- member libraries, mastery, usage and review queues remain independent;
+- removing a member or ending the Family subscription removes inherited access.
+
+Authenticated endpoint:
+
+```text
+GET|POST|DELETE /v1/billing/family
+```
+
+The API never accepts a query-string user ID as authority; it resolves the owner from the Instant Account bearer identity.
