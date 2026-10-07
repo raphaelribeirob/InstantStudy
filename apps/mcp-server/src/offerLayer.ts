@@ -166,9 +166,74 @@ export function buildRetentionInsights(
 }
 
 export type AudioStudySegment = {
-  speaker: "Guide" | "Learner";
+  speaker: "Host" | "Coach";
   text: string;
 };
+
+export type StudyGameCard = {
+  id: string;
+  pairId: string;
+  kind: "prompt" | "answer";
+  text: string;
+};
+
+export type StudyGame = {
+  title: string;
+  cards: StudyGameCard[];
+  pairCount: number;
+  generatedBy: "deterministic";
+};
+
+function hashText(value: string) {
+  let hash = 2166136261;
+  for (const char of value) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededOrder<T>(items: T[], seed: number) {
+  const copy = [...items];
+  let state = seed || 1;
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    const target = state % (index + 1);
+    [copy[index], copy[target]] = [copy[target], copy[index]];
+  }
+  return copy;
+}
+
+export function buildStudyGame(title: string, assets: StudyAssets): StudyGame {
+  const pairs = assets.flashcards
+    .filter((card) => card.front.trim() && card.back.trim())
+    .slice(0, 6);
+
+  const cards = pairs.flatMap((card, index) => {
+    const pairId = card.id || `pair-${index + 1}`;
+    return [
+      {
+        id: `${pairId}-prompt`,
+        pairId,
+        kind: "prompt" as const,
+        text: card.front,
+      },
+      {
+        id: `${pairId}-answer`,
+        pairId,
+        kind: "answer" as const,
+        text: card.back,
+      },
+    ];
+  });
+
+  return {
+    title,
+    cards: seededOrder(cards, hashText(title + cards.map((card) => card.text).join("|"))),
+    pairCount: pairs.length,
+    generatedBy: "deterministic",
+  };
+}
 
 export type AudioStudy = {
   title: string;
@@ -188,29 +253,29 @@ export function buildAudioStudy(
   const concepts = assets.keyConcepts.slice(0, 8);
   const segments: AudioStudySegment[] = [
     {
-      speaker: "Guide",
-      text: `Welcome to your InstantStudy audio review of ${title}. We will focus on the ideas most likely to matter when you need to recall them.`,
+      speaker: "Host",
+      text: `Welcome to InstantStudy Podcast. Today we are unpacking ${title} into the ideas you need to remember.`,
     },
     {
-      speaker: "Guide",
-      text: sentence(assets.summary),
+      speaker: "Host",
+      text: `Start with the big picture: ${sentence(assets.summary)}`,
     },
   ];
 
   for (let index = 0; index < outline.length; index += 1) {
     const concept = concepts[index] ?? `idea ${index + 1}`;
     segments.push({
-      speaker: "Guide",
+      speaker: "Host",
       text: `Key idea ${index + 1}: ${sentence(outline[index])}`,
     });
     segments.push({
-      speaker: "Learner",
-      text: `Pause and recall: what is the most important thing you remember about ${concept}?`,
+      speaker: "Coach",
+      text: `Let me challenge that. Before we move on, what would you say is the essential point about ${concept}? Pause and answer it out loud.`,
     });
   }
 
   segments.push({
-    speaker: "Guide",
+    speaker: "Host",
     text: "Finish by explaining the topic in your own words without looking at your notes. Anything you cannot explain should go back into Review.",
   });
 
