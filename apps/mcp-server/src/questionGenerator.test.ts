@@ -50,3 +50,17 @@ test("written modes return a learner-facing prompt, not an engine instruction", 
   assert.match(question.prompt, /explain Photosynthesis/i);
   assert.doesNotMatch(question.prompt, /Ask exactly one|question policy/i);
 });
+
+
+test("false choice does not repeat the correct source text", () => {
+  const question = generateQuestion({
+    type: "true_false",
+    concept,
+    alternatives,
+    questionIndex: 0,
+  });
+
+  const falseChoice = question.choices?.find((choice) => choice.label === "False");
+  assert.ok(falseChoice);
+  assert.doesNotMatch(falseChoice.value, /converts light energy into chemical energy/i);
+});
