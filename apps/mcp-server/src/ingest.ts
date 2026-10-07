@@ -157,6 +157,26 @@ async function safeFetch(rawUrl: string) {
 }
 
 async function download(file: StudyFile) {
+  if (file.inline_base64) {
+    if (!/^[A-Za-z0-9+/=\r\n]+$/.test(file.inline_base64)) {
+      throw new Error("Inline file is not valid base64.");
+    }
+    const buffer = Uint8Array.from(Buffer.from(file.inline_base64, "base64"));
+    if (!buffer.byteLength || buffer.byteLength > MAX_FILE_BYTES) {
+      throw new Error(
+        `${file.file_name ?? file.file_id} is larger than the ${MAX_FILE_BYTES} byte ingestion limit.`,
+      );
+    }
+    return {
+      bytes: buffer,
+      mime: normalizeMime(file),
+    };
+  }
+
+  if (!file.download_url) {
+    throw new Error("Study file requires download_url or inline_base64.");
+  }
+
   const response = await safeFetch(file.download_url);
 
   if (!response.ok) {
