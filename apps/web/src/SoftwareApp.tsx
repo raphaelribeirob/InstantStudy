@@ -298,25 +298,22 @@ export function SoftwareApp() {
   }
 
   async function startReview(item: DueReview) {
-    const material: StudyMaterial = {
-      id: `review-${item.conceptId}`,
-      learnerId: "",
-      title: item.title,
-      content: item.sourceExcerpt,
-      sourceType: "paste",
-      sourceNames: [],
-      assets: {
-        summary: item.sourceExcerpt,
-        outline: [item.sourceExcerpt],
-        keyConcepts: [item.label],
-        flashcards: [],
-        generatedBy: "review",
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
     setView("review");
-    await startMode("review", material);
+    setBusy(true);
+    setFeedback("");
+    setAnswer("");
+    setSummary(null);
+    try {
+      setSession(await prepareStudy({
+        contentText: item.sourceExcerpt,
+        title: item.title,
+        mode: "review",
+        maxQuestions: 4,
+        concepts: [{ label: item.label, sourceExcerpt: item.sourceExcerpt }],
+      }));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function toggleRecording() {
