@@ -198,11 +198,11 @@ class _StudyHomeState extends State<StudyHome> {
       final file = result.files.single;
       final bytes = file.bytes;
       if (bytes == null) {
-        throw InstantStudyApiException('Could not read the selected file.');
+        throw InstantStudyApiException(context.tr('couldNotRead'));
       }
       if (bytes.length > 2500000) {
         throw InstantStudyApiException(
-          'Flutter imports are limited to 2.5 MB per file in this release.',
+          context.tr('uploadLimit'),
         );
       }
 
@@ -225,7 +225,7 @@ class _StudyHomeState extends State<StudyHome> {
       final material = imported['material'];
       if (material is! Map) {
         throw InstantStudyApiException(
-          'Material import returned an invalid payload.',
+          context.tr('invalidImport'),
         );
       }
 
@@ -346,7 +346,7 @@ class _StudyHomeState extends State<StudyHome> {
   Future<void> _showPodcast() async {
     final materialId = _materialId;
     if (materialId == null) {
-      setState(() => _error = 'Save or import material before opening Podcast.');
+      setState(() => _error = context.tr('saveFirstPodcast'));
       return;
     }
 
@@ -411,7 +411,7 @@ class _StudyHomeState extends State<StudyHome> {
   Future<void> _showGame() async {
     final materialId = _materialId;
     if (materialId == null) {
-      setState(() => _error = 'Save or import material before opening Study Game.');
+      setState(() => _error = context.tr('saveFirstGame'));
       return;
     }
 
@@ -508,14 +508,14 @@ class _StudyHomeState extends State<StudyHome> {
               children: [
                 _LineField(
                   controller: _answer,
-                  hint: 'Type your answer…',
+                  hint: context.tr('typeAnswer'),
                   minLines: 4,
                   maxLines: 10,
                   dark: true,
                 ),
                 const SizedBox(height: 14),
                 _SignalButton(
-                  label: _busy ? 'Evaluating…' : 'Submit answer',
+                  label: _busy ? context.tr('evaluating') : context.tr('submitAnswer'),
                   onPressed: _busy ? null : _submit,
                   light: true,
                 ),
@@ -559,17 +559,17 @@ class _StudyHomeState extends State<StudyHome> {
           ),
         ),
         const SizedBox(height: 36),
-        const _SectionRule(label: 'YOUR MATERIAL'),
+        _SectionRule(label: context.tr('yourMaterial')),
         _LineField(
           controller: _title,
-          hint: 'Title (optional)',
+          hint: context.tr('titleOptional'),
           minLines: 1,
           maxLines: 1,
         ),
         const SizedBox(height: 1),
         _LineField(
           controller: _material,
-          hint: 'Paste notes, a reading or lecture transcript…',
+          hint: context.tr('pasteMaterial'),
           minLines: 7,
           maxLines: 14,
         ),
@@ -582,7 +582,7 @@ class _StudyHomeState extends State<StudyHome> {
           outlined: true,
         ),
         const SizedBox(height: 28),
-        const _SectionRule(label: 'STUDY MODE'),
+        _SectionRule(label: context.tr('studyMode')),
         _ModeRail(
           selected: _mode,
           onSelected: (value) => setState(() => _mode = value),
@@ -598,7 +598,7 @@ class _StudyHomeState extends State<StudyHome> {
         ],
         const SizedBox(height: 30),
         _SignalButton(
-          label: _busy ? 'Building…' : 'Start InstantStudy',
+          label: _busy ? context.tr('building') : context.tr('start'),
           onPressed: _busy ? null : _start,
         ),
       ],
@@ -651,7 +651,7 @@ class _StudyHomeState extends State<StudyHome> {
           ),
           const SizedBox(height: 34),
           _SignalButton(
-            label: 'Study another source',
+            label: context.tr('studyAnother'),
             onPressed: () => setState(() {
               _session = null;
               _summary = null;
@@ -809,12 +809,12 @@ class _ProductMasthead extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Podcast',
+            tooltip: context.tr('podcast'),
             onPressed: busy ? null : onPodcast,
             icon: const Icon(Icons.headphones_outlined, size: 18),
           ),
           IconButton(
-            tooltip: 'Study Game',
+            tooltip: context.tr('studyGame'),
             onPressed: busy ? null : onGame,
             icon: const Icon(Icons.extension_outlined, size: 18),
           ),
@@ -963,7 +963,7 @@ class _TestControls extends StatelessWidget {
       children: [
         Expanded(
           child: _ChoiceSelect(
-            label: 'Questions',
+            label: context.tr('questions'),
             value: questions,
             values: const [10, 20, 30, 40],
             formatter: (value) => '$value',
@@ -973,7 +973,7 @@ class _TestControls extends StatelessWidget {
         const SizedBox(width: 1),
         Expanded(
           child: _ChoiceSelect(
-            label: 'Time',
+            label: context.tr('time'),
             value: duration,
             values: const [15, 30, 45, 60, 90],
             formatter: (value) => '$value min',
