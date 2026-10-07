@@ -152,6 +152,18 @@ export default async function handler(req, res) {
       const testDurationMinutes = Number.isInteger(body.testDurationMinutes)
         ? Math.max(1, Math.min(Number(body.testDurationMinutes), 180))
         : undefined;
+      const concepts = Array.isArray(body.concepts)
+        ? body.concepts
+            .slice(0, 30)
+            .map((item) => ({
+              label: typeof item?.label === "string" ? item.label.slice(0, 200) : "",
+              sourceExcerpt:
+                typeof item?.sourceExcerpt === "string"
+                  ? item.sourceExcerpt.slice(0, 1200)
+                  : undefined,
+            }))
+            .filter((item) => item.label)
+        : undefined;
       const validTypes = new Set([
         "multiple_choice",
         "true_false",
@@ -175,6 +187,7 @@ export default async function handler(req, res) {
         maxQuestions,
         testDurationMinutes,
         testQuestionTypes: testQuestionTypes?.length ? testQuestionTypes : undefined,
+        concepts: concepts?.length ? concepts : undefined,
       });
     } else if (action === "answer") {
       const studySessionId = cleanId(body.studySessionId, 64);
