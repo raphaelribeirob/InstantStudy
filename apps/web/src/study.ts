@@ -126,6 +126,47 @@ export type StudyFileInput = {
   download_url?: string;
 };
 
+
+export type RetentionInsights = {
+  sessions: number;
+  completedSessions: number;
+  attempts: number;
+  minutesStudied: number;
+  averageMastery: number;
+  retentionScore: number;
+  dueNow: number;
+  streakDays: number;
+  activity7d: Array<{ date: string; attempts: number; minutes: number }>;
+  strongConcepts: Array<{ label: string; mastery: number; attempts: number; nextReviewAt?: string }>;
+  weakConcepts: Array<{ label: string; mastery: number; attempts: number; nextReviewAt?: string }>;
+  charms: Array<{ id: string; title: string; description: string; unlocked: boolean }>;
+};
+
+export type AudioStudy = {
+  title: string;
+  estimatedMinutes: number;
+  segments: Array<{ speaker: "Guide" | "Learner"; text: string }>;
+};
+
+export type StudyRoom = {
+  id: string;
+  code: string;
+  hostLearnerId: string;
+  title: string;
+  materialId?: string;
+  summary: string;
+  concepts: string[];
+  createdAt: string;
+  updatedAt: string;
+  members: Array<{
+    learnerId: string;
+    displayName: string;
+    joinedAt: string;
+    progress: number;
+    attempts: number;
+  }>;
+};
+
 export type DueReview = {
   sessionId: string;
   title: string;
@@ -321,6 +362,69 @@ export async function getDueReviews(limit = 30) {
       limit,
     }),
   )) as DueReview[];
+}
+
+
+export async function getRetentionInsights() {
+  return (await request(
+    identified({ action: "insights" }),
+  )) as RetentionInsights;
+}
+
+export async function getAudioStudy(materialId: string) {
+  return (await request(
+    identified({ action: "audio_study", materialId }),
+  )) as AudioStudy;
+}
+
+export async function createStudyRoom(input: {
+  materialId: string;
+  displayName: string;
+}) {
+  return (await request(
+    identified({
+      action: "room_create",
+      materialId: input.materialId,
+      displayName: input.displayName,
+    }),
+  )) as { room: StudyRoom };
+}
+
+export async function joinStudyRoom(input: {
+  code: string;
+  displayName: string;
+}) {
+  return (await request(
+    identified({
+      action: "room_join",
+      code: input.code,
+      displayName: input.displayName,
+    }),
+  )) as { room: StudyRoom };
+}
+
+export async function getStudyRoom(code: string) {
+  return (await request(
+    identified({
+      action: "room_get",
+      code,
+    }),
+  )) as { room: StudyRoom };
+}
+
+export async function updateStudyRoomProgress(input: {
+  code: string;
+  progress: number;
+  attempts: number;
+}) {
+  return (await request(
+    identified({
+      action: "room_progress",
+      code: input.code,
+      progress: input.progress,
+      attempts: input.attempts,
+    }),
+  )) as { room: StudyRoom };
 }
 
 export async function fileToStudyInput(file: File): Promise<StudyFileInput> {
