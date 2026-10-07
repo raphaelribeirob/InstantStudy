@@ -3,15 +3,18 @@ import 'dart:math';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'i18n.dart';
 import 'instantstudy_api.dart';
 
 void main() {
   runApp(const InstantStudyApp());
 }
 
-class InstantStudyApp extends StatelessWidget {
+class InstantStudyApp extends StatefulWidget {
   const InstantStudyApp({super.key});
 
   static const ink = Color(0xFF11110F);
@@ -25,32 +28,87 @@ class InstantStudyApp extends StatelessWidget {
   static const muted = Color(0xFF6E6B64);
 
   @override
+  State<InstantStudyApp> createState() => _InstantStudyAppState();
+}
+
+class _InstantStudyAppState extends State<InstantStudyApp> {
+  static const _localeKey = 'instantstudy.locale';
+  Locale? _locale;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocale();
+  }
+
+  Future<void> _loadLocale() async {
+    final preferences = await SharedPreferences.getInstance();
+    final stored = preferences.getString(_localeKey);
+    if (!mounted || stored == null) return;
+    setState(() {
+      _locale = stored.toLowerCase().startsWith('pt')
+          ? const Locale('pt', 'BR')
+          : const Locale('en');
+    });
+  }
+
+  Future<void> _setLocale(Locale locale) async {
+    final normalized = locale.languageCode == 'pt'
+        ? const Locale('pt', 'BR')
+        : const Locale('en');
+    setState(() => _locale = normalized);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      _localeKey,
+      normalized.languageCode == 'pt' ? 'pt-BR' : 'en',
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'InstantStudy',
       debugShowCheckedModeBanner: false,
+      locale: _locale,
+      supportedLocales: supportedInstantStudyLocales,
+      localizationsDelegates: const [
+        AppStrings.delegate,
+        ...GlobalMaterialLocalizations.delegates,
+      ],
+      localeResolutionCallback: (deviceLocale, supported) {
+        if (_locale != null) return _locale;
+        if (deviceLocale?.languageCode == 'pt') {
+          return const Locale('pt', 'BR');
+        }
+        return const Locale('en');
+      },
       theme: ThemeData(
         fontFamily: 'Inter',
-        scaffoldBackgroundColor: paper2,
+        scaffoldBackgroundColor: InstantStudyApp.paper2,
         colorScheme: const ColorScheme.light(
-          primary: ink,
-          secondary: orange,
-          surface: paper,
-          onSurface: ink,
+          primary: InstantStudyApp.ink,
+          secondary: InstantStudyApp.orange,
+          surface: InstantStudyApp.paper,
+          onSurface: InstantStudyApp.ink,
         ),
         textSelectionTheme: const TextSelectionThemeData(
-          cursorColor: electric,
+          cursorColor: InstantStudyApp.electric,
           selectionColor: Color(0x335B6CFF),
         ),
         useMaterial3: true,
       ),
-      home: const StudyHome(),
+      home: StudyHome(onLocaleChanged: _setLocale),
     );
   }
 }
 
 class StudyHome extends StatefulWidget {
-  const StudyHome({super.key});
+  const StudyHome({
+    super.key,
+    required this.onLocaleChanged,
+  });
+
+  final ValueChanged<Locale> onLocaleChanged;
 
   @override
   State<StudyHome> createState() => _StudyHomeState();
