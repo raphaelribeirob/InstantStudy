@@ -41,16 +41,10 @@ function textValue(data: Record<string, unknown>, key: string) {
 }
 
 export async function loadOffer(locale: string): Promise<FunnelOffer> {
-  const base = import.meta.env.VITE_INSTANTSTUDY_API_URL as string | undefined;
-  const apiKey = import.meta.env.VITE_INSTANTSTUDY_API_KEY as string | undefined;
-
-  if (!base || !apiKey) return FALLBACK_OFFER;
-
   try {
-    const response = await fetch(`${base.replace(/\/$/, "")}/api/v1/offer`, {
+    const response = await fetch("/api/offer", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
