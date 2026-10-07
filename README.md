@@ -104,8 +104,9 @@ Image-heavy/scanned content may still require the host LLM's vision/text extract
 
 ## LLM compatibility
 
-- MCP clients connect to `/mcp`.
-- Other tool-capable LLMs use REST/OpenAPI under `/api/v1`.
+- MCP clients connect to `/mcp` and must authenticate with an `Authorization: Bearer ...` header.
+- Other tool-capable LLMs use authenticated REST/OpenAPI under `/api/v1`.
+- Browser clients never receive `INSTANTSTUDY_API_KEY`, `INSTANTSTUDY_MCP_API_KEY`, or `INSTANTSTUDY_ADMIN_API_KEY`.
 - No study-domain code depends on OpenAI, Anthropic, or Google model SDKs.
 
 The host LLM performs semantic interpretation and question wording. InstantStudy owns the session policy, mode behavior, mastery updates, progression, and study state.
@@ -138,3 +139,18 @@ Any LLM
 ```
 
 Never expose AnkiConnect directly to the public internet.
+
+
+## Security boundary
+
+InstantStudy fails closed around privileged surfaces:
+
+- `/api/v1/*` requires the standard server API credential.
+- `/mcp` requires a bearer credential and is never public-anonymous.
+- `/api/v1/admin/entitlement` additionally requires the dedicated admin credential.
+- AnkiConnect is never exposed directly to the internet.
+- Production public plugin distribution should replace shared MCP credentials with per-user OAuth before broad multi-tenant rollout.
+
+## Client direction
+
+The canonical end-user application is Flutter-first. The React/Vite app remains the marketing/PWA surface and migration reference while the Flutter client reaches feature parity.
