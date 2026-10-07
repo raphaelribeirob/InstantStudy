@@ -1,4 +1,5 @@
 import { resolveOffer } from "./_catalog.js";
+import { cleanSubjectId, isServerAuthorized, serverKeyConfigured } from "./_security.js";
 
 const LIVE_API = "https://api.paddle.com";
 const SANDBOX_API = "https://sandbox-api.paddle.com";
@@ -47,6 +48,21 @@ export default async function handler(req, res) {
 
   const source = cleanSource(body.source);
   const locale = cleanLocale(body.locale);
+  const requestedSubject = body.subject_id == null || body.subject_id === ""
+    ? null
+    : cleanSubjectId(body.subject_id);
+  if (body.subject_id != null && body.subject_id !== "" && !requestedSubject) {
+    return json(res, 400, { error: "invalid_subject_id" });
+  }
+  if (requestedSubject) {
+    if (!serverKeyConfigured()) {
+      return json(res, 503, { error: "server_auth_not_configured" });
+    }
+    if (!isServerAuthorized(req)) {
+      return json(res, 401, { error: "unauthorized_subject_binding" });
+    }
+  }
+
   const apiBase = environment === "live" ? LIVE_API : SANDBOX_API;
 
   const response = await fetch(`${apiBase}/transactions`, {
@@ -66,6 +82,8 @@ export default async function handler(req, res) {
         plan_key: offer.plan,
         billing_cadence: offer.cadence,
         source_app: source,
+        entitlement_key: offer.entitlementKey,
+        ...(requestedSubject ? { subject_id: requestedSubject } : {}),
       },
     }),
   });
@@ -84,5 +102,6 @@ export default async function handler(req, res) {
   return json(res, 200, {
     checkout_url: hosted.toString(),
     transaction_id: String(payload.data.id),
+    provider: "instant_pay",
   });
 }
