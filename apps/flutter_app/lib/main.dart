@@ -15,8 +15,13 @@ class InstantStudyApp extends StatelessWidget {
 
   static const ink = Color(0xFF11110F);
   static const paper = Color(0xFFF2F0EA);
+  static const paper2 = Color(0xFFE9E7E1);
+  static const paper3 = Color(0xFFDEDBD3);
   static const orange = Color(0xFFE36232);
+  static const orangeSoft = Color(0xFFF1A06F);
   static const electric = Color(0xFF5B6CFF);
+  static const green = Color(0xFF98BD9D);
+  static const muted = Color(0xFF6E6B64);
 
   @override
   Widget build(BuildContext context) {
@@ -24,12 +29,18 @@ class InstantStudyApp extends StatelessWidget {
       title: 'InstantStudy',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: electric,
-          brightness: Brightness.light,
+        fontFamily: 'Inter',
+        scaffoldBackgroundColor: paper2,
+        colorScheme: const ColorScheme.light(
+          primary: ink,
+          secondary: orange,
           surface: paper,
+          onSurface: ink,
         ),
-        scaffoldBackgroundColor: paper,
+        textSelectionTheme: const TextSelectionThemeData(
+          cursorColor: electric,
+          selectionColor: Color(0x335B6CFF),
+        ),
         useMaterial3: true,
       ),
       home: const StudyHome(),
@@ -114,21 +125,9 @@ class _StudyHomeState extends State<StudyHome> {
         withData: true,
         type: FileType.custom,
         allowedExtensions: const [
-          'pdf',
-          'docx',
-          'pptx',
-          'txt',
-          'md',
-          'csv',
-          'mp3',
-          'm4a',
-          'wav',
-          'webm',
-          'ogg',
-          'png',
-          'jpg',
-          'jpeg',
-          'webp',
+          'pdf','docx','pptx','txt','md','csv',
+          'mp3','m4a','wav','webm','ogg',
+          'png','jpg','jpeg','webp',
         ],
       );
 
@@ -152,7 +151,8 @@ class _StudyHomeState extends State<StudyHome> {
         sourceType: audio ? 'audio' : 'upload',
         files: [
           {
-            'file_id': 'flutter-' + DateTime.now().microsecondsSinceEpoch.toString(),
+            'file_id': 'flutter-' +
+                DateTime.now().microsecondsSinceEpoch.toString(),
             'file_name': file.name,
             'inline_base64': base64Encode(bytes),
           },
@@ -161,7 +161,9 @@ class _StudyHomeState extends State<StudyHome> {
 
       final material = imported['material'];
       if (material is! Map) {
-        throw InstantStudyApiException('Material import returned an invalid payload.');
+        throw InstantStudyApiException(
+          'Material import returned an invalid payload.',
+        );
       }
 
       if (!mounted) return;
@@ -247,7 +249,8 @@ class _StudyHomeState extends State<StudyHome> {
                 : 'Answer recorded.';
 
         if (submission is Map && submission['summary'] is Map) {
-          _summary = Map<String, dynamic>.from(submission['summary'] as Map);
+          _summary =
+              Map<String, dynamic>.from(submission['summary'] as Map);
         }
 
         _session = {
@@ -268,35 +271,17 @@ class _StudyHomeState extends State<StudyHome> {
       _busy = true;
       _error = null;
     });
+
     try {
       final data = await _api.insights(learnerId: _learnerId);
       if (!mounted) return;
-      await showDialog<void>(
+
+      await showModalBottomSheet<void>(
         context: context,
-        builder: (context) {
-          final mastery = ((data['averageMastery'] as num?)?.toDouble() ?? 0) * 100;
-          final retention = ((data['retentionScore'] as num?)?.toDouble() ?? 0) * 100;
-          return AlertDialog(
-            title: const Text('Retention Insights'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Mastery: ${mastery.round()}%'),
-                Text('Retention: ${retention.round()}%'),
-                Text('Streak: ${data['streakDays'] ?? 0} days'),
-                Text('Due now: ${data['dueNow'] ?? 0}'),
-                Text('Answers: ${data['attempts'] ?? 0}'),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
-              ),
-            ],
-          );
-        },
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        barrierColor: Colors.black54,
+        builder: (context) => _InsightsScene(data: data),
       );
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
@@ -305,262 +290,1086 @@ class _StudyHomeState extends State<StudyHome> {
     }
   }
 
+  Color get _orbPrimary {
+    if (_mode == 'test') return InstantStudyApp.paper;
+    if (_mode == 'review') return InstantStudyApp.orange;
+    return InstantStudyApp.electric;
+  }
+
+  Color get _orbSecondary {
+    if (_mode == 'test') return const Color(0xFF57544E);
+    if (_mode == 'review') return InstantStudyApp.orangeSoft;
+    return InstantStudyApp.orange;
+  }
+
   Widget _buildQuestion() {
     final prompt =
         _question?['prompt']?.toString() ?? _concept?['label']?.toString() ?? '';
     final policy = _next?['questionPolicy'];
-    final type = policy is Map ? policy['type']?.toString() ?? 'adaptive' : 'adaptive';
+    final type =
+        policy is Map ? policy['type']?.toString() ?? 'adaptive' : 'adaptive';
 
+    return _DarkStudyScene(
+      eyebrow:
+          'QUESTION ${_next?['questionIndex'] ?? '–'} OF ${_next?['totalPlanned'] ?? '–'} · ${type.toUpperCase()}',
+      title: prompt,
+      feedback: _feedback,
+      child: _choices.isNotEmpty
+          ? Column(
+              children: _choices
+                  .map(
+                    (choice) => Padding(
+                      padding: const EdgeInsets.only(bottom: 1),
+                      child: _ChoiceRow(
+                        label: choice['label']?.toString() ?? '',
+                        value: choice['value']?.toString() ?? '',
+                        enabled: !_busy,
+                        onTap: () =>
+                            _submit(choice['value']?.toString() ?? ''),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            )
+          : Column(
+              children: [
+                _LineField(
+                  controller: _answer,
+                  hint: 'Type your answer…',
+                  minLines: 4,
+                  maxLines: 10,
+                  dark: true,
+                ),
+                const SizedBox(height: 14),
+                _SignalButton(
+                  label: _busy ? 'Evaluating…' : 'Submit answer',
+                  onPressed: _busy ? null : _submit,
+                  light: true,
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildEntry() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'QUESTION ${_next?['questionIndex'] ?? '–'} OF ${_next?['totalPlanned'] ?? '–'} · ${type.toUpperCase()}',
-          style: const TextStyle(
-            color: InstantStudyApp.electric,
-            fontSize: 11,
+        const Text(
+          'THE FUTURE OF LEARNING',
+          style: TextStyle(
+            color: InstantStudyApp.orange,
+            fontSize: 10,
             fontWeight: FontWeight.w700,
-            letterSpacing: 1.1,
+            letterSpacing: 1.5,
           ),
         ),
         const SizedBox(height: 12),
-        Text(
-          prompt,
-          style: const TextStyle(
-            fontSize: 32,
-            height: 1.05,
+        const Text(
+          'Learn from\nanything.',
+          style: TextStyle(
+            color: InstantStudyApp.ink,
+            fontSize: 66,
+            height: .82,
             fontWeight: FontWeight.w500,
-            letterSpacing: -1.2,
+            letterSpacing: -4.8,
           ),
         ),
-        if (_feedback != null) ...[
-          const SizedBox(height: 16),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: const Color(0xFFE9E7E1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Text(_feedback!),
-            ),
+        const SizedBox(height: 22),
+        const Text(
+          'One material becomes a living knowledge state: practice, testing, mastery and right-time review.',
+          style: TextStyle(
+            color: Color(0xFF46443F),
+            fontSize: 18,
+            height: 1.28,
+            letterSpacing: -.35,
+          ),
+        ),
+        const SizedBox(height: 36),
+        const _SectionRule(label: 'YOUR MATERIAL'),
+        _LineField(
+          controller: _title,
+          hint: 'Title (optional)',
+          minLines: 1,
+          maxLines: 1,
+        ),
+        const SizedBox(height: 1),
+        _LineField(
+          controller: _material,
+          hint: 'Paste notes, a reading or lecture transcript…',
+          minLines: 7,
+          maxLines: 14,
+        ),
+        const SizedBox(height: 12),
+        _SignalButton(
+          label: _sourceLabel ??
+              'Import file, audio, photo or handwritten notes',
+          icon: Icons.upload_file_outlined,
+          onPressed: _busy ? null : _pickFile,
+          outlined: true,
+        ),
+        const SizedBox(height: 28),
+        const _SectionRule(label: 'STUDY MODE'),
+        _ModeRail(
+          selected: _mode,
+          onSelected: (value) => setState(() => _mode = value),
+        ),
+        if (_mode == 'test') ...[
+          const SizedBox(height: 22),
+          _TestControls(
+            questions: _testQuestions,
+            duration: _testDuration,
+            onQuestions: (value) => setState(() => _testQuestions = value),
+            onDuration: (value) => setState(() => _testDuration = value),
           ),
         ],
-        const SizedBox(height: 18),
-        if (_choices.isNotEmpty)
-          ..._choices.map(
-            (choice) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: OutlinedButton(
-                onPressed: _busy
-                    ? null
-                    : () => _submit(choice['value']?.toString() ?? ''),
-                style: OutlinedButton.styleFrom(
-                  alignment: Alignment.centerLeft,
-                  padding: const EdgeInsets.all(16),
-                ),
-                child: Text(
-                  '${choice['label'] ?? ''}. ${choice['value'] ?? ''}',
-                ),
-              ),
-            ),
-          )
-        else ...[
-          TextField(
-            controller: _answer,
-            minLines: 4,
-            maxLines: 10,
-            decoration: const InputDecoration(
-              hintText: 'Type your answer…',
-            ),
-          ),
-          const SizedBox(height: 14),
-          FilledButton(
-            onPressed: _busy ? null : _submit,
-            style: FilledButton.styleFrom(
-              backgroundColor: InstantStudyApp.ink,
-              foregroundColor: InstantStudyApp.paper,
-              minimumSize: const Size.fromHeight(52),
-            ),
-            child: Text(_busy ? 'Evaluating…' : 'Submit answer'),
-          ),
-        ],
+        const SizedBox(height: 30),
+        _SignalButton(
+          label: _busy ? 'Building…' : 'Start InstantStudy',
+          onPressed: _busy ? null : _start,
+        ),
       ],
+    );
+  }
+
+  Widget _buildSummary() {
+    final testResult = _summary?['testResult'];
+    final value = testResult is Map
+        ? '${testResult['scorePercent'] ?? 0}%'
+        : 'Complete';
+    final copy = testResult is Map
+        ? '${testResult['answered'] ?? 0} of ${testResult['totalQuestions'] ?? _testQuestions} questions answered.'
+        : 'Your knowledge state has been updated. Review will bring concepts back when they begin to fade.';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 34, 24, 30),
+      color: _mode == 'review'
+          ? InstantStudyApp.orange
+          : InstantStudyApp.paper,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'KNOWLEDGE STATE UPDATED',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.4,
+            ),
+          ),
+          const SizedBox(height: 28),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 74,
+              height: .86,
+              fontWeight: FontWeight.w500,
+              letterSpacing: -5,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            copy,
+            style: const TextStyle(
+              fontSize: 17,
+              height: 1.45,
+              color: InstantStudyApp.muted,
+            ),
+          ),
+          const SizedBox(height: 34),
+          _SignalButton(
+            label: 'Study another source',
+            onPressed: () => setState(() {
+              _session = null;
+              _summary = null;
+              _feedback = null;
+            }),
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final testResult = _summary?['testResult'];
+    final motionDuration =
+        MediaQuery.maybeOf(context)?.disableAnimations == true
+            ? Duration.zero
+            : const Duration(milliseconds: 320);
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: const Text(
-          'InstantStudy™',
-          style: TextStyle(
-            color: InstantStudyApp.ink,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.8,
+      body: Stack(
+        children: [
+          const Positioned.fill(
+            child: ColoredBox(color: InstantStudyApp.paper2),
           ),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Retention Insights',
-            onPressed: _busy ? null : _showInsights,
-            icon: const Icon(Icons.insights_outlined),
+          const Positioned.fill(
+            child: IgnorePointer(child: _GrainLayer()),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                _ProductMasthead(
+                  primary: _orbPrimary,
+                  secondary: _orbSecondary,
+                  busy: _busy,
+                  onInsights: _showInsights,
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(18, 32, 18, 54),
+                    children: [
+                      AnimatedSwitcher(
+                        duration: motionDuration,
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: _session == null && _summary == null
+                            ? KeyedSubtree(
+                                key: const ValueKey('entry'),
+                                child: _buildEntry(),
+                              )
+                            : _summary != null
+                                ? KeyedSubtree(
+                                    key: const ValueKey('summary'),
+                                    child: _buildSummary(),
+                                  )
+                                : _concept != null
+                                    ? KeyedSubtree(
+                                        key: ValueKey(
+                                          _next?['questionIndex'] ?? 'question',
+                                        ),
+                                        child: _buildQuestion(),
+                                      )
+                                    : KeyedSubtree(
+                                        key: const ValueKey('complete'),
+                                        child: _buildSummary(),
+                                      ),
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 18),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              left: BorderSide(
+                                color: InstantStudyApp.orange,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            _error!,
+                            style: const TextStyle(
+                              color: InstantStudyApp.ink,
+                              height: 1.45,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 48),
-          children: [
-            const Text(
-              'THE FUTURE OF LEARNING',
-              style: TextStyle(
-                color: InstantStudyApp.orange,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.4,
+    );
+  }
+}
+
+class _ProductMasthead extends StatelessWidget {
+  const _ProductMasthead({
+    required this.primary,
+    required this.secondary,
+    required this.busy,
+    required this.onInsights,
+  });
+
+  final Color primary;
+  final Color secondary;
+  final bool busy;
+  final VoidCallback onInsights;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Color(0x2E11110F)),
+        ),
+      ),
+      child: Row(
+        children: [
+          _InstantOrb(primary: primary, secondary: secondary, size: 28),
+          const SizedBox(width: 10),
+          const Text(
+            'InstantStudy™',
+            style: TextStyle(
+              color: InstantStudyApp.ink,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -.4,
+            ),
+          ),
+          const Spacer(),
+          TextButton(
+            onPressed: busy ? null : onInsights,
+            style: TextButton.styleFrom(
+              foregroundColor: InstantStudyApp.ink,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              shape: const StadiumBorder(
+                side: BorderSide(color: Color(0x2E11110F)),
               ),
             ),
-            const SizedBox(height: 10),
-            const Text(
-              'Learn from\nanything.',
-              style: TextStyle(
-                color: InstantStudyApp.ink,
-                fontSize: 58,
-                height: 0.9,
-                fontWeight: FontWeight.w500,
-                letterSpacing: -4,
-              ),
+            child: const Text(
+              'Insights',
+              style: TextStyle(fontSize: 10, letterSpacing: .4),
             ),
-            const SizedBox(height: 28),
-            if (_session == null && _summary == null) ...[
-              TextField(
-                controller: _title,
-                decoration: const InputDecoration(labelText: 'Title (optional)'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _material,
-                minLines: 7,
-                maxLines: 14,
-                decoration: const InputDecoration(
-                  hintText: 'Paste notes, a reading or lecture transcript…',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InstantOrb extends StatelessWidget {
+  const _InstantOrb({
+    required this.primary,
+    required this.secondary,
+    this.size = 34,
+  });
+
+  final Color primary;
+  final Color secondary;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final motionDuration =
+        MediaQuery.maybeOf(context)?.disableAnimations == true
+            ? Duration.zero
+            : const Duration(milliseconds: 460);
+
+    return Semantics(
+      label: 'InstantStudy learning state',
+      child: SizedBox.square(
+        dimension: size,
+        child: ClipOval(
+          child: DecoratedBox(
+            decoration: const BoxDecoration(color: Color(0xFFCBC7BD)),
+            child: Stack(
+              clipBehavior: Clip.hardEdge,
+              children: [
+                AnimatedPositioned(
+                  duration: motionDuration,
+                  curve: Curves.easeOutCubic,
+                  left: -size * .04,
+                  bottom: -size * .03,
+                  width: size * .68,
+                  height: size * .68,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: primary,
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: _busy ? null : _pickFile,
-                icon: const Icon(Icons.upload_file),
-                label: Text(_sourceLabel ?? 'Import file, audio, photo or handwritten notes'),
-              ),
-              const SizedBox(height: 16),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'learn', label: Text('Learn')),
-                  ButtonSegment(value: 'quiz', label: Text('Quiz')),
-                  ButtonSegment(value: 'test', label: Text('Test')),
-                  ButtonSegment(value: 'review', label: Text('Review')),
-                ],
-                selected: {_mode},
-                onSelectionChanged: (value) {
-                  setState(() => _mode = value.first);
-                },
-              ),
-              if (_mode == 'test') ...[
-                const SizedBox(height: 16),
-                DropdownButtonFormField<int>(
-                  initialValue: _testQuestions,
-                  decoration: const InputDecoration(labelText: 'Questions'),
-                  items: const [10, 20, 30, 40]
-                      .map((value) => DropdownMenuItem(
-                            value: value,
-                            child: Text('$value questions'),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) setState(() => _testQuestions = value);
-                  },
-                ),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<int>(
-                  initialValue: _testDuration,
-                  decoration: const InputDecoration(labelText: 'Time limit'),
-                  items: const [15, 30, 45, 60, 90]
-                      .map((value) => DropdownMenuItem(
-                            value: value,
-                            child: Text('$value minutes'),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) setState(() => _testDuration = value);
-                  },
+                AnimatedPositioned(
+                  duration: motionDuration,
+                  curve: Curves.easeOutCubic,
+                  right: -size * .01,
+                  top: -size * .01,
+                  width: size * .43,
+                  height: size * .43,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: secondary,
+                    ),
+                  ),
                 ),
               ],
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: _busy ? null : _start,
-                style: FilledButton.styleFrom(
-                  backgroundColor: InstantStudyApp.ink,
-                  foregroundColor: InstantStudyApp.paper,
-                  minimumSize: const Size.fromHeight(52),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ModeRail extends StatelessWidget {
+  const _ModeRail({
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String selected;
+  final ValueChanged<String> onSelected;
+
+  static const modes = ['learn', 'quiz', 'test', 'review'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0x2E11110F)),
+      ),
+      child: Row(
+        children: modes.map((mode) {
+          final active = selected == mode;
+          return Expanded(
+            child: InkWell(
+              onTap: () => onSelected(mode),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                constraints: const BoxConstraints(minHeight: 46),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: active ? InstantStudyApp.ink : Colors.transparent,
+                  border: Border(
+                    right: mode == modes.last
+                        ? BorderSide.none
+                        : const BorderSide(color: Color(0x2E11110F)),
+                  ),
                 ),
-                child: Text(_busy ? 'Building…' : 'Start InstantStudy'),
+                child: Text(
+                  mode.toUpperCase(),
+                  style: TextStyle(
+                    color: active
+                        ? InstantStudyApp.paper
+                        : InstantStudyApp.muted,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: .9,
+                  ),
+                ),
               ),
-            ] else if (_summary != null) ...[
-              Text(
-                testResult is Map
-                    ? '${testResult['scorePercent'] ?? 0}%'
-                    : 'Round complete',
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _TestControls extends StatelessWidget {
+  const _TestControls({
+    required this.questions,
+    required this.duration,
+    required this.onQuestions,
+    required this.onDuration,
+  });
+
+  final int questions;
+  final int duration;
+  final ValueChanged<int> onQuestions;
+  final ValueChanged<int> onDuration;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _ChoiceSelect(
+            label: 'Questions',
+            value: questions,
+            values: const [10, 20, 30, 40],
+            formatter: (value) => '$value',
+            onChanged: onQuestions,
+          ),
+        ),
+        const SizedBox(width: 1),
+        Expanded(
+          child: _ChoiceSelect(
+            label: 'Time',
+            value: duration,
+            values: const [15, 30, 45, 60, 90],
+            formatter: (value) => '$value min',
+            onChanged: onDuration,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChoiceSelect extends StatelessWidget {
+  const _ChoiceSelect({
+    required this.label,
+    required this.value,
+    required this.values,
+    required this.formatter,
+    required this.onChanged,
+  });
+
+  final String label;
+  final int value;
+  final List<int> values;
+  final String Function(int value) formatter;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 8),
+      color: InstantStudyApp.paper,
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          isExpanded: true,
+          value: value,
+          dropdownColor: InstantStudyApp.paper,
+          icon: const Icon(Icons.expand_more, size: 18),
+          items: values
+              .map(
+                (item) => DropdownMenuItem<int>(
+                  value: item,
+                  child: Text(
+                    '${label.toUpperCase()} · ${formatter(item)}',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      letterSpacing: .5,
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (next) {
+            if (next != null) onChanged(next);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _LineField extends StatelessWidget {
+  const _LineField({
+    required this.controller,
+    required this.hint,
+    required this.minLines,
+    required this.maxLines,
+    this.dark = false,
+  });
+
+  final TextEditingController controller;
+  final String hint;
+  final int minLines;
+  final int maxLines;
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground =
+        dark ? const Color(0xFFEFEDE7) : InstantStudyApp.ink;
+    final muted = dark ? const Color(0xFF77736B) : InstantStudyApp.muted;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: dark ? Colors.transparent : InstantStudyApp.paper,
+        border: Border.all(
+          color: dark
+              ? const Color(0x2EEFEDE7)
+              : const Color(0x2E11110F),
+        ),
+      ),
+      child: TextField(
+        controller: controller,
+        minLines: minLines,
+        maxLines: maxLines,
+        style: TextStyle(
+          color: foreground,
+          fontSize: minLines > 1 ? 16 : 14,
+          height: 1.5,
+        ),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          hintText: hint,
+          hintStyle: TextStyle(color: muted),
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+      ),
+    );
+  }
+}
+
+class _SignalButton extends StatelessWidget {
+  const _SignalButton({
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.outlined = false,
+    this.light = false,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+  final bool outlined;
+  final bool light;
+
+  @override
+  Widget build(BuildContext context) {
+    final background = outlined
+        ? Colors.transparent
+        : light
+            ? const Color(0xFFEFEDE7)
+            : InstantStudyApp.ink;
+    final foreground = outlined
+        ? InstantStudyApp.ink
+        : light
+            ? InstantStudyApp.ink
+            : InstantStudyApp.paper;
+
+    return SizedBox(
+      width: double.infinity,
+      child: TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          minimumSize: const Size.fromHeight(50),
+          backgroundColor: background,
+          foregroundColor: foreground,
+          disabledForegroundColor: foreground.withValues(alpha: .35),
+          shape: StadiumBorder(
+            side: outlined
+                ? const BorderSide(color: InstantStudyApp.ink)
+                : BorderSide.none,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 17),
+              const SizedBox(width: 8),
+            ],
+            Flexible(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 58,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: -3,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: .4,
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                testResult is Map
-                    ? '${testResult['answered'] ?? 0} of ${testResult['totalQuestions'] ?? _testQuestions} questions answered.'
-                    : 'Your knowledge state has been updated.',
-              ),
-              const SizedBox(height: 20),
-              OutlinedButton(
-                onPressed: () => setState(() {
-                  _session = null;
-                  _summary = null;
-                  _feedback = null;
-                }),
-                child: const Text('Study another source'),
-              ),
-            ] else if (_concept != null) ...[
-              _buildQuestion(),
-            ] else ...[
-              const Text(
-                'Session complete.',
-                style: TextStyle(fontSize: 34, fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 20),
-              OutlinedButton(
-                onPressed: () => setState(() {
-                  _session = null;
-                  _feedback = null;
-                }),
-                child: const Text('Study another source'),
-              ),
-            ],
-            if (_error != null) ...[
-              const SizedBox(height: 16),
-              Text(
-                _error!,
-                style: const TextStyle(color: Colors.redAccent),
-              ),
-            ],
+            ),
           ],
         ),
       ),
     );
   }
+}
+
+class _ChoiceRow extends StatelessWidget {
+  const _ChoiceRow({
+    required this.label,
+    required this.value,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 66),
+        padding: const EdgeInsets.all(14),
+        decoration: const BoxDecoration(
+          color: Color(0xFF191917),
+          border: Border(
+            bottom: BorderSide(color: Color(0x2EEFEDE7)),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: InstantStudyApp.orange,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: InstantStudyApp.ink,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                value,
+                style: const TextStyle(
+                  color: Color(0xFFEFEDE7),
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DarkStudyScene extends StatelessWidget {
+  const _DarkStudyScene({
+    required this.eyebrow,
+    required this.title,
+    required this.child,
+    this.feedback,
+  });
+
+  final String eyebrow;
+  final String title;
+  final String? feedback;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(22, 30, 22, 24),
+      color: InstantStudyApp.ink,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            eyebrow,
+            style: const TextStyle(
+              color: InstantStudyApp.orangeSoft,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: 34),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Color(0xFFEFEDE7),
+              fontSize: 38,
+              height: .98,
+              fontWeight: FontWeight.w500,
+              letterSpacing: -1.8,
+            ),
+          ),
+          if (feedback != null) ...[
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              decoration: const BoxDecoration(
+                border: Border(
+                  left: BorderSide(
+                    color: InstantStudyApp.orange,
+                    width: 2,
+                  ),
+                ),
+              ),
+              child: Text(
+                feedback!,
+                style: const TextStyle(
+                  color: Color(0xFFAAA69D),
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 28),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionRule extends StatelessWidget {
+  const _SectionRule({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 1),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Color(0x2E11110F)),
+        ),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: InstantStudyApp.muted,
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+}
+
+class _InsightsScene extends StatelessWidget {
+  const _InsightsScene({required this.data});
+
+  final Map<String, dynamic> data;
+
+  @override
+  Widget build(BuildContext context) {
+    final mastery =
+        ((data['averageMastery'] as num?)?.toDouble() ?? 0) * 100;
+    final retention =
+        ((data['retentionScore'] as num?)?.toDouble() ?? 0) * 100;
+    final weak = data['weakConcepts'] is List
+        ? (data['weakConcepts'] as List).whereType<Map>().toList()
+        : const <Map>[];
+
+    return FractionallySizedBox(
+      heightFactor: .88,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: InstantStudyApp.paper,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(2)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(22, 24, 22, 34),
+            children: [
+              Row(
+                children: [
+                  const _InstantOrb(
+                    primary: InstantStudyApp.green,
+                    secondary: InstantStudyApp.orange,
+                    size: 30,
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'KNOWLEDGE STATE',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close, size: 18),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              Text(
+                '${mastery.round()}%',
+                style: const TextStyle(
+                  fontSize: 94,
+                  height: .82,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -6,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'overall mastery',
+                style: TextStyle(
+                  color: InstantStudyApp.muted,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 36),
+              _MetricLine(
+                label: 'Retention',
+                value: '${retention.round()}%',
+                accent: InstantStudyApp.green,
+              ),
+              _MetricLine(
+                label: 'Study streak',
+                value: '${data['streakDays'] ?? 0} days',
+                accent: InstantStudyApp.electric,
+              ),
+              _MetricLine(
+                label: 'Due now',
+                value: '${data['dueNow'] ?? 0}',
+                accent: InstantStudyApp.orange,
+              ),
+              _MetricLine(
+                label: 'Active recall',
+                value: '${data['attempts'] ?? 0} answers',
+                accent: InstantStudyApp.ink,
+              ),
+              const SizedBox(height: 34),
+              const _SectionRule(label: 'WHAT NEEDS YOU'),
+              if (weak.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Text(
+                    'Complete a study session to reveal weak concepts.',
+                    style: TextStyle(color: InstantStudyApp.muted),
+                  ),
+                )
+              else
+                ...weak.take(5).map(
+                      (item) => _ConceptLine(
+                        label: item['label']?.toString() ?? 'Concept',
+                        mastery:
+                            ((item['mastery'] as num?)?.toDouble() ?? 0) * 100,
+                      ),
+                    ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MetricLine extends StatelessWidget {
+  const _MetricLine({
+    required this.label,
+    required this.value,
+    required this.accent,
+  });
+
+  final String label;
+  final String value;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 62),
+      decoration: const BoxDecoration(
+        border: Border(
+          top: BorderSide(color: Color(0x2E11110F)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(width: 7, height: 7, color: accent),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: InstantStudyApp.muted,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConceptLine extends StatelessWidget {
+  const _ConceptLine({
+    required this.label,
+    required this.mastery,
+  });
+
+  final String label;
+  final double mastery;
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = mastery.clamp(0, 100) / 100;
+    final accent = mastery < 50
+        ? InstantStudyApp.orange
+        : mastery < 75
+            ? const Color(0xFFD1AD5E)
+            : InstantStudyApp.green;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+          SizedBox(
+            width: 110,
+            child: LinearProgressIndicator(
+              value: normalized,
+              minHeight: 2,
+              backgroundColor: InstantStudyApp.paper3,
+              color: accent,
+              borderRadius: BorderRadius.zero,
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 38,
+            child: Text(
+              '${mastery.round()}%',
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: InstantStudyApp.muted,
+                fontSize: 10,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GrainLayer extends StatelessWidget {
+  const _GrainLayer();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _GrainPainter(),
+      child: const SizedBox.expand(),
+    );
+  }
+}
+
+class _GrainPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = InstantStudyApp.ink.withValues(alpha: .035)
+      ..strokeWidth = .7;
+
+    const count = 520;
+    for (var index = 0; index < count; index++) {
+      final xSeed = ((index * 73 + 19) % 997) / 997;
+      final ySeed = ((index * 151 + 41) % 991) / 991;
+      canvas.drawCircle(
+        Offset(size.width * xSeed, size.height * ySeed),
+        .35,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GrainPainter oldDelegate) => false;
 }

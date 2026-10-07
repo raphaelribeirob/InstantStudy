@@ -95,13 +95,14 @@ function Logo() {
 }
 
 function StudyGenerator() {
-  const [source, setSource] = useState<"paste" | "upload" | "drive" | "audio">("upload");
+  const [source, setSource] = useState<"paste" | "upload" | "drive" | "audio" | "scan">("upload");
 
   const labels = {
     paste: "Paste text",
     upload: "Upload files",
     drive: "Google Drive",
     audio: "Record audio",
+    scan: "Scan notes",
   };
 
   return (
@@ -119,7 +120,7 @@ function StudyGenerator() {
 
       <div className="generator-shell">
         <div className="generator-tabs" role="tablist" aria-label="Study material source">
-          {(["paste", "upload", "drive", "audio"] as const).map((id) => (
+          {(["paste", "upload", "drive", "audio", "scan"] as const).map((id) => (
             <button
               type="button"
               key={id}
@@ -139,12 +140,13 @@ function StudyGenerator() {
               {source === "upload" && "Drop notes, readings or lecture slides"}
               {source === "drive" && "Choose a document from your Drive"}
               {source === "audio" && "Record or add lecture material"}
+              {source === "scan" && "Photograph handwritten notes"}
             </strong>
             <p>
-              PDF, DOCX, PPTX, plain text, conversation context and supported study material.
+              PDF, DOCX, PPTX, text, audio and photographed notes enter the same learning system.
             </p>
             <button type="button">
-              {source === "paste" ? "Paste text" : source === "drive" ? "Choose file" : source === "audio" ? "Record audio" : "Browse files"}
+              {source === "paste" ? "Paste text" : source === "drive" ? "Choose file" : source === "audio" ? "Record audio" : source === "scan" ? "Scan notes" : "Browse files"}
             </button>
           </div>
 
@@ -154,6 +156,7 @@ function StudyGenerator() {
             <div><FlaskConical size={17} /><span><strong>Quiz</strong><small>Fast recall with immediate feedback</small></span></div>
             <div><GraduationCap size={17} /><span><strong>Practice Test</strong><small>Exam-style questions, timer and final score</small></span></div>
             <div><BookOpenCheck size={17} /><span><strong>Review</strong><small>Return to weak concepts when they are due</small></span></div>
+            <div><Sparkles size={17} /><span><strong>Retention</strong><small>See what is strong, fading and due next</small></span></div>
           </div>
         </div>
       </div>
@@ -570,7 +573,7 @@ export function App() {
 
       <section className="trust-strip future-strip">
         <span>One learning system, wherever you think.</span>
-        <strong>ChatGPT</strong><strong>Claude</strong><strong>Cursor</strong><strong>Codex</strong><strong>Any MCP agent</strong>
+        <strong>ChatGPT</strong><strong>Claude</strong><strong>Cursor</strong><strong>Codex</strong><strong>Study Rooms</strong><strong>Any MCP agent</strong>
       </section>
 
       <section className="feature-band learn-band" id="learn">
