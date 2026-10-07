@@ -6,14 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test api/*.test.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.5.2",
     "vite": "^7.1.1",
     "typescript": "^5.9.2",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "@neondatabase/serverless": "^1.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.1.12",
