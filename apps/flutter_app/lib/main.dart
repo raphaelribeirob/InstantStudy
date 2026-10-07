@@ -528,9 +528,9 @@ class _StudyHomeState extends State<StudyHome> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'THE FUTURE OF LEARNING',
-          style: TextStyle(
+        Text(
+          context.tr('futureLearning'),
+          style: const TextStyle(
             color: InstantStudyApp.orange,
             fontSize: 10,
             fontWeight: FontWeight.w700,
@@ -538,9 +538,9 @@ class _StudyHomeState extends State<StudyHome> {
           ),
         ),
         const SizedBox(height: 12),
-        const Text(
-          'Learn from\nanything.',
-          style: TextStyle(
+        Text(
+          context.tr('learnAnything'),
+          style: const TextStyle(
             color: InstantStudyApp.ink,
             fontSize: 66,
             height: .82,
@@ -549,9 +549,9 @@ class _StudyHomeState extends State<StudyHome> {
           ),
         ),
         const SizedBox(height: 22),
-        const Text(
-          'One material becomes a living knowledge state: practice, testing, mastery and right-time review.',
-          style: TextStyle(
+        Text(
+          context.tr('entryBody'),
+          style: const TextStyle(
             color: Color(0xFF46443F),
             fontSize: 18,
             height: 1.28,
@@ -575,8 +575,7 @@ class _StudyHomeState extends State<StudyHome> {
         ),
         const SizedBox(height: 12),
         _SignalButton(
-          label: _sourceLabel ??
-              'Import file, audio, photo or handwritten notes',
+          label: _sourceLabel ?? context.tr('importMaterial'),
           icon: Icons.upload_file_outlined,
           onPressed: _busy ? null : _pickFile,
           outlined: true,
@@ -609,7 +608,7 @@ class _StudyHomeState extends State<StudyHome> {
     final testResult = _summary?['testResult'];
     final value = testResult is Map
         ? '${testResult['scorePercent'] ?? 0}%'
-        : 'Complete';
+        : context.tr('complete');
     final copy = testResult is Map
         ? '${testResult['answered'] ?? 0} of ${testResult['totalQuestions'] ?? _testQuestions} questions answered.'
         : 'Your knowledge state has been updated. Review will bring concepts back when they begin to fade.';
@@ -622,9 +621,9 @@ class _StudyHomeState extends State<StudyHome> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'KNOWLEDGE STATE UPDATED',
-            style: TextStyle(
+          Text(
+            context.tr('knowledgeUpdated'),
+            style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.4,
