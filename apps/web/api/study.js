@@ -110,6 +110,50 @@ async function verifiedLearner(body) {
   }
 }
 
+async function verifiedBillingPlan(body) {
+  const learnerId = cleanId(body.learnerId);
+  if (!learnerId || ANON_ID.test(learnerId)) return "free";
+
+  const accountUserId = cleanId(body.accountUserId);
+  const accessToken = cleanId(body.accountAccessToken, 4000);
+  if (!accountUserId || !accessToken || accountUserId !== learnerId) return "free";
+
+  const payBase = String(
+    process.env.INSTANT_PAY_URL ||
+      process.env.VITE_INSTANT_PAY_URL ||
+      "https://instant-pay-gamma.vercel.app",
+  ).replace(/\/$/, "");
+
+  try {
+    const response = await fetch(
+      `${payBase}/v1/billing/entitlements?user_id=${encodeURIComponent(accountUserId)}`,
+      {
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          accept: "application/json",
+        },
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+    if (!response.ok) return "free";
+    const payload = await response.json().catch(() => ({}));
+    const active = Array.isArray(payload.entitlements)
+      ? payload.entitlements.filter((item) => item?.active === true).map((item) => String(item.key || ""))
+      : [];
+    if (
+      active.includes("instant_study.unlimited") ||
+      active.includes("instant_study.family") ||
+      active.includes("instant_study.family_member")
+    ) {
+      return "unlimited";
+    }
+    if (active.includes("instant_study.plus")) return "plus";
+    return "free";
+  } catch {
+    return "free";
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return json(res, 405, { error: "method_not_allowed" });
 
@@ -154,6 +198,9 @@ export default async function handler(req, res) {
         ? body.mode
         : "learn";
       const learnerId = await verifiedLearner(body);
+      const billingPlan = learnerId
+        ? await verifiedBillingPlan(body)
+        : "free";
       const maxQuestions = Number.isInteger(body.maxQuestions)
         ? Math.max(1, Math.min(Number(body.maxQuestions), 50))
         : mode === "test" ? 20 : 12;
@@ -192,6 +239,7 @@ export default async function handler(req, res) {
         title,
         mode,
         learnerId: learnerId || undefined,
+        billingPlan,
         maxQuestions,
         testDurationMinutes,
         testQuestionTypes: testQuestionTypes?.length ? testQuestionTypes : undefined,
