@@ -1366,9 +1366,9 @@ class _InsightsScene extends StatelessWidget {
                     size: 30,
                   ),
                   const SizedBox(width: 10),
-                  const Text(
-                    'KNOWLEDGE STATE',
-                    style: TextStyle(
+                  Text(
+                    context.tr('knowledgeState'),
+                    style: const TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.2,
@@ -1392,42 +1392,42 @@ class _InsightsScene extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'overall mastery',
-                style: TextStyle(
+              Text(
+                context.tr('overallMastery'),
+                style: const TextStyle(
                   color: InstantStudyApp.muted,
                   fontSize: 12,
                 ),
               ),
               const SizedBox(height: 36),
               _MetricLine(
-                label: 'Retention',
+                label: context.tr('retention'),
                 value: '${retention.round()}%',
                 accent: InstantStudyApp.green,
               ),
               _MetricLine(
-                label: 'Study streak',
-                value: '${data['streakDays'] ?? 0} days',
+                label: context.tr('studyStreak'),
+                value: context.tr('days', {'count': data['streakDays'] ?? 0}),
                 accent: InstantStudyApp.electric,
               ),
               _MetricLine(
-                label: 'Due now',
+                label: context.tr('dueNow'),
                 value: '${data['dueNow'] ?? 0}',
                 accent: InstantStudyApp.orange,
               ),
               _MetricLine(
-                label: 'Active recall',
-                value: '${data['attempts'] ?? 0} answers',
+                label: context.tr('activeRecall'),
+                value: context.tr('answers', {'count': data['attempts'] ?? 0}),
                 accent: InstantStudyApp.ink,
               ),
               const SizedBox(height: 34),
-              const _SectionRule(label: 'WHAT NEEDS YOU'),
+              _SectionRule(label: context.tr('whatNeedsYou')),
               if (weak.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Text(
-                    'Complete a study session to reveal weak concepts.',
-                    style: TextStyle(color: InstantStudyApp.muted),
+                    context.tr('noWeak'),
+                    style: const TextStyle(color: InstantStudyApp.muted),
                   ),
                 )
               else
@@ -1571,9 +1571,9 @@ class _PodcastScene extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(22, 26, 22, 34),
             children: [
-              const Text(
-                'INSTANTSTUDY PODCAST',
-                style: TextStyle(
+              Text(
+                context.tr('podcastKicker'),
+                style: const TextStyle(
                   color: InstantStudyApp.orangeSoft,
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
@@ -1593,12 +1593,12 @@ class _PodcastScene extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                '~$estimatedMinutes min · two-speaker grounded review',
+                context.tr('podcastMeta', {'minutes': estimatedMinutes}),
                 style: const TextStyle(color: Color(0xFF8F8A81)),
               ),
               const SizedBox(height: 22),
               _SignalButton(
-                label: playing ? 'Stop podcast' : 'Play podcast',
+                label: playing ? context.tr('stopPodcast') : context.tr('playPodcast'),
                 onPressed: onPlay,
                 light: true,
               ),
@@ -1718,9 +1718,9 @@ class _StudyGameSceneState extends State<_StudyGameScene> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 24, 18, 34),
             children: [
-              const Text(
-                'ACTIVE RECALL GAME',
-                style: TextStyle(
+              Text(
+                context.tr('gameKicker'),
+                style: const TextStyle(
                   color: InstantStudyApp.orange,
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
@@ -1729,7 +1729,9 @@ class _StudyGameSceneState extends State<_StudyGameScene> {
               ),
               const SizedBox(height: 12),
               Text(
-                complete ? 'Matched in $_moves moves.' : 'Match the knowledge.',
+                complete
+                    ? context.tr('matchedMoves', {'moves': _moves})
+                    : context.tr('matchKnowledge'),
                 style: const TextStyle(
                   fontSize: 44,
                   height: .92,
@@ -1769,7 +1771,7 @@ class _StudyGameSceneState extends State<_StudyGameScene> {
                           Text(
                             open
                                 ? (card['kind']?.toString() ?? 'card').toUpperCase()
-                                : 'RECALL',
+                                : context.tr('recall'),
                             style: TextStyle(
                               color: open
                                   ? InstantStudyApp.orange
@@ -1781,7 +1783,7 @@ class _StudyGameSceneState extends State<_StudyGameScene> {
                           ),
                           const Spacer(),
                           Text(
-                            open ? card['text']?.toString() ?? '' : 'Reveal',
+                            open ? card['text']?.toString() ?? '' : context.tr('reveal'),
                             style: TextStyle(
                               color: open
                                   ? InstantStudyApp.ink
