@@ -9,6 +9,8 @@ void main() {
     expect(find.text('InstantStudy™'), findsOneWidget);
     expect(find.text('Learn from\nanything.'), findsOneWidget);
     expect(find.text('Insights'), findsOneWidget);
+    expect(find.byIcon(Icons.headphones_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.extension_outlined), findsOneWidget);
 
     expect(find.byType(AppBar), findsNothing);
     expect(find.byType(SegmentedButton<String>), findsNothing);
