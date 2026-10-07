@@ -9,6 +9,7 @@ afterEach(() => {
   delete process.env.PADDLE_WEBHOOK_SECRET;
   delete process.env.PADDLE_WEBHOOK_TOLERANCE_SECONDS;
   delete process.env.PADDLE_PRICE_INSTANT_STUDY_PLUS_ANNUAL;
+  delete process.env.PADDLE_PRICE_INSTANT_STUDY_FAMILY_ANNUAL;
 });
 
 test("Paddle webhook signature accepts a fresh valid HMAC", () => {
@@ -50,4 +51,15 @@ test("billing only resolves allowlisted configured offers", () => {
 
   assert.equal(resolveOffer("not_a_real_offer"), null);
   assert.equal(resolveOffer("instant_study_plus_annual")?.entitlement, "instant_study.plus");
+});
+
+
+test("Family offer resolves to the dedicated family entitlement", () => {
+  process.env.PADDLE_PRICE_INSTANT_STUDY_FAMILY_ANNUAL =
+    "pri_12345678901234567891";
+
+  const family = resolveOffer("instant_study_family_annual");
+  assert.equal(family?.plan, "family");
+  assert.equal(family?.entitlement, "instant_study.family");
+  assert.equal(family?.cadence, "annual");
 });
