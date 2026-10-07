@@ -2,10 +2,13 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   Brain,
+  BarChart3,
+  Camera,
   CheckCircle2,
   FilePlus2,
   FileText,
   GraduationCap,
+  Headphones,
   Home,
   Library,
   MessageCircle,
@@ -13,19 +16,30 @@ import {
   Plug,
   Search,
   Sparkles,
+  Trophy,
   Upload,
+  Users,
 } from "lucide-react";
 import {
   askStudyMaterial,
   fileToStudyInput,
+  getAudioStudy,
   getDueReviews,
+  getRetentionInsights,
+  getStudyRoom,
   googleDriveStudyInput,
   importStudyMaterial,
+  joinStudyRoom,
   listStudyMaterials,
   prepareStudy,
+  createStudyRoom,
   submitStudyAnswer,
+  updateStudyRoomProgress,
+  type AudioStudy,
   type DueReview,
+  type RetentionInsights,
   type StudyMaterial,
+  type StudyRoom,
   type StudyMode,
   type StudySummary,
   type TestQuestionType,
@@ -43,9 +57,12 @@ type View =
   | "test"
   | "ask"
   | "review"
+  | "insights"
+  | "audio"
+  | "friends"
   | "plugin";
 
-type SourceType = "paste" | "upload" | "drive" | "audio";
+type SourceType = "paste" | "upload" | "drive" | "audio" | "scan";
 
 const STORAGE_KEY = "instantstudy.library.v2";
 
@@ -113,6 +130,18 @@ export function SoftwareApp() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const [recording, setRecording] = useState(false);
+  const [insights, setInsights] = useState<RetentionInsights | null>(null);
+  const [insightsBusy, setInsightsBusy] = useState(false);
+  const [audioStudy, setAudioStudy] = useState<AudioStudy | null>(null);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [room, setRoom] = useState<StudyRoom | null>(null);
+  const [roomCode, setRoomCode] = useState("");
+  const [displayName, setDisplayName] = useState(
+    () => localStorage.getItem("instantstudy.display_name") || "Learner",
+  );
+  const [roomBusy, setRoomBusy] = useState(false);
+  const [roomMessage, setRoomMessage] = useState("");
+
 
   const selected = useMemo(
     () => library.find((item) => item.id === selectedId) ?? library[0] ?? null,
@@ -155,13 +184,45 @@ export function SoftwareApp() {
       .finally(() => setReviewBusy(false));
   }, [view]);
 
+  useEffect(() => {
+    if (view !== "insights") return;
+    setInsightsBusy(true);
+    void getRetentionInsights()
+      .then(setInsights)
+      .catch(() => setInsights(null))
+      .finally(() => setInsightsBusy(false));
+  }, [view]);
+
+  useEffect(() => {
+    if (view !== "audio" || !selected) return;
+    setAudioStudy(null);
+    void getAudioStudy(selected.id)
+      .then(setAudioStudy)
+      .catch(() => setAudioStudy(null));
+  }, [view, selectedId]);
+
+  useEffect(() => {
+    if (view !== "friends" || !room?.code) return;
+    const timer = window.setInterval(() => {
+      void getStudyRoom(room.code)
+        .then(({ room: next }) => setRoom(next))
+        .catch(() => undefined);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [view, room?.code]);
+
+  useEffect(() => {
+    return () => window.speechSynthesis?.cancel();
+  }, []);
+
+
   async function createMaterial() {
     setBusy(true);
     setCreateError("");
 
     try {
       const files =
-        sourceType === "upload" || sourceType === "audio"
+        sourceType === "upload" || sourceType === "audio" || sourceType === "scan"
           ? await Promise.all(selectedFiles.map(fileToStudyInput))
           : sourceType === "drive"
             ? [googleDriveStudyInput(driveUrl)]
@@ -169,7 +230,7 @@ export function SoftwareApp() {
 
       const result = await importStudyMaterial({
         title: title.trim() || undefined,
-        sourceType,
+        sourceType: sourceType === "scan" ? "upload" : sourceType,
         contentText: sourceType === "paste" ? draft.trim() : undefined,
         files,
       });
@@ -244,6 +305,18 @@ export function SoftwareApp() {
       } else if (result.submission?.done) {
         setSession({ ...session, next: undefined });
       }
+
+      if (room?.code) {
+        const nextIndex = result.next?.questionIndex ?? session.next?.questionIndex ?? 1;
+        const total = result.next?.totalPlanned ?? session.next?.totalPlanned ?? 1;
+        void updateStudyRoomProgress({
+          code: room.code,
+          progress: result.submission?.done ? 1 : Math.min(1, nextIndex / Math.max(1, total)),
+          attempts: nextIndex,
+        })
+          .then(({ room: updated }) => setRoom(updated))
+          .catch(() => undefined);
+      }
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Could not evaluate this answer.");
     } finally {
@@ -313,6 +386,67 @@ export function SoftwareApp() {
       }));
     } finally {
       setBusy(false);
+    }
+  }
+
+
+  function toggleAudioStudy() {
+    if (!audioStudy || !("speechSynthesis" in window)) return;
+    if (audioPlaying) {
+      window.speechSynthesis.cancel();
+      setAudioPlaying(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(
+      audioStudy.segments
+        .map((segment) => `${segment.speaker}: ${segment.text}`)
+        .join("  "),
+    );
+    utterance.rate = 0.96;
+    utterance.onend = () => setAudioPlaying(false);
+    utterance.onerror = () => setAudioPlaying(false);
+    setAudioPlaying(true);
+    window.speechSynthesis.speak(utterance);
+  }
+
+  async function createRoom() {
+    if (!selected || !displayName.trim()) return;
+    setRoomBusy(true);
+    setRoomMessage("");
+    localStorage.setItem("instantstudy.display_name", displayName.trim());
+    try {
+      const result = await createStudyRoom({
+        materialId: selected.id,
+        displayName: displayName.trim(),
+      });
+      setRoom(result.room);
+      setRoomCode(result.room.code);
+      setRoomMessage("Room created. Share the code with your study partners.");
+    } catch (error) {
+      setRoomMessage(error instanceof Error ? error.message : "Could not create room.");
+    } finally {
+      setRoomBusy(false);
+    }
+  }
+
+  async function joinRoom() {
+    if (!roomCode.trim() || !displayName.trim()) return;
+    setRoomBusy(true);
+    setRoomMessage("");
+    localStorage.setItem("instantstudy.display_name", displayName.trim());
+    try {
+      const result = await joinStudyRoom({
+        code: roomCode.trim(),
+        displayName: displayName.trim(),
+      });
+      setRoom(result.room);
+      setRoomCode(result.room.code);
+      setRoomMessage(`Joined ${result.room.title}.`);
+    } catch (error) {
+      setRoomMessage(error instanceof Error ? error.message : "Could not join room.");
+    } finally {
+      setRoomBusy(false);
     }
   }
 
