@@ -1,4 +1,17 @@
+import { readInstantAccountSession } from "./instantBilling";
+
 export type StudyMode = "learn" | "review" | "quiz" | "test";
+export type TestQuestionType =
+  | "multiple_choice"
+  | "true_false"
+  | "short_answer"
+  | "free_recall"
+  | "application";
+
+export type StudyChoice = {
+  label: string;
+  value: string;
+};
 
 export type StudyQuestion = {
   done?: boolean;
@@ -13,10 +26,37 @@ export type StudyQuestion = {
     difficulty?: number;
     nextReviewAt?: string;
   };
+  question?: {
+    prompt?: string;
+    choices?: StudyChoice[];
+    answerMode?: "choice" | "text";
+    generatedBy?: string;
+  };
   questionPolicy?: {
     type?: string;
     instruction?: string;
     immediateFeedback?: boolean;
+  };
+};
+
+export type StudySummary = {
+  sessionId?: string;
+  mode?: StudyMode;
+  attempts?: number;
+  averageMastery?: number;
+  weakConcepts?: Array<{
+    id?: string;
+    label?: string;
+    mastery?: number;
+    nextReviewAt?: string;
+    missingConcepts?: string[];
+  }>;
+  nextReviewAt?: string;
+  testResult?: {
+    scorePercent?: number;
+    answered?: number;
+    totalQuestions?: number;
+    durationSeconds?: number;
   };
 };
 
@@ -48,12 +88,57 @@ export type AnswerResult = {
       difficulty?: number;
       nextReviewAt?: string;
     };
-    summary?: unknown;
+    summary?: StudySummary;
   };
   next?: StudyQuestion | null;
 };
 
-function learnerId() {
+export type StudyAssets = {
+  summary: string;
+  outline: string[];
+  keyConcepts: string[];
+  flashcards: Array<{
+    id: string;
+    front: string;
+    back: string;
+    concept: string;
+  }>;
+  generatedBy: string;
+};
+
+export type StudyMaterial = {
+  id: string;
+  learnerId: string;
+  title: string;
+  content: string;
+  sourceType: "paste" | "upload" | "drive" | "audio";
+  sourceNames: string[];
+  assets: StudyAssets;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StudyFileInput = {
+  file_id: string;
+  file_name?: string;
+  mime_type?: string;
+  inline_base64?: string;
+  download_url?: string;
+};
+
+export type DueReview = {
+  sessionId: string;
+  title: string;
+  conceptId: string;
+  label: string;
+  sourceExcerpt: string;
+  mastery: number;
+  difficulty: number;
+  nextReviewAt: string;
+  missingConcepts: string[];
+};
+
+function anonymousLearnerId() {
   const key = "instantstudy.learner_id";
   const existing = localStorage.getItem(key);
   if (existing) return existing;
@@ -61,6 +146,21 @@ function learnerId() {
   const created = `web-${crypto.randomUUID()}`;
   localStorage.setItem(key, created);
   return created;
+}
+
+export function learnerContext() {
+  const account = readInstantAccountSession();
+  if (account) {
+    return {
+      learnerId: account.userId,
+      accountUserId: account.userId,
+      accountAccessToken: account.accessToken,
+    };
+  }
+
+  return {
+    learnerId: anonymousLearnerId(),
+  };
 }
 
 async function request(payload: Record<string, unknown>) {
@@ -86,19 +186,30 @@ async function request(payload: Record<string, unknown>) {
   return data;
 }
 
+function identified(payload: Record<string, unknown>) {
+  return { ...payload, ...learnerContext() };
+}
+
 export async function prepareStudy(input: {
   contentText: string;
   mode: StudyMode;
   title?: string;
+  maxQuestions?: number;
+  testDurationMinutes?: number;
+  testQuestionTypes?: TestQuestionType[];
 }) {
   try {
-    return (await request({
-      action: "prepare",
-      contentText: input.contentText,
-      title: input.title,
-      mode: input.mode,
-      learnerId: learnerId(),
-    })) as PreparedStudy;
+    return (await request(
+      identified({
+        action: "prepare",
+        contentText: input.contentText,
+        title: input.title,
+        mode: input.mode,
+        maxQuestions: input.maxQuestions,
+        testDurationMinutes: input.testDurationMinutes,
+        testQuestionTypes: input.testQuestionTypes,
+      }),
+    )) as PreparedStudy;
   } catch {
     return {
       title: input.title || "Study session",
@@ -106,13 +217,17 @@ export async function prepareStudy(input: {
       localFallback: true,
       next: {
         concept: {
-          label: "Your material is ready",
+          label: "Adaptive engine unavailable",
           sourceExcerpt: input.contentText.slice(0, 280),
+        },
+        question: {
+          prompt: "The secure adaptive engine is currently unavailable.",
+          answerMode: "text",
+          generatedBy: "local-fallback",
         },
         questionPolicy: {
           type: input.mode === "test" ? "free_recall" : "adaptive",
-          instruction:
-            "The local software is ready. The secure adaptive engine is currently unavailable.",
+          instruction: "Reconnect to continue this study session.",
         },
       },
     } satisfies PreparedStudy;
@@ -140,10 +255,10 @@ export async function nextStudyQuestion(studySessionId: string) {
 }
 
 export async function finishStudySession(studySessionId: string) {
-  return await request({
+  return (await request({
     action: "finish",
     studySessionId,
-  });
+  })) as StudySummary;
 }
 
 export async function askStudyMaterial(input: {
@@ -158,5 +273,96 @@ export async function askStudyMaterial(input: {
     answer: string;
     sourceHighlights?: string[];
     provider?: string;
+  };
+}
+
+export async function importStudyMaterial(input: {
+  title?: string;
+  sourceType: StudyMaterial["sourceType"];
+  contentText?: string;
+  files?: StudyFileInput[];
+}) {
+  return (await request(
+    identified({
+      action: "material_import",
+      title: input.title,
+      sourceType: input.sourceType,
+      contentText: input.contentText,
+      files: input.files,
+    }),
+  )) as {
+    material: StudyMaterial;
+    ingestion?: Array<{
+      fileId?: string;
+      fileName?: string;
+      status?: string;
+      extraction?: string;
+      error?: string;
+    }>;
+  };
+}
+
+export async function listStudyMaterials(query = "") {
+  return (await request(
+    identified({
+      action: "material_list",
+      query,
+      limit: 50,
+    }),
+  )) as { materials: StudyMaterial[] };
+}
+
+export async function getDueReviews(limit = 30) {
+  return (await request(
+    identified({
+      action: "due",
+      limit,
+    }),
+  )) as DueReview[];
+}
+
+export async function fileToStudyInput(file: File): Promise<StudyFileInput> {
+  const maxBytes = 2_500_000;
+  if (file.size > maxBytes) {
+    throw new Error("Files uploaded through the web app are limited to 2.5 MB each.");
+  }
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const chunks: string[] = [];
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    const chunk = bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length));
+    chunks.push(String.fromCharCode(...chunk));
+  }
+
+  return {
+    file_id: crypto.randomUUID(),
+    file_name: file.name,
+    mime_type: file.type || undefined,
+    inline_base64: btoa(chunks.join("")),
+  };
+}
+
+export function googleDriveStudyInput(url: string): StudyFileInput {
+  const trimmed = url.trim();
+  let id = "";
+
+  try {
+    const parsed = new URL(trimmed);
+    const match = parsed.pathname.match(/\/file\/d\/([^/]+)/);
+    id = match?.[1] || parsed.searchParams.get("id") || "";
+  } catch {
+    id = "";
+  }
+
+  if (!/^[A-Za-z0-9_-]{10,200}$/.test(id)) {
+    throw new Error("Use a public Google Drive file link.");
+  }
+
+  return {
+    file_id: `drive-${id}`,
+    file_name: "Google Drive document",
+    download_url:
+      `https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`,
   };
 }
