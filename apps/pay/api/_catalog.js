@@ -9,8 +9,8 @@ const offers = {
   instant_bible_pro_annual: ["PADDLE_PRICE_INSTANT_BIBLE_PRO_ANNUAL", "instant_bible", "pro", "annual"],
   instant_vest_pro_monthly: ["PADDLE_PRICE_INSTANT_VEST_PRO_MONTHLY", "instant_vest", "pro", "monthly"],
   instant_vest_pro_annual: ["PADDLE_PRICE_INSTANT_VEST_PRO_ANNUAL", "instant_vest", "pro", "annual"],
-  instant_closer_pro_monthly: ["PADDLE_PRICE_INSTANT_CLOSER_PRO_MONTHLY", "instant_closer", "pro", "monthly"],
-  instant_closer_pro_annual: ["PADDLE_PRICE_INSTANT_CLOSER_PRO_ANNUAL", "instant_closer", "pro", "annual"],
+  instant_closer_pro_monthly: ["PADDLE_PRICE_INSTANT_CLOSER_PRO_MONTHLY", "instant_closer", "pro", "monthly", "instant_closer.pro"],
+  instant_closer_pro_annual: ["PADDLE_PRICE_INSTANT_CLOSER_PRO_ANNUAL", "instant_closer", "pro", "annual", "instant_closer.pro"],
   dotspeak_premium_monthly: ["PADDLE_PRICE_DOTSPEAK_PREMIUM_MONTHLY", "dotspeak", "premium", "monthly"],
   dotspeak_premium_annual: ["PADDLE_PRICE_DOTSPEAK_PREMIUM_ANNUAL", "dotspeak", "premium", "annual"],
   instant_one_monthly: ["PADDLE_PRICE_INSTANT_ONE_MONTHLY", "instant_one", "all_access", "monthly"],
@@ -20,9 +20,16 @@ const offers = {
 export function resolveOffer(key) {
   const row = offers[String(key || "")];
   if (!row) return null;
-  const [envKey, product, plan, cadence] = row;
+  const [envKey, product, plan, cadence, explicitEntitlementKey] = row;
   const priceId = String(process.env[envKey] || "").trim();
   if (!priceId) return null;
   if (!/^pri_[a-z0-9]{20,40}$/.test(priceId)) return null;
-  return { key: String(key), priceId, product, plan, cadence };
+  return {
+    key: String(key),
+    priceId,
+    product,
+    plan,
+    cadence,
+    entitlementKey: explicitEntitlementKey || `${product}.${plan}`,
+  };
 }
