@@ -16,7 +16,7 @@ import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
 import { generateStudyAssets } from "./studyAssets.js";
 import { materialStore } from "./materialStore.js";
-import { buildAudioStudy } from "./offerLayer.js";
+import { buildAudioStudy, buildStudyGame } from "./offerLayer.js";
 import { studyRoomStore } from "./studyRoomStore.js";
 import {
   databaseUrl,
@@ -848,7 +848,8 @@ app.get("/connection.json", (req, res) => {
       "optional audio transcription",
       "handwritten-note image transcription",
       "retention insights and streaks",
-      "audio study",
+      "conversational podcast",
+      "content-based study game",
       "study rooms",
       "optional Anki",
     ],
@@ -967,6 +968,33 @@ app.post("/api/v1/insights", async (req, res) => {
       .object({ learnerId: z.string().min(3).max(200) })
       .parse(req.body ?? {});
     res.json(await studyEngine.insights(input.learnerId));
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/study-game", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        learnerId: z.string().min(3).max(200),
+        materialId: z.string().uuid(),
+      })
+      .parse(req.body ?? {});
+
+    const material = await materialStore.get(input.learnerId, input.materialId);
+    if (!material) {
+      res.status(404).json({ error: "material_not_found" });
+      return;
+    }
+
+    const game = buildStudyGame(material.title, material.assets);
+    if (!game.pairCount) {
+      res.status(422).json({ error: "study_game_requires_flashcards" });
+      return;
+    }
+
+    res.json(game);
   } catch (error) {
     sendApiError(res, error);
   }
