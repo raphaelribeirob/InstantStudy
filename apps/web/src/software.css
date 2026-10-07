@@ -906,3 +906,52 @@ button,input,textarea{font:inherit}
     transition:none!important;
   }
 }
+
+
+/* Quizlet gap closure — private Drive, game, podcast and Family */
+.software-drive-import{display:grid;gap:12px;padding:22px;background:var(--is-panel);border:1px solid var(--is-line)}
+.software-drive-import>button{justify-self:start;border:1px solid var(--is-ink);border-radius:999px;background:var(--is-ink);color:var(--is-panel);padding:10px 14px;display:flex;align-items:center;gap:8px;cursor:pointer}
+.software-drive-import>button:disabled{opacity:.38;cursor:not-allowed}
+.software-drive-import>span{color:var(--is-muted);font-size:11px}
+.software-drive-divider{padding-top:12px;border-top:1px solid var(--is-line);font-size:9px;letter-spacing:.12em;color:var(--is-muted)}
+.software-drive-import>input{border:0;border-bottom:1px solid var(--is-line);background:transparent;padding:12px 0;outline:0}
+
+.software-game-status{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;border-top:1px solid var(--is-line);border-bottom:1px solid var(--is-line);padding:14px 0;margin-bottom:1px}
+.software-game-status span{font-size:9px;letter-spacing:.12em;color:var(--is-orange);font-weight:700}
+.software-game-status strong{font-size:13px;font-weight:520}
+.software-game-status button{border:0;background:transparent;text-decoration:underline;cursor:pointer;font-size:10px}
+.software-game-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;padding:1px;background:var(--is-line)}
+.software-game-grid button{min-height:180px;padding:18px;border:0;border-radius:0;background:var(--is-ink);color:#efede7;text-align:left;display:flex;flex-direction:column;justify-content:space-between;gap:18px;cursor:pointer;transition:background-color 160ms ease,color 160ms ease,transform 160ms ease}
+.software-game-grid button>span{font-size:9px;letter-spacing:.12em;color:#77736b}
+.software-game-grid button>strong{font-size:15px;line-height:1.35;font-weight:480}
+.software-game-grid button.open{background:var(--is-panel);color:var(--is-ink)}
+.software-game-grid button.open>span{color:var(--is-orange)}
+.software-game-grid button.matched{background:var(--is-green);color:var(--is-ink)}
+.software-game-grid button:disabled{cursor:default}
+
+.software-family,.software-family-upgrade{border-top:1px solid var(--is-line);border-bottom:1px solid var(--is-line);padding:28px 0}
+.software-family-head>div{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:end}
+.software-family-head span{font-size:9px;letter-spacing:.12em;color:var(--is-orange);font-weight:700}
+.software-family-head strong{grid-column:1/-1;font-size:clamp(68px,9vw,112px);line-height:.8;letter-spacing:-.07em;font-weight:460}
+.software-family-head small{grid-column:1/-1;color:var(--is-muted);font-size:12px;margin-top:8px}
+.software-family-add{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;margin:34px 0 18px}
+.software-family-add input{border:0;border-bottom:1px solid var(--is-line);background:transparent;padding:12px 0;outline:0}
+.software-family-add button,.software-family-upgrade button{border:0;border-radius:999px;background:var(--is-ink);color:var(--is-panel);padding:11px 16px;cursor:pointer}
+.software-family-add button:disabled{opacity:.38}
+.software-family-members{border-top:1px solid var(--is-line)}
+.software-family-members article{min-height:70px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:14px;align-items:center;border-bottom:1px solid var(--is-line)}
+.software-family-members article>span{color:var(--is-muted);font-size:11px}
+.software-family-members article>button{border:0;background:transparent;text-decoration:underline;cursor:pointer;font-size:10px}
+.software-family-upgrade{max-width:760px}
+.software-family-upgrade h2{font-size:clamp(42px,6vw,78px);line-height:.9;letter-spacing:-.06em;font-weight:470;margin:24px 0 18px}
+.software-family-upgrade p{max-width:620px;color:var(--is-muted);font-size:16px;line-height:1.55}
+.software-family-upgrade button{margin-top:18px}
+
+@media(max-width:900px){.software-game-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){
+  .software-game-grid{grid-template-columns:1fr 1fr}
+  .software-game-grid button{min-height:145px;padding:14px}
+  .software-game-status{grid-template-columns:1fr auto}.software-game-status strong{grid-column:1/-1}
+  .software-family-add{grid-template-columns:1fr}
+  .software-family-members article{grid-template-columns:1fr}.software-family-members article{padding:14px 0}
+}
