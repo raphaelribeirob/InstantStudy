@@ -107,17 +107,17 @@ function navItem(view: View, active: View, icon: ReactNode, label: string, setVi
   );
 }
 
-function dueLabel(value: string) {
+function dueLabel(value: string, t: (key: string, options?: Record<string, unknown>) => string) {
   const date = new Date(value);
   const delta = date.getTime() - Date.now();
-  if (delta <= 0) return "Due now";
+  if (delta <= 0) return t("software.dueNow");
   const days = Math.ceil(delta / 86_400_000);
-  if (days <= 1) return "Tomorrow";
-  return `In ${days} days`;
+  if (days <= 1) return t("software.dueTomorrow");
+  return t("software.dueInDays", { count: days });
 }
 
 export function SoftwareApp() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const cached = readCachedLibrary();
   const [view, setView] = useState<View>("home");
   const [library, setLibrary] = useState<StudyMaterial[]>(cached);
@@ -687,13 +687,13 @@ export function SoftwareApp() {
         </a>
 
         <button className="software-create" onClick={() => setView("create")}>
-          <FilePlus2 size={17}/> Create
+          <FilePlus2 size={17}/> {t("common.create")}
         </button>
 
         <nav>
           {navItem("home", view, <Home size={17}/>, t("common.home"), setView)}
           {navItem("library", view, <Library size={17}/>, t("common.library"), setView)}
-          <div className="software-nav-label">STUDY</div>
+          <div className="software-nav-label">{t("software.study")}</div>
           {navItem("guide", view, <BookOpen size={17}/>, t("common.guide"), setView)}
           {navItem("flashcards", view, <FileText size={17}/>, t("common.flashcards"), setView)}
           {navItem("learn", view, <Brain size={17}/>, t("common.learn"), setView)}
@@ -705,14 +705,14 @@ export function SoftwareApp() {
           {navItem("game", view, <Puzzle size={17}/>, t("common.studyGame"), setView)}
           {navItem("friends", view, <Users size={17}/>, t("common.friends"), setView)}
           {navItem("family", view, <UserRoundPlus size={17}/>, t("common.family"), setView)}
-          <div className="software-nav-label">AI</div>
+          <div className="software-nav-label">{t("software.ai")}</div>
           {navItem("plugin", view, <Plug size={17}/>, t("common.plugin"), setView)}
         </nav>
 
         <div className="software-plan">
-          <span>InstantStudy Free</span>
-          <small>Upgrade removes Learn and Test limits.</small>
-          <a href="/#pricing">View plans</a>
+          <span>{t("software.freePlan")}</span>
+          <small>{t("software.upgradeLimits")}</small>
+          <a href="/#pricing">{t("software.viewPlans")}</a>
         </div>
       </aside>
 
@@ -736,8 +736,8 @@ export function SoftwareApp() {
         {view === "home" && (
           <section className="software-page">
             <div className="software-hero">
-              <p>THE FUTURE OF LEARNING</p>
-              <h1>What do you want to learn?</h1>
+              <p>{t("software.futureLearning")}</p>
+              <h1>{t("software.homeTitle")}</h1>
               <span>{t("software.homeBody")}</span>
               <button onClick={() => setView("create")}><Sparkles size={17}/> {t("software.createMaterial")}</button>
             </div>
@@ -748,7 +748,7 @@ export function SoftwareApp() {
                 <button className="software-material-card" key={item.id} onClick={() => openMaterial(item)}>
                   <span><FileText size={18}/></span>
                   <strong>{item.title}</strong>
-                  <small>{new Date(item.updatedAt || item.createdAt).toLocaleDateString()}</small>
+                  <small>{new Date(item.updatedAt || item.createdAt).toLocaleDateString(i18n.language)}</small>
                 </button>
               )) : (
                 <div className="software-empty">
@@ -760,15 +760,15 @@ export function SoftwareApp() {
             </div>
 
             <div className="software-feature-grid">
-              <button onClick={() => setView("guide")}><BookOpen/><strong>Study Guide</strong><span>Summary + key ideas</span></button>
-              <button onClick={() => setView("flashcards")}><FileText/><strong>Flashcards</strong><span>Semantic active recall</span></button>
-              <button onClick={() => setView("learn")}><Brain/><strong>Learn</strong><span>Adaptive questions</span></button>
-              <button onClick={() => setView("test")}><GraduationCap/><strong>Practice Test</strong><span>Configurable exam rehearsal</span></button>
+              <button onClick={() => setView("guide")}><BookOpen/><strong>{t("common.guide")}</strong><span>{t("software.guideDetail")}</span></button>
+              <button onClick={() => setView("flashcards")}><FileText/><strong>{t("common.flashcards")}</strong><span>{t("software.flashcardsDetail")}</span></button>
+              <button onClick={() => setView("learn")}><Brain/><strong>{t("common.learn")}</strong><span>{t("software.learnDetail")}</span></button>
+              <button onClick={() => setView("test")}><GraduationCap/><strong>{t("common.test")}</strong><span>{t("software.testDetail")}</span></button>
               <button onClick={() => setView("insights")}><BarChart3/><strong>Retention Insights</strong><span>Mastery, streaks and weak concepts</span></button>
-              <button onClick={() => setView("audio")}><Headphones/><strong>Podcast</strong><span>Two-voice conversational review</span></button>
-              <button onClick={() => setView("game")}><Puzzle/><strong>Study Game</strong><span>Match concepts from your own material</span></button>
-              <button onClick={() => setView("friends")}><Users/><strong>Study With Friends</strong><span>Share a room and progress together</span></button>
-              <button onClick={() => setView("family")}><UserRoundPlus/><strong>Family</strong><span>Five independent learner accounts</span></button>
+              <button onClick={() => setView("audio")}><Headphones/><strong>{t("common.podcast")}</strong><span>{t("software.podcastBody")}</span></button>
+              <button onClick={() => setView("game")}><Puzzle/><strong>{t("common.studyGame")}</strong><span>{t("software.matchKnowledge")}</span></button>
+              <button onClick={() => setView("friends")}><Users/><strong>{t("common.friends")}</strong><span>{t("software.studyTogether")}</span></button>
+              <button onClick={() => setView("family")}><UserRoundPlus/><strong>{t("common.family")}</strong><span>{t("software.familyKicker")}</span></button>
             </div>
           </section>
         )}
@@ -801,7 +801,7 @@ export function SoftwareApp() {
                     setCreateError("");
                   }}
                 >
-                  {type === "paste" ? "Paste text" : type === "upload" ? "Upload files" : type === "drive" ? "Google Drive" : type === "audio" ? "Record audio" : "Scan notes"}
+                  {type === "paste" ? t("landing.paste") : type === "upload" ? t("landing.upload") : type === "drive" ? t("landing.drive") : type === "audio" ? t("landing.audio") : t("landing.scan")}
                 </button>
               ))}
             </div>
@@ -883,8 +883,8 @@ export function SoftwareApp() {
               <div>
                 <span>
                   {sourceType === "paste"
-                    ? `${draft.length.toLocaleString()} / 200,000 characters`
-                    : "Web uploads: up to 2.5 MB per file"}
+                    ? t("software.characters", { count: draft.length.toLocaleString(i18n.language) })
+                    : t("software.webUploadLimit")
                 </span>
                 <button disabled={!hasCreateInput || busy} onClick={() => void createMaterial()}>
                   {busy ? t("software.building") : t("software.generateMaterial")}
@@ -908,29 +908,29 @@ export function SoftwareApp() {
             ) : (
               <>
                 <div className="software-workspace-head">
-                  <div><p>{selected.title}</p><h1>{view === "test" ? "Practice Test" : view[0].toUpperCase() + view.slice(1)}</h1></div>
+                  <div><p>{selected.title}</p><h1>{view === "test" ? t("common.test") : view === "guide" ? t("common.guide") : view === "flashcards" ? t("common.flashcards") : view === "learn" ? t("common.learn") : t("common.ask")}</h1></div>
                   <div className="software-mode-switch">
-                    <button onClick={() => setView("guide")}>Guide</button>
-                    <button onClick={() => setView("flashcards")}>Flashcards</button>
-                    <button onClick={() => { setView("learn"); void startMode("learn"); }}>Learn</button>
-                    <button onClick={() => { setView("test"); setSession(null); setSummary(null); }}>Test</button>
-                    <button onClick={() => setView("ask")}>Ask</button>
+                    <button onClick={() => setView("guide")}>{t("common.guide")}</button>
+                    <button onClick={() => setView("flashcards")}>{t("common.flashcards")}</button>
+                    <button onClick={() => { setView("learn"); void startMode("learn"); }}>{t("common.learn")}</button>
+                    <button onClick={() => { setView("test"); setSession(null); setSummary(null); }}>{t("common.test")}</button>
+                    <button onClick={() => setView("ask")}>{t("common.ask")}</button>
                   </div>
                 </div>
 
                 {view === "guide" && (
                   <div className="software-guide">
                     <article>
-                      <span>SUMMARY</span>
+                      <span>{t("software.summary")}</span>
                       <h2>{selected.title}</h2>
                       <p>{selected.assets.summary}</p>
                     </article>
                     <aside>
-                      <span>KEY IDEAS</span>
+                      <span>{t("software.keyIdeas")}</span>
                       {selected.assets.outline.map((idea, index) => (
                         <div key={`${index}-${idea}`}><b>{String(index + 1).padStart(2, "0")}</b><p>{idea}</p></div>
                       ))}
-                      <span>KEY CONCEPTS</span>
+                      <span>{t("software.keyConcepts")}</span>
                       <p>{selected.assets.keyConcepts.join(" · ")}</p>
                     </aside>
                   </div>
@@ -949,7 +949,7 @@ export function SoftwareApp() {
                         }}
                       >
                         <span>{flippedCard === card.id ? card.concept : card.front}</span>
-                        <p>{flippedCard === card.id ? card.back : "Click to reveal"}</p>
+                        <p>{flippedCard === card.id ? card.back : t("software.clickReveal")}</p>
                       </article>
                     ))}
                   </div>
@@ -957,15 +957,15 @@ export function SoftwareApp() {
 
                 {view === "test" && !session && !busy && !summary && (
                   <div className="software-test-builder">
-                    <h2>Build your practice test</h2>
+                    <h2>{t("software.buildTest")}</h2>
                     <label>
-                      Questions
+                      {t("software.questions")}
                       <select value={testQuestions} onChange={(event) => setTestQuestions(Number(event.target.value))}>
                         {[10,20,30,40].map((count) => <option key={count} value={count}>{count}</option>)}
                       </select>
                     </label>
                     <label>
-                      Time limit
+                      {t("software.timeLimit")}
                       <select value={testDuration} onChange={(event) => setTestDuration(Number(event.target.value))}>
                         {[15,30,45,60,90].map((minutes) => <option key={minutes} value={minutes}>{minutes} min</option>)}
                       </select>
@@ -981,29 +981,29 @@ export function SoftwareApp() {
                         </button>
                       ))}
                     </div>
-                    <button onClick={() => void startMode("test")}>Start practice test</button>
+                    <button onClick={() => void startMode("test")}>{t("software.startTest")}</button>
                   </div>
                 )}
 
                 {(view === "learn" || view === "test") && (session || busy || summary) && (
                   <div className="software-study-stage">
                     <aside>
-                      <span>STUDY GUIDE</span>
+                      <span>{t("software.studyGuide")}</span>
                       <p>{selected.assets.summary}</p>
                     </aside>
                     <article>
-                      {busy ? <div className="software-loading">Building your adaptive session…</div> : summary ? (
+                      {busy ? <div className="software-loading">{t("software.buildingSession")}</div> : summary ? (
                         <div className="software-test-result">
                           <span>{t("software.sessionComplete")}</span>
                           <h2>{summary.testResult ? `${summary.testResult.scorePercent ?? 0}%` : t("software.roundComplete")}</h2>
                           <p>
                             {summary.testResult
                               ? `${summary.testResult.answered ?? 0} of ${summary.testResult.totalQuestions ?? testQuestions} questions answered.`
-                              : `Average mastery: ${Math.round((summary.averageMastery ?? 0) * 100)}%`}
+                              : t("software.averageMastery", { value: Math.round((summary.averageMastery ?? 0) * 100) })}
                           </p>
                           {summary.weakConcepts?.length ? (
                             <div>
-                              <strong>Review mistakes</strong>
+                              <strong>{t("software.reviewMistakes")}</strong>
                               {summary.weakConcepts.map((concept) => (
                                 <p key={concept.id}>{concept.label} · {Math.round((concept.mastery ?? 0) * 100)}%</p>
                               ))}
@@ -1014,7 +1014,7 @@ export function SoftwareApp() {
                       ) : session?.next?.concept ? (
                         <>
                           <span className="software-question-type">
-                            Question {session.next.questionIndex ?? "–"} of {session.next.totalPlanned ?? "–"} · {session.next.questionPolicy?.type || "adaptive"}
+                            {t("software.questionProgress", { current: session.next.questionIndex ?? "–", total: session.next.totalPlanned ?? "–" })} · {session.next.questionPolicy?.type || "adaptive"}
                           </span>
                           <h2>{session.next.question?.prompt || session.next.concept.label}</h2>
                           {feedback ? <div className="software-feedback">{feedback}</div> : null}
@@ -1047,8 +1047,8 @@ export function SoftwareApp() {
                         </>
                       ) : (
                         <>
-                          <h2>Session complete.</h2>
-                          <button onClick={() => void startMode(view === "test" ? "test" : "learn")}>Start again</button>
+                          <h2>{t("software.sessionDone")}</h2>
+                          <button onClick={() => void startMode(view === "test" ? "test" : "learn")}>{t("software.startAgain")}</button>
                         </>
                       )}
                     </article>
@@ -1057,14 +1057,14 @@ export function SoftwareApp() {
 
                 {view === "learn" && !session && !busy && !summary && (
                   <div className="software-study-stage">
-                    <aside><span>STUDY GUIDE</span><p>{selected.assets.summary}</p></aside>
+                    <aside><span>{t("software.studyGuide")}</span><p>{selected.assets.summary}</p></aside>
                     <article><h2>{t("software.readyStudy")}</h2><p>{t("software.readyStudyBody")}</p><button onClick={() => void startMode("learn")}>{t("software.startLearn")}</button></article>
                   </div>
                 )}
 
                 {view === "ask" && (
                   <div className="software-ask">
-                    <div className="software-ask-context"><Sparkles size={18}/><span>Answers stay grounded in <strong>{selected.title}</strong>.</span></div>
+                    <div className="software-ask-context"><Sparkles size={18}/><span>{t("software.groundedIn", { title: selected.title })}</span></div>
                     {askAnswer ? (
                       <div className="software-ask-answer">
                         <span>INSTANTSTUDY</span>
