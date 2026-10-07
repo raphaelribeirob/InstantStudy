@@ -84,7 +84,7 @@ export function generateQuestion(input: {
 
   if (input.type === "true_false") {
     const trueFirst = index % 2 === 0;
-    const falseValue = `The material does not support this statement: ${source}`;
+    const falseValue = "No. This statement is not supported by the study material.";
     return {
       prompt: `Which option matches the source about ${concept}?`,
       choices: trueFirst
