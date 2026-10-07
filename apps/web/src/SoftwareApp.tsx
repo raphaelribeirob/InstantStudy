@@ -885,7 +885,7 @@ export function SoftwareApp() {
                 <span>
                   {sourceType === "paste"
                     ? t("software.characters", { value: draft.length.toLocaleString(i18n.language) })
-                    : t("software.webUploadLimit")
+                    : t("software.webUploadLimit")}
                 </span>
                 <button disabled={!hasCreateInput || busy} onClick={() => void createMaterial()}>
                   {busy ? t("software.building") : t("software.generateMaterial")}
