@@ -57,14 +57,14 @@ export async function hasInstantEntitlement(
   }
 }
 
-function offerFor(plan: 'plus' | 'unlimited', annual: boolean) {
+function offerFor(plan: 'plus' | 'unlimited' | 'family', annual: boolean) {
   const suffix = annual ? 'annual' : 'monthly';
-  return plan === 'plus'
-    ? `instant_study_plus_${suffix}`
-    : `instant_study_unlimited_${suffix}`;
+  if (plan === 'plus') return `instant_study_plus_${suffix}`;
+  if (plan === 'family') return 'instant_study_family_annual';
+  return `instant_study_unlimited_${suffix}`;
 }
 
-export async function openInstantStudyCheckout(plan: 'plus' | 'unlimited', annual: boolean) {
+export async function openInstantStudyCheckout(plan: 'plus' | 'unlimited' | 'family', annual: boolean) {
   const url = new URL(payBaseUrl());
   url.searchParams.set('offer', offerFor(plan, annual));
   url.searchParams.set('source', 'instant_study');
