@@ -99,6 +99,17 @@ class InstantStudyApi {
     });
   }
 
+  Future<Map<String, dynamic>> studyGame({
+    required String learnerId,
+    required String materialId,
+  }) {
+    return _post({
+      'action': 'study_game',
+      'learnerId': learnerId,
+      'materialId': materialId,
+    });
+  }
+
   Future<Map<String, dynamic>> createRoom({
     required String learnerId,
     required String materialId,
