@@ -131,6 +131,12 @@ export default async function handler(req, res) {
     "material_import",
     "material_list",
     "material_get",
+    "insights",
+    "audio_study",
+    "room_create",
+    "room_join",
+    "room_get",
+    "room_progress",
   ];
   const action = allowedActions.includes(body.action) ? body.action : "prepare";
 
@@ -255,6 +261,81 @@ export default async function handler(req, res) {
         sourceType,
         contentText: contentText || undefined,
         files,
+      });
+    } else if (action === "insights") {
+      const learnerId = await verifiedLearner(body);
+      if (!learnerId) return json(res, 401, { error: "learner_identity_required" });
+      result = await upstream(base, apiKey, "/api/v1/insights", { learnerId });
+    } else if (action === "audio_study") {
+      const learnerId = await verifiedLearner(body);
+      const materialId = cleanId(body.materialId, 64);
+      if (!learnerId || !materialId) {
+        return json(res, 400, { error: "audio_study_input_invalid" });
+      }
+      result = await upstream(base, apiKey, "/api/v1/audio-study", {
+        learnerId,
+        materialId,
+      });
+    } else if (action === "room_create") {
+      const learnerId = await verifiedLearner(body);
+      const materialId = cleanId(body.materialId, 64);
+      const displayName =
+        typeof body.displayName === "string" ? body.displayName.trim().slice(0, 80) : "";
+      if (!learnerId || !materialId || !displayName) {
+        return json(res, 400, { error: "room_create_input_invalid" });
+      }
+      result = await upstream(base, apiKey, "/api/v1/rooms/create", {
+        learnerId,
+        materialId,
+        displayName,
+      });
+    } else if (action === "room_join") {
+      const learnerId = await verifiedLearner(body);
+      const displayName =
+        typeof body.displayName === "string" ? body.displayName.trim().slice(0, 80) : "";
+      const code =
+        typeof body.code === "string" ? body.code.trim().toUpperCase().slice(0, 12) : "";
+      if (!learnerId || !displayName || !code) {
+        return json(res, 400, { error: "room_join_input_invalid" });
+      }
+      result = await upstream(base, apiKey, "/api/v1/rooms/join", {
+        learnerId,
+        displayName,
+        code,
+      });
+    } else if (action === "room_get") {
+      const learnerId = await verifiedLearner(body);
+      const code =
+        typeof body.code === "string" ? body.code.trim().toUpperCase().slice(0, 12) : "";
+      if (!learnerId || !code) {
+        return json(res, 400, { error: "room_get_input_invalid" });
+      }
+      result = await upstream(base, apiKey, "/api/v1/rooms/get", {
+        learnerId,
+        code,
+      });
+    } else if (action === "room_progress") {
+      const learnerId = await verifiedLearner(body);
+      const code =
+        typeof body.code === "string" ? body.code.trim().toUpperCase().slice(0, 12) : "";
+      const progress = Number(body.progress);
+      const attempts = Number(body.attempts);
+      if (
+        !learnerId ||
+        !code ||
+        !Number.isFinite(progress) ||
+        progress < 0 ||
+        progress > 1 ||
+        !Number.isInteger(attempts) ||
+        attempts < 0
+      ) {
+        return json(res, 400, { error: "room_progress_input_invalid" });
+      }
+      result = await upstream(base, apiKey, "/api/v1/rooms/progress", {
+        learnerId,
+        code,
+        progress,
+        attempts,
       });
     } else if (action === "material_list") {
       const learnerId = await verifiedLearner(body);
