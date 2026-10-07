@@ -16,6 +16,11 @@ import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
 import { generateStudyAssets } from "./studyAssets.js";
 import { materialStore } from "./materialStore.js";
+import {
+  databaseUrl,
+  durableStorageMode,
+  DurableDatabaseRequiredError,
+} from "./databasePolicy.js";
 
 const PORT = Number.parseInt(process.env.PORT ?? "8000", 10);
 const DEVICE_ID = process.env.INSTANTSTUDY_DEVICE_ID ?? "dev-device";
@@ -788,6 +793,14 @@ function requireAdminAuth(
 }
 
 function sendApiError(res: express.Response, error: unknown) {
+  if (error instanceof DurableDatabaseRequiredError) {
+    res.status(error.statusCode).json({
+      error: error.code,
+      message: error.message,
+    });
+    return;
+  }
+
   if (error instanceof UsageLimitError) {
     res.status(error.statusCode).json({
       error: error.code,
@@ -1298,10 +1311,11 @@ app.post("/api/v1/offer", async (req, res) => {
 });
 
 app.get("/health", (_req, res) => {
+  const storage = durableStorageMode();
   res.json({
-    ok: true,
+    ok: storage !== "unavailable",
     service: "instantstudy-mcp",
-    storage: process.env.DATABASE_URL ? "durable" : "memory",
+    storage,
     ingestion: {
       pdf: true,
       docx: true,
@@ -1326,6 +1340,34 @@ app.get("/health", (_req, res) => {
     },
     device: bridge.status(DEVICE_ID),
   });
+});
+
+app.get("/health/ready", async (_req, res) => {
+  const url = databaseUrl();
+  if (!url) {
+    res.status(503).json({
+      ok: false,
+      error: "durable_database_required",
+      storage: durableStorageMode(),
+    });
+    return;
+  }
+
+  try {
+    const { neon } = await import("@neondatabase/serverless");
+    const sql = neon(url);
+    const rows = await sql`SELECT 1 AS ok`;
+    res.json({
+      ok: Number(rows[0]?.ok ?? 0) === 1,
+      storage: "neon",
+    });
+  } catch (error) {
+    res.status(503).json({
+      ok: false,
+      error: "database_unreachable",
+      message: error instanceof Error ? error.message : "Database unavailable",
+    });
+  }
 });
 
 app.post("/bridge/poll", (req, res) => {
