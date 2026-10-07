@@ -21,7 +21,7 @@ const STOPWORDS = new Set([
   "our","their","they","them","these","those","over","under","between","through",
 ]);
 
-function normalizedWords(value: string) {
+function normalizedWords(value: string): string[] {
   return value
     .toLocaleLowerCase()
     .normalize("NFKD")
