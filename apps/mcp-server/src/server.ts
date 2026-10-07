@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import cors from "cors";
 import express from "express";
-import { helmet } from "helmet";
+import * as helmetNamespace from "helmet";
 import { rateLimit } from "express-rate-limit";
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
@@ -21,6 +21,17 @@ import {
   durableStorageMode,
   DurableDatabaseRequiredError,
 } from "./databasePolicy.js";
+
+type HelmetOptions = {
+  contentSecurityPolicy?: boolean;
+  crossOriginEmbedderPolicy?: boolean;
+  crossOriginResourcePolicy?: boolean;
+};
+
+const helmet = (
+  (helmetNamespace as unknown as { default?: unknown }).default ??
+  helmetNamespace
+) as unknown as (options?: HelmetOptions) => express.RequestHandler;
 
 const PORT = Number.parseInt(process.env.PORT ?? "8000", 10);
 const DEVICE_ID = process.env.INSTANTSTUDY_DEVICE_ID ?? "dev-device";
