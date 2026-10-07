@@ -21,7 +21,7 @@ class AppStrings {
 
   String tr(String key, [Map<String, Object?> values = const {}]) {
     final language = locale.languageCode == 'pt' ? 'pt-BR' : 'en';
-    var value = (_messages[language]?[key] ?? _messages['en']?[key] ?? key)!;
+    var value = _messages[language]?[key] ?? _messages['en']?[key] ?? key;
     for (final entry in values.entries) {
       value = value.replaceAll('{{${entry.key}}}', '${entry.value ?? ''}');
     }
