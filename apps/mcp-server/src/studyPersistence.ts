@@ -6,6 +6,7 @@ export type DueReview = {
   title: string;
   conceptId: string;
   label: string;
+  sourceExcerpt: string;
   mastery: number;
   difficulty: number;
   nextReviewAt: string;
@@ -79,6 +80,7 @@ class MemoryStudyPersistence implements StudyPersistence {
           title: session.title,
           conceptId: concept.id,
           label: concept.label,
+          sourceExcerpt: concept.sourceExcerpt,
           mastery: concept.mastery,
           difficulty: concept.difficulty,
           nextReviewAt: concept.nextReviewAt,
@@ -222,6 +224,7 @@ class NeonStudyPersistence implements StudyPersistence {
           title: session.title,
           conceptId: concept.id,
           label: concept.label,
+          sourceExcerpt: concept.sourceExcerpt,
           mastery: concept.mastery,
           difficulty: concept.difficulty,
           nextReviewAt: concept.nextReviewAt,
