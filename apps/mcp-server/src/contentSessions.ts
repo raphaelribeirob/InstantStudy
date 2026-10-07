@@ -3,7 +3,8 @@ import { randomUUID } from "node:crypto";
 export type StudyMode = "learn" | "review" | "quiz" | "test";
 
 export type StudyFile = {
-  download_url: string;
+  download_url?: string;
+  inline_base64?: string;
   file_id: string;
   mime_type?: string;
   file_name?: string;
