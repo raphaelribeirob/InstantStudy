@@ -487,6 +487,33 @@ function Pricing() {
             <ArrowRight size={16} />
           </a>
         </article>
+
+        <article className="pricing-card family-card">
+          <div>
+            <span className="plan-name">Family</span>
+            <h3>$7.00 / month</h3>
+            <p>Billed at $83.99 / year · up to 5 independent accounts.</p>
+          </div>
+          <ul>
+            <li><Check size={16} /> Unlimited for the owner + 4 invited members</li>
+            <li><Check size={16} /> Separate libraries, mastery and review queues</li>
+            <li><Check size={16} /> Podcast, Study Game and collaborative study</li>
+            <li><Check size={16} /> Family seat management inside InstantStudy</li>
+          </ul>
+          <a
+            className="plan-button secondary-plan"
+            href="#connect"
+            onClick={(click) => {
+              if (!instantBillingConfigured()) return;
+              click.preventDefault();
+              void openInstantStudyCheckout("family", true).catch(() => {
+                window.location.hash = "connect";
+              });
+            }}
+          >
+            Choose Family
+          </a>
+        </article>
       </div>
 
       <p className="pricing-disclosure">
