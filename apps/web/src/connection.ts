@@ -32,8 +32,8 @@ export const agentPresets: AgentPreset[] = [
     detail: "One command, shared across Codex CLI and IDE.",
     command: (url) => `codex mcp add instantstudy --url ${url}`,
     config: (url) =>
-      `[mcp_servers.instantstudy]\nurl = "${url}"`,
-    note: "After adding the server, ask Codex to use InstantStudy whenever you want to study material in context.",
+      `[mcp_servers.instantstudy]\nurl = "${url}"\nbearer_token_env_var = "INSTANTSTUDY_MCP_API_KEY"`,
+    note: "Set INSTANTSTUDY_MCP_API_KEY in your environment. Codex sends it as the bearer token.",
   },
   {
     id: "claude",
@@ -41,8 +41,8 @@ export const agentPresets: AgentPreset[] = [
     label: "Remote MCP",
     detail: "Add InstantStudy as a remote HTTP MCP server.",
     command: (url) =>
-      `claude mcp add --transport http --scope user instantstudy ${url}`,
-    note: "Run /mcp in Claude Code to confirm that InstantStudy is connected.",
+      `claude mcp add --transport http --scope user instantstudy ${url} --header "Authorization: Bearer $INSTANTSTUDY_MCP_API_KEY"`,
+    note: "Set INSTANTSTUDY_MCP_API_KEY first, then run /mcp to verify the authenticated connection.",
   },
   {
     id: "cursor",
@@ -55,6 +55,9 @@ export const agentPresets: AgentPreset[] = [
           mcpServers: {
             instantstudy: {
               url,
+              headers: {
+                Authorization: "Bearer ${env:INSTANTSTUDY_MCP_API_KEY}",
+              },
             },
           },
         },
@@ -73,8 +76,9 @@ export const agentPresets: AgentPreset[] = [
         {
           mcpServers: {
             instantstudy: {
-              type: "streamable-http",
+              type: "http",
               url,
+              bearer_token_env_var: "INSTANTSTUDY_MCP_API_KEY",
             },
           },
         },
@@ -89,6 +93,6 @@ export const agentPresets: AgentPreset[] = [
     label: "Streamable HTTP",
     detail: "Use the same endpoint from any standards-compatible agent.",
     config: (url) => url,
-    note: "InstantStudy exposes the same study engine to every MCP host. REST/OpenAPI is also available for non-MCP tool callers.",
+    note: "Send Authorization: Bearer <token> on every MCP request. Production public distribution should use per-user OAuth.",
   },
 ];

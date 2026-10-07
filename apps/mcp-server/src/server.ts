@@ -13,6 +13,7 @@ import { ContentSessionStore } from "./contentSessions.js";
 import { StudyEngine } from "./studyEngine.js";
 import { ingestFiles } from "./ingest.js";
 import { studyEntitlements, UsageLimitError } from "./entitlements.js";
+import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
 
 const PORT = Number.parseInt(process.env.PORT ?? "8000", 10);
 const DEVICE_ID = process.env.INSTANTSTUDY_DEVICE_ID ?? "dev-device";
@@ -26,6 +27,12 @@ const bridge = new BridgeQueue(TIMEOUT_MS);
 const contentSessions = new ContentSessionStore();
 const studyEngine = new StudyEngine();
 const API_KEY = (process.env.INSTANTSTUDY_API_KEY ?? "").trim();
+const MCP_KEY = (
+  process.env.INSTANTSTUDY_MCP_API_KEY ??
+  process.env.INSTANTSTUDY_API_KEY ??
+  ""
+).trim();
+const ADMIN_KEY = (process.env.INSTANTSTUDY_ADMIN_API_KEY ?? "").trim();
 const PUBLIC_URL = (process.env.INSTANTSTUDY_PUBLIC_URL ?? "").replace(/\/$/, "");
 const adapty = new AdaptyClient({
   publicApiKey: process.env.ADAPTY_PUBLIC_API_KEY,
@@ -720,13 +727,39 @@ function apiAuthorized(req: express.Request) {
   return bearerMatches(req, API_KEY);
 }
 
+function mcpAuthorized(req: express.Request) {
+  return bearerMatches(req, MCP_KEY);
+}
+
+function adminAuthorized(req: express.Request) {
+  return bearerMatches(req, ADMIN_KEY);
+}
+
 function requireApiAuth(
   req: express.Request,
   res: express.Response,
   next: express.NextFunction,
 ) {
+  // Administrative routes have their own isolated credential boundary.
+  if (req.path.startsWith("/admin/")) {
+    next();
+    return;
+  }
+
   if (!apiAuthorized(req)) {
     res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  next();
+}
+
+function requireAdminAuth(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+) {
+  if (!adminAuthorized(req)) {
+    res.status(401).json({ error: "admin_unauthorized" });
     return;
   }
   next();
@@ -898,6 +931,80 @@ app.post("/api/v1/study/answer", async (req, res) => {
   }
 });
 
+app.post("/api/v1/study/evaluate", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        studySessionId: z.string().uuid(),
+        conceptId: z.string().uuid(),
+        userAnswer: z.string().min(1).max(20000),
+        confidence: z.number().min(0).max(1).optional(),
+      })
+      .parse(req.body ?? {});
+
+    const session = await studyEngine.get(input.studySessionId);
+    if (!session) {
+      res.status(404).json({ error: "study_session_not_found" });
+      return;
+    }
+
+    const concept = session.concepts.find((item) => item.id === input.conceptId);
+    if (!concept) {
+      res.status(404).json({ error: "concept_not_found" });
+      return;
+    }
+
+    const grade = await gradeStudyAnswer({
+      conceptLabel: concept.label,
+      sourceExcerpt: concept.sourceExcerpt,
+      userAnswer: input.userAnswer,
+    });
+
+    const submission = await studyEngine.submit(
+      input.studySessionId,
+      input.conceptId,
+      {
+        correctness: grade.correctness,
+        completeness: grade.completeness,
+        confidence: input.confidence ?? grade.confidence,
+        missingConcepts: grade.missingConcepts,
+        userAnswer: input.userAnswer,
+        feedback: grade.feedback,
+      },
+    );
+
+    const next = submission.done
+      ? null
+      : await studyEngine.next(input.studySessionId);
+
+    res.json({
+      grade:
+        session.mode === "test"
+          ? { recorded: true, provider: grade.provider }
+          : grade,
+      submission,
+      next,
+    });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/ask", async (req, res) => {
+  try {
+    const input = z
+      .object({
+        contentText: z.string().min(1).max(200000),
+        question: z.string().min(1).max(2000),
+      })
+      .parse(req.body ?? {});
+
+    res.json(await answerFromSource(input.contentText, input.question));
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
 app.post("/api/v1/study/finish", async (req, res) => {
   try {
     const input = z
@@ -920,7 +1027,7 @@ app.get("/api/v1/account/usage", async (req, res) => {
   }
 });
 
-app.post("/api/v1/admin/entitlement", async (req, res) => {
+app.post("/api/v1/admin/entitlement", requireAdminAuth, async (req, res) => {
   try {
     const input = z
       .object({
@@ -1096,6 +1203,8 @@ app.get("/health", (_req, res) => {
     },
     security: {
       apiAuthConfigured: configuredSecret(API_KEY),
+      mcpAuthConfigured: configuredSecret(MCP_KEY),
+      adminAuthConfigured: configuredSecret(ADMIN_KEY),
       bridgeAuthConfigured: configuredSecret(BRIDGE_TOKEN),
       corsAllowlistConfigured: allowedOrigins.size > 0,
       rateLimiting: true,
@@ -1145,6 +1254,16 @@ app.post("/bridge/result", (req, res) => {
 });
 
 app.all("/mcp", async (req, res) => {
+  if (!mcpAuthorized(req)) {
+    res.setHeader("WWW-Authenticate", 'Bearer realm="InstantStudy MCP"');
+    res.status(401).json({
+      jsonrpc: "2.0",
+      error: { code: -32001, message: "Unauthorized" },
+      id: null,
+    });
+    return;
+  }
+
   const server = createMcpServer();
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
