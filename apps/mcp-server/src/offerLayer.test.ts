@@ -84,7 +84,7 @@ test("audio study contains recall pauses and material grounding", () => {
   });
 
   assert.match(audio.segments[0]?.text ?? "", /Biology/);
-  assert.ok(audio.segments.some((segment) => segment.speaker === "Learner"));
+  assert.ok(audio.segments.some((segment) => segment.speaker === "Coach"));
   assert.ok(audio.segments.some((segment) => /Chlorophyll/.test(segment.text)));
   assert.ok(audio.estimatedMinutes >= 1);
 });
