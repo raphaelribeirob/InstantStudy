@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 import 'instantstudy_api.dart';
 
@@ -60,6 +61,7 @@ class _StudyHomeState extends State<StudyHome> {
   final _material = TextEditingController();
   final _answer = TextEditingController();
   final _title = TextEditingController();
+  final _tts = FlutterTts();
   late final String _learnerId;
 
   String _mode = 'learn';
@@ -67,6 +69,8 @@ class _StudyHomeState extends State<StudyHome> {
   String? _error;
   String? _feedback;
   String? _sourceLabel;
+  String? _materialId;
+  bool _podcastPlaying = false;
   Map<String, dynamic>? _session;
   Map<String, dynamic>? _summary;
   int _testQuestions = 20;
@@ -86,6 +90,7 @@ class _StudyHomeState extends State<StudyHome> {
     _material.dispose();
     _answer.dispose();
     _title.dispose();
+    _tts.stop();
     super.dispose();
   }
 
@@ -170,6 +175,7 @@ class _StudyHomeState extends State<StudyHome> {
       setState(() {
         _material.text = material['content']?.toString() ?? '';
         _title.text = material['title']?.toString() ?? file.name;
+        _materialId = material['id']?.toString();
         _sourceLabel = file.name;
       });
     } catch (error) {
@@ -189,6 +195,19 @@ class _StudyHomeState extends State<StudyHome> {
       _summary = null;
     });
     try {
+      if (_materialId == null) {
+        final imported = await _api.importMaterial(
+          learnerId: _learnerId,
+          title: _title.text.trim().isEmpty ? null : _title.text.trim(),
+          contentText: _material.text.trim(),
+          sourceType: 'paste',
+        );
+        final material = imported['material'];
+        if (material is Map) {
+          _materialId = material['id']?.toString();
+        }
+      }
+
       final result = await _api.prepare(
         contentText: _material.text.trim(),
         title: _title.text.trim().isEmpty ? null : _title.text.trim(),
@@ -261,6 +280,102 @@ class _StudyHomeState extends State<StudyHome> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _showPodcast() async {
+    final materialId = _materialId;
+    if (materialId == null) {
+      setState(() => _error = 'Save or import material before opening Podcast.');
+      return;
+    }
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final data = await _api.audioStudy(
+        learnerId: _learnerId,
+        materialId: materialId,
+      );
+      if (!mounted) return;
+      final segments = data['segments'] is List
+          ? (data['segments'] as List)
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList()
+          : <Map<String, dynamic>>[];
+
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        barrierColor: Colors.black54,
+        builder: (context) => _PodcastScene(
+          title: data['title']?.toString() ?? 'InstantStudy Podcast',
+          estimatedMinutes: (data['estimatedMinutes'] as num?)?.toInt() ?? 1,
+          segments: segments,
+          playing: _podcastPlaying,
+          onPlay: () => _playPodcast(segments),
+        ),
+      );
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _playPodcast(List<Map<String, dynamic>> segments) async {
+    if (_podcastPlaying) {
+      await _tts.stop();
+      if (mounted) setState(() => _podcastPlaying = false);
+      return;
+    }
+
+    if (mounted) setState(() => _podcastPlaying = true);
+    await _tts.awaitSpeakCompletion(true);
+
+    for (final segment in segments) {
+      if (!_podcastPlaying) break;
+      final speaker = segment['speaker']?.toString() ?? 'Host';
+      await _tts.setSpeechRate(speaker == 'Host' ? 0.48 : 0.44);
+      await _tts.setPitch(speaker == 'Host' ? 1.04 : 0.9);
+      await _tts.speak(segment['text']?.toString() ?? '');
+    }
+
+    if (mounted) setState(() => _podcastPlaying = false);
+  }
+
+  Future<void> _showGame() async {
+    final materialId = _materialId;
+    if (materialId == null) {
+      setState(() => _error = 'Save or import material before opening Study Game.');
+      return;
+    }
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final data = await _api.studyGame(
+        learnerId: _learnerId,
+        materialId: materialId,
+      );
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        barrierColor: Colors.black54,
+        builder: (context) => _StudyGameScene(game: data),
+      );
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -514,6 +629,8 @@ class _StudyHomeState extends State<StudyHome> {
                   secondary: _orbSecondary,
                   busy: _busy,
                   onInsights: _showInsights,
+                  onPodcast: _materialId == null ? null : _showPodcast,
+                  onGame: _materialId == null ? null : _showGame,
                 ),
                 Expanded(
                   child: ListView(
@@ -584,12 +701,16 @@ class _ProductMasthead extends StatelessWidget {
     required this.secondary,
     required this.busy,
     required this.onInsights,
+    required this.onPodcast,
+    required this.onGame,
   });
 
   final Color primary;
   final Color secondary;
   final bool busy;
   final VoidCallback onInsights;
+  final VoidCallback? onPodcast;
+  final VoidCallback? onGame;
 
   @override
   Widget build(BuildContext context) {
@@ -628,6 +749,16 @@ class _ProductMasthead extends StatelessWidget {
               'Insights',
               style: TextStyle(fontSize: 10, letterSpacing: .4),
             ),
+          ),
+          IconButton(
+            tooltip: 'Podcast',
+            onPressed: busy ? null : onPodcast,
+            icon: const Icon(Icons.headphones_outlined, size: 18),
+          ),
+          IconButton(
+            tooltip: 'Study Game',
+            onPressed: busy ? null : onGame,
+            icon: const Icon(Icons.extension_outlined, size: 18),
           ),
         ],
       ),
@@ -1334,6 +1465,265 @@ class _ConceptLine extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PodcastScene extends StatelessWidget {
+  const _PodcastScene({
+    required this.title,
+    required this.estimatedMinutes,
+    required this.segments,
+    required this.playing,
+    required this.onPlay,
+  });
+
+  final String title;
+  final int estimatedMinutes;
+  final List<Map<String, dynamic>> segments;
+  final bool playing;
+  final VoidCallback onPlay;
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionallySizedBox(
+      heightFactor: .88,
+      child: Container(
+        color: InstantStudyApp.ink,
+        child: SafeArea(
+          top: false,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(22, 26, 22, 34),
+            children: [
+              const Text(
+                'INSTANTSTUDY PODCAST',
+                style: TextStyle(
+                  color: InstantStudyApp.orangeSoft,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Color(0xFFEFEDE7),
+                  fontSize: 46,
+                  height: .92,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -2.5,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '~$estimatedMinutes min · two-speaker grounded review',
+                style: const TextStyle(color: Color(0xFF8F8A81)),
+              ),
+              const SizedBox(height: 22),
+              _SignalButton(
+                label: playing ? 'Stop podcast' : 'Play podcast',
+                onPressed: onPlay,
+                light: true,
+              ),
+              const SizedBox(height: 30),
+              ...segments.map((segment) {
+                final coach = segment['speaker']?.toString() == 'Coach';
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 1),
+                  padding: const EdgeInsets.all(16),
+                  color: coach
+                      ? InstantStudyApp.orange
+                      : const Color(0xFF191917),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        segment['speaker']?.toString().toUpperCase() ?? 'HOST',
+                        style: TextStyle(
+                          color: coach
+                              ? InstantStudyApp.ink
+                              : const Color(0xFF77736B),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        segment['text']?.toString() ?? '',
+                        style: TextStyle(
+                          color: coach
+                              ? InstantStudyApp.ink
+                              : const Color(0xFFC9C5BB),
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StudyGameScene extends StatefulWidget {
+  const _StudyGameScene({required this.game});
+
+  final Map<String, dynamic> game;
+
+  @override
+  State<_StudyGameScene> createState() => _StudyGameSceneState();
+}
+
+class _StudyGameSceneState extends State<_StudyGameScene> {
+  final Set<String> _matched = {};
+  final List<String> _open = [];
+  int _moves = 0;
+  bool _locked = false;
+
+  List<Map<String, dynamic>> get _cards {
+    final raw = widget.game['cards'];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  void _choose(Map<String, dynamic> card) {
+    if (_locked) return;
+    final id = card['id']?.toString() ?? '';
+    final pair = card['pairId']?.toString() ?? '';
+    if (!id.isNotEmpty || _open.contains(id) || _matched.contains(pair)) return;
+
+    setState(() => _open.add(id));
+    if (_open.length < 2) return;
+
+    setState(() => _moves += 1);
+    final first = _cards.firstWhere((item) => item['id']?.toString() == _open[0]);
+    final second = _cards.firstWhere((item) => item['id']?.toString() == _open[1]);
+    final match =
+        first['pairId'] == second['pairId'] && first['kind'] != second['kind'];
+
+    if (match) {
+      setState(() {
+        _matched.add(pair);
+        _open.clear();
+      });
+      return;
+    }
+
+    setState(() => _locked = true);
+    Future<void>.delayed(const Duration(milliseconds: 650), () {
+      if (!mounted) return;
+      setState(() {
+        _open.clear();
+        _locked = false;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pairCount = (widget.game['pairCount'] as num?)?.toInt() ?? 0;
+    final complete = pairCount > 0 && _matched.length == pairCount;
+
+    return FractionallySizedBox(
+      heightFactor: .9,
+      child: Container(
+        color: InstantStudyApp.paper,
+        child: SafeArea(
+          top: false,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(18, 24, 18, 34),
+            children: [
+              const Text(
+                'ACTIVE RECALL GAME',
+                style: TextStyle(
+                  color: InstantStudyApp.orange,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                complete ? 'Matched in $_moves moves.' : 'Match the knowledge.',
+                style: const TextStyle(
+                  fontSize: 44,
+                  height: .92,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -2.4,
+                ),
+              ),
+              const SizedBox(height: 22),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _cards.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 1,
+                  mainAxisSpacing: 1,
+                  childAspectRatio: .86,
+                ),
+                itemBuilder: (context, index) {
+                  final card = _cards[index];
+                  final id = card['id']?.toString() ?? '';
+                  final pair = card['pairId']?.toString() ?? '';
+                  final open = _open.contains(id) || _matched.contains(pair);
+                  final matched = _matched.contains(pair);
+                  return InkWell(
+                    onTap: matched ? null : () => _choose(card),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      color: matched
+                          ? InstantStudyApp.green
+                          : open
+                              ? InstantStudyApp.paper2
+                              : InstantStudyApp.ink,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            open
+                                ? (card['kind']?.toString() ?? 'card').toUpperCase()
+                                : 'RECALL',
+                            style: TextStyle(
+                              color: open
+                                  ? InstantStudyApp.orange
+                                  : const Color(0xFF77736B),
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            open ? card['text']?.toString() ?? '' : 'Reveal',
+                            style: TextStyle(
+                              color: open
+                                  ? InstantStudyApp.ink
+                                  : const Color(0xFFEFEDE7),
+                              height: 1.3,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
