@@ -21,7 +21,7 @@ class InstantStudyApi {
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
       request.write(jsonEncode(payload));
 
-      final response = await request.close().timeout(const Duration(seconds: 30));
+      final response = await request.close().timeout(const Duration(seconds: 45));
       final text = await utf8.decoder.bind(response).join();
       final body = text.isEmpty
           ? <String, dynamic>{}
@@ -46,6 +46,9 @@ class InstantStudyApi {
     required String mode,
     required String learnerId,
     String? title,
+    int? maxQuestions,
+    int? testDurationMinutes,
+    List<String>? testQuestionTypes,
   }) {
     return _post({
       'action': 'prepare',
@@ -53,6 +56,26 @@ class InstantStudyApi {
       'title': title,
       'mode': mode,
       'learnerId': learnerId,
+      'maxQuestions': maxQuestions,
+      'testDurationMinutes': testDurationMinutes,
+      'testQuestionTypes': testQuestionTypes,
+    });
+  }
+
+  Future<Map<String, dynamic>> importMaterial({
+    required String learnerId,
+    String? title,
+    String? contentText,
+    required String sourceType,
+    List<Map<String, dynamic>> files = const [],
+  }) {
+    return _post({
+      'action': 'material_import',
+      'learnerId': learnerId,
+      'title': title,
+      'contentText': contentText,
+      'sourceType': sourceType,
+      'files': files,
     });
   }
 
