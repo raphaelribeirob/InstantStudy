@@ -48,6 +48,14 @@ export async function ensureSchema() {
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
       `;
+      await q`
+        CREATE TABLE IF NOT EXISTS billing_checkout_intents (
+          intent_nonce TEXT PRIMARY KEY,
+          user_ref TEXT NOT NULL,
+          offer_key TEXT NOT NULL,
+          claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
       await q`CREATE INDEX IF NOT EXISTS billing_entitlements_user_ref_idx ON billing_entitlements (user_ref)`;
       await q`CREATE INDEX IF NOT EXISTS billing_entitlements_email_idx ON billing_entitlements (LOWER(email))`;
       await q`CREATE INDEX IF NOT EXISTS billing_entitlements_customer_idx ON billing_entitlements (paddle_customer_id)`;
@@ -283,4 +291,17 @@ export async function familyAccessForIdentity(identity) {
   `;
 
   return rows[0] ? { ownerKey: String(rows[0].owner_key) } : null;
+}
+
+/** One-time checkout nonce. In a replay or database outage, fail closed. */
+export async function claimSpeakCheckoutIntent({nonce,userRef,offer}) {
+  await ensureSchema();
+  const q = sql();
+  const rows = await q`
+    INSERT INTO billing_checkout_intents (intent_nonce,user_ref,offer_key,claimed_at)
+    VALUES (${nonce},${userRef},${offer},NOW())
+    ON CONFLICT (intent_nonce) DO NOTHING
+    RETURNING intent_nonce
+  `;
+  return rows.length === 1;
 }
