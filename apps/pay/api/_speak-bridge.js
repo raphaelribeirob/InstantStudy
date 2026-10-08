@@ -50,6 +50,7 @@ export async function notifyInstantSpeak(event, { fetchImpl = fetch, now = Date.
     }
   });
   const stamp = Math.floor(now / 1000).toString();
+  const envelope = Buffer.from(payload, "utf8").toString("base64url");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 7000);
   try {
@@ -57,8 +58,8 @@ export async function notifyInstantSpeak(event, { fetchImpl = fetch, now = Date.
       method: "POST", headers: {
         "content-type": "application/json",
         "x-instant-pay-timestamp": stamp,
-        "x-instant-pay-signature": signature(stamp + ":" + payload)
-      }, body: payload, signal: controller.signal
+        "x-instant-pay-signature": signature(stamp + ":" + envelope)
+      }, body: JSON.stringify({ payload: envelope }), signal: controller.signal
     });
     if (!response.ok) throw new Error("billing_callback_failed");
     return { delivered: true };
