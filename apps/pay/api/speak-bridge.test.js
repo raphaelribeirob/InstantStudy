@@ -21,7 +21,7 @@ test("checkout intent is bound to account, offer, expiry and HMAC",()=>{
   assert.equal(verifySpeakCheckoutIntent(token,"instant_speak_pro_monthly")?.uid,"neon:12345678-1234-1234-1234-123456789012");
   assert.equal(verifySpeakCheckoutIntent(token,"instant_speak_pro_annual"),null);
   assert.equal(verifySpeakCheckoutIntent(signed("instant_speak_pro_monthly",{exp:Date.now()-1}),"instant_speak_pro_monthly"),null);
-  assert.equal(verifySpeakCheckoutIntent(token.replace(/.$/,"0"),"instant_speak_pro_monthly"),null);
+  assert.equal(verifySpeakCheckoutIntent((token.slice(0,-1)+(token.endsWith("0")?"1":"0")),"instant_speak_pro_monthly"),null);
   assert.equal(verifySpeakCheckoutIntent(signed("instant_speak_pro_monthly",{uid:"guest:evil"}),"instant_speak_pro_monthly"),null);
 });
 test("never authorize transaction subject from unsourced custom_data",()=>{
