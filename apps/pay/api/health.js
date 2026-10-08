@@ -20,6 +20,14 @@ export default async function handler(_req, res) {
 
   const fulfillment = webhook && database && databaseReachable;
   const access = fulfillment && identity;
+  const instantSpeakBridge = Boolean(
+    String(process.env.INSTANT_PAY_BRIDGE_SECRET || "").length >= 32 &&
+    String(process.env.INSTANT_PAY_METADATA_TOKEN || "").length >= 32 &&
+    /^https:\/\//.test(String(process.env.INSTANT_SPEAK_BILLING_WEBHOOK_URL || "")) &&
+    process.env.PADDLE_PRICE_INSTANT_SPEAK_PRO_MONTHLY &&
+    process.env.PADDLE_PRICE_INSTANT_SPEAK_PRO_ANNUAL &&
+    fulfillment && paddleCheckout
+  );
   const ok = paddleCheckout && fulfillment;
 
   res.setHeader("cache-control", "no-store");
@@ -31,5 +39,6 @@ export default async function handler(_req, res) {
     webhook_ready: webhook,
     database_ready: databaseReachable,
     entitlement_api_ready: access,
+    instantspeak_bridge_ready: instantSpeakBridge,
   });
 }

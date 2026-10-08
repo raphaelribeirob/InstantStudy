@@ -14,6 +14,11 @@ function sourceApp() {
   return /^[a-z0-9_-]{1,48}$/.test(raw) ? raw : "";
 }
 
+function signedIntent() {
+  const token = new URLSearchParams(window.location.search).get("intent") || "";
+  return /^[A-Za-z0-9_.-]{20,1600}$/.test(token) ? token : "";
+}
+
 function locale() {
   const browser = navigator.language || "en";
   return browser.slice(0, 16);
@@ -35,6 +40,7 @@ function App() {
           offer: offer.key,
           source: sourceApp(),
           locale: locale(),
+          ...(offer.key.startsWith("instant_speak_") ? { intent: signedIntent() } : {}),
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -92,10 +98,13 @@ function App() {
             </div>
           </div>
 
-          <button type="button" onClick={continueToPayment} disabled={busy}>
+          <button type="button" onClick={continueToPayment} disabled={busy || (offer.key.startsWith("instant_speak_") && !signedIntent())}>
             {busy ? "Opening secure checkout…" : "Continue to secure checkout"}
           </button>
 
+          {offer.key.startsWith("instant_speak_") && !signedIntent() && (
+            <p className="error" role="alert">Open checkout from your signed-in InstantSpeak account.</p>
+          )}
           {error && <p className="error" role="alert">{error}</p>}
 
           <p className="fine">

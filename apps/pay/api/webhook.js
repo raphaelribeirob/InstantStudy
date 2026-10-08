@@ -1,4 +1,5 @@
 import { offerMetadata } from "./_catalog.js";
+import { notifyInstantSpeak } from "./_speak-bridge.js";
 import {
   recordEvent,
   updateSubscriptionState,
@@ -106,7 +107,12 @@ export default async function handler(req, res) {
       occurredAt: event?.occurred_at || null,
       payload: event,
     });
-    if (!inserted) return json(res, 200, { received: true, duplicate: true });
+    // Retried notifications must retry the downstream sync too: an earlier
+    // callback may have failed after this event was recorded in the ledger.
+    if (!inserted) {
+      await notifyInstantSpeak(event);
+      return json(res, 200, { received: true, duplicate: true });
+    }
 
     const data = event?.data || {};
     if (eventType === "transaction.completed") {
@@ -140,6 +146,9 @@ export default async function handler(req, res) {
       });
     }
 
+    // Only a signature-verified Paddle event may reach InstantSpeak.
+    // A failed downstream delivery returns 500 for Paddle retry.
+    await notifyInstantSpeak(event);
     return json(res, 200, { received: true, duplicate: false });
   } catch (error) {
     console.error("Paddle webhook processing failed", eventId, error?.message || "unknown");

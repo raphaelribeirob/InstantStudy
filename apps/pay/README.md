@@ -94,3 +94,13 @@ GET|POST|DELETE /v1/billing/family
 ```
 
 The API never accepts a query-string user ID as authority; it resolves the owner from the Instant Account bearer identity.
+
+## InstantSpeak secure binding (draft integration)
+
+InstantSpeak accounts are NOT purchased through an arbitrary `?user_id=` parameter. A signed-in **Neon account** requests `POST /api/config?action=checkout-intent` with a Bearer app session. InstantSpeak returns a short-lived HMAC checkout intent; the user opens `/?offer=...&source=instant_speak&intent=...`. This checkout cannot proceed without a valid 5-minute intent signed by the product server. The central server verifies the offer and embeds the verified account ID into Paddle transaction `custom_data`. Payment does not grant access by redirect.
+
+Paddle authenticates `POST /api/webhook` using the untouched raw body. A verified event that carries `subject_verified=instant_speak_bridge_v1` is forwarded to InstantSpeak via a second HMAC-authenticated server-to-server callback. **A retry of the same Paddle event must retry this callback**; InstantSpeak deduplicates delivery in Neon. The central ledger continues to serve the other Instant products.
+
+Shared secret on BOTH services (at least 32 unpredictable bytes): `INSTANT_PAY_BRIDGE_SECRET`. Central-only variables: `INSTANT_SPEAK_BILLING_WEBHOOK_URL` (HTTPS), `INSTANT_PAY_METADATA_TOKEN` (>=32 random bytes, also set as `INSTANT_PAY_OFFER_METADATA_TOKEN` on InstantSpeak), Paddle sandbox credentials, `DATABASE_URL`, and `PADDLE_WEBHOOK_SECRET`. Speak-only metadata URL: `INSTANT_PAY_OFFER_METADATA_URL=https://instant-pay-gamma.vercel.app/api/offer-metadata`.
+
+No provider secret, product price ID or backend bridge secret belongs in Flutter, a web URL or VITE env. Preview prices come directly from Paddle `/pricing-preview` and are estimates for the requested country; **the final localized price/tax is shown by Paddle before purchase**. Configuring these variables, performing an approved Paddle sandbox checkout and verifying an exact Neon entitlement are required before live launch. Do not assume Paddle hosted checkout is Apple or Google compliant for an in-app digital subscription; route native checkout through Adapty/StoreKit or Play Billing where required.

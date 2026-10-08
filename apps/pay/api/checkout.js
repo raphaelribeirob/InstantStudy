@@ -1,5 +1,7 @@
 import { resolveOffer } from "./_catalog.js";
 import { paddleApiBase } from "./_paddle.js";
+import { claimSpeakCheckoutIntent } from "./_db.js";
+import { verifySpeakCheckoutIntent } from "./_speak-bridge.js";
 
 const MAX_CHECKOUT_BODY_BYTES = 16 * 1024;
 
@@ -66,9 +68,34 @@ export default async function handler(req, res) {
 
   const source = cleanSource(body.source);
   const locale = cleanLocale(body.locale);
+  let verifiedIdentity = null;
+  if (offer.product === "instant_speak") {
+    if (source !== "instant_speak") {
+      return json(res, 403, { error: "signed_account_required" });
+    }
+    try {
+      verifiedIdentity = verifySpeakCheckoutIntent(body.intent, offer.key);
+    } catch {
+      return json(res, 503, { error: "billing_bridge_unavailable" });
+    }
+    if (!verifiedIdentity) {
+      return json(res, 403, { error: "invalid_checkout_intent" });
+    }
+  }
 
   if (source !== "direct" && source !== offer.product) {
     return json(res, 400, { error: "source_offer_mismatch" });
+  }
+
+  if (verifiedIdentity) {
+    try {
+      const firstUse = await claimSpeakCheckoutIntent({
+        nonce: verifiedIdentity.nonce, userRef: verifiedIdentity.uid, offer: offer.key
+      });
+      if (!firstUse) return json(res, 409, { error: "checkout_intent_replayed" });
+    } catch {
+      return json(res, 503, { error: "checkout_ledger_unavailable" });
+    }
   }
 
   const response = await fetch(`${paddleApiBase()}/transactions`, {
@@ -89,6 +116,7 @@ export default async function handler(req, res) {
         plan_key: offer.plan,
         billing_cadence: offer.cadence,
         source_app: source,
+        ...(verifiedIdentity ? { user_ref: verifiedIdentity.uid, subject_verified: "instant_speak_bridge_v1" } : {}),
       },
     }),
   });
