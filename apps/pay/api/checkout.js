@@ -1,5 +1,6 @@
 import { resolveOffer } from "./_catalog.js";
 import { paddleApiBase } from "./_paddle.js";
+import { claimSpeakCheckoutIntent } from "./_db.js";
 import { verifySpeakCheckoutIntent } from "./_speak-bridge.js";
 
 const MAX_CHECKOUT_BODY_BYTES = 16 * 1024;
@@ -84,6 +85,17 @@ export default async function handler(req, res) {
 
   if (source !== "direct" && source !== offer.product) {
     return json(res, 400, { error: "source_offer_mismatch" });
+  }
+
+  if (verifiedIdentity) {
+    try {
+      const firstUse = await claimSpeakCheckoutIntent({
+        nonce: verifiedIdentity.nonce, userRef: verifiedIdentity.uid, offer: offer.key
+      });
+      if (!firstUse) return json(res, 409, { error: "checkout_intent_replayed" });
+    } catch {
+      return json(res, 503, { error: "checkout_ledger_unavailable" });
+    }
   }
 
   const response = await fetch(`${paddleApiBase()}/transactions`, {
