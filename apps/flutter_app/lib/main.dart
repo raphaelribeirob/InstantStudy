@@ -84,7 +84,7 @@ class _InstantStudyAppState extends State<InstantStudyApp> {
       },
       theme: ThemeData(
         fontFamily: 'Inter',
-        scaffoldBackgroundColor: InstantStudyApp.paper2,
+        scaffoldBackgroundColor: InstantStudyApp.paper,
         colorScheme: const ColorScheme.light(
           primary: InstantStudyApp.ink,
           secondary: InstantStudyApp.orange,
@@ -651,7 +651,7 @@ class _StudyHomeState extends State<StudyHome> {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 34, 24, 30),
       color: _mode == 'review'
-          ? InstantStudyApp.orange
+          ? InstantStudyApp.paper2
           : InstantStudyApp.paper,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -708,7 +708,7 @@ class _StudyHomeState extends State<StudyHome> {
       body: Stack(
         children: [
           const Positioned.fill(
-            child: ColoredBox(color: InstantStudyApp.paper2),
+            child: ColoredBox(color: InstantStudyApp.paper),
           ),
           const Positioned.fill(
             child: IgnorePointer(child: _GrainLayer()),
@@ -1154,7 +1154,7 @@ class _SignalButton extends StatelessWidget {
     final background = outlined
         ? Colors.transparent
         : light
-            ? const Color(0xFFEFEDE7)
+            ? InstantStudyApp.paper2
             : InstantStudyApp.ink;
     final foreground = outlined
         ? InstantStudyApp.ink
@@ -1236,7 +1236,7 @@ class _ChoiceRow extends StatelessWidget {
               height: 28,
               alignment: Alignment.center,
               decoration: const BoxDecoration(
-                color: InstantStudyApp.orange,
+                color: InstantStudyApp.paper3,
                 shape: BoxShape.circle,
               ),
               child: Text(
