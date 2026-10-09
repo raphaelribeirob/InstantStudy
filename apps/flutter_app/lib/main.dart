@@ -293,6 +293,7 @@ class _StudyHomeState extends State<StudyHome> {
         title: _title.text.trim().isEmpty ? null : _title.text.trim(),
         mode: _mode,
         learnerId: _learnerId,
+        locale: instantStudyLocaleCode(Localizations.localeOf(context)),
         maxQuestions: _mode == 'test' ? _testQuestions : 12,
         testDurationMinutes: _mode == 'test' ? _testDuration : null,
         testQuestionTypes: _mode == 'test'
