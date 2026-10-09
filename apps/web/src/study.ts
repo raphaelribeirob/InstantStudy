@@ -158,6 +158,7 @@ export type StudyGame = {
 
 export type AudioStudy = {
   title: string;
+  locale?: string;
   estimatedMinutes: number;
   segments: Array<{ speaker: "Host" | "Coach"; text: string }>;
 };
