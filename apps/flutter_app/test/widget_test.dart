@@ -35,4 +35,20 @@ void main() {
     expect(find.text('Começar InstantStudy'), findsOneWidget);
     expect(find.byIcon(Icons.upload_file_outlined), findsOneWidget);
   });
+  testWidgets('preserves the same anonymous learner ID after widget restart', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const InstantStudyApp());
+    await tester.pumpAndSettle();
+    final prefs = await SharedPreferences.getInstance();
+    final firstId = prefs.getString('instantstudy.learner_id');
+    expect(firstId, isNotNull);
+    expect(firstId, startsWith('flutter-'));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const InstantStudyApp());
+    await tester.pumpAndSettle();
+    expect(prefs.getString('instantstudy.learner_id'), firstId);
+  });
+
 }
