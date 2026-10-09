@@ -212,9 +212,7 @@ class _StudyHomeState extends State<StudyHome> {
     });
 
     try {
-      final result = await FilePicker.pickFiles(
-        allowMultiple: false,
-        withData: true,
+      final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: const [
           'pdf','docx','pptx','txt','md','csv',
@@ -223,16 +221,16 @@ class _StudyHomeState extends State<StudyHome> {
         ],
       );
 
-      if (result == null) return;
-      final file = result.files.single;
-      final bytes = file.bytes;
-      if (bytes == null) {
-        throw InstantStudyApiException(context.tr('couldNotRead'));
+      if (file == null) return;
+      // Check metadata before loading bytes into memory. Flutter file_picker
+      // 12 uses a federated API with an on-demand byte reader.
+      final length = await file.length();
+      if (length > 2500000) {
+        throw InstantStudyApiException(context.tr('uploadLimit'));
       }
+      final bytes = await file.readAsBytes();
       if (bytes.length > 2500000) {
-        throw InstantStudyApiException(
-          context.tr('uploadLimit'),
-        );
+        throw InstantStudyApiException(context.tr('uploadLimit'));
       }
 
       final extension = (file.extension ?? '').toLowerCase();

@@ -34,3 +34,6 @@
 - educational scoring has no high-confidence false positives in a dedicated adversarial benchmark.
 
 Definitions of acceptance describe requirements, not completion. Keep this PR draft until its production and operational checks are satisfied.
+
+## Android dependency migration
+The Android debug compilation on 2026-10-08 failed because file_picker 11.x did not compile its Kotlin plugin with AGP 9 when built-in Kotlin was disabled, leaving GeneratedPluginRegistrant referencing a missing class. file_picker >=12.0 fixed the federated Android implementation. This PR now uses ^12.1.3 and the corresponding static `pickFile()` / `readAsBytes()` API, with a size check before allocation. Flutter >=3.38 and iOS deployment target >=14.0 are now required by that plugin. The resulting APK build still requires green CI to mark resolved.
