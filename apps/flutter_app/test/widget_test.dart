@@ -55,7 +55,6 @@ void main() {
     expect(prefs.getString('instantstudy.learner_id'), firstId);
   });
 
-}
 
 testWidgets('language choice is persisted and supports Japanese', (tester) async {
   SharedPreferences.setMockInitialValues({});
@@ -69,3 +68,5 @@ testWidgets('language choice is persisted and supports Japanese', (tester) async
   expect(prefs.getString('instantstudy.locale'), 'ja');
   expect(find.text('あらゆる教材で\n学ぼう。'), findsOneWidget);
 });
+
+}

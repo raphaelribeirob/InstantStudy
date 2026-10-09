@@ -59,7 +59,8 @@ class _AppStringsDelegate extends LocalizationsDelegate<AppStrings> {
 
   @override
   bool isSupported(Locale locale) =>
-      instantStudyLanguageOptions.containsKey(instantStudyLocaleCode(locale));
+      instantStudyLanguageOptions.containsKey(locale.languageCode) ||
+      (locale.languageCode == 'pt') || (locale.languageCode == 'zh');
 
   @override
   Future<AppStrings> load(Locale locale) {
