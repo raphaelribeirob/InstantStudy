@@ -198,6 +198,8 @@ export default async function handler(req, res) {
         ? body.mode
         : "learn";
       const learnerId = await verifiedLearner(body);
+      const allowedLocales = new Set(["nl","en","fr","de","id","it","ja","ko","pl","pt-BR","ru","zh-CN","es","tr","uk","vi"]);
+      const locale = allowedLocales.has(body.locale) ? body.locale : undefined;
       const billingPlan = learnerId
         ? await verifiedBillingPlan(body)
         : "free";
@@ -239,6 +241,7 @@ export default async function handler(req, res) {
         title,
         mode,
         learnerId: learnerId || undefined,
+        locale,
         billingPlan,
         maxQuestions,
         testDurationMinutes,
