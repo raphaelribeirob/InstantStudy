@@ -149,7 +149,7 @@ class _StudyHomeState extends State<StudyHome> {
       final valid = stored != null &&
           RegExp(r'^flutter-[A-Za-z0-9-]{8,200}$').hasMatch(stored);
       final identifier = valid
-          ? stored!
+          ? stored
           : 'flutter-' +
               DateTime.now().microsecondsSinceEpoch.toString() +
               '-' +
