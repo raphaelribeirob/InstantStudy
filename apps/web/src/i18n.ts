@@ -1,8 +1,10 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-
-export const supportedLanguages = ["en", "pt-BR"] as const;
-export type SupportedLanguage = (typeof supportedLanguages)[number];
+import { supportedLanguages, normalizeLanguage } from "./languageCatalog";
+import type { SupportedLanguage } from "./languageCatalog";
+import { localePacks } from "./languagePacks";
+export { supportedLanguages } from "./languageCatalog";
+export type { SupportedLanguage } from "./languageCatalog";
 
 const STORAGE_KEY = "instantstudy.locale";
 
@@ -66,7 +68,7 @@ const resources = {
         quizDetail: "Fast recall with immediate feedback",
         testDetail: "Exam-style questions, timer and final score",
         reviewDetail: "Return to weak concepts when they are due",
-        retention: "Retention",
+        retention: "Delayed recall",
         retentionDetail: "See what is strong, fading and due next",
         pricingKicker: "Upgrade after you feel the value",
         pricingTitle: "Start free. Pay when you want the limits gone.",
@@ -208,7 +210,7 @@ const resources = {
         groundedIn: "Answers stay grounded in {{title}}.",
         loadingDue: "Loading due concepts…",
         currentAverage: "Current average",
-        conceptsAbove: "Concepts above 70%",
+        conceptsAbove: "Measured from {{count}} later-day answers",
         studyDays: "Study days",
         conceptsReview: "Concepts to review",
         activeRecallAttempts: "Active-recall attempts",
@@ -309,7 +311,7 @@ const resources = {
         quizDetail: "Recordação rápida com feedback imediato",
         testDetail: "Questões de prova, cronômetro e resultado final",
         reviewDetail: "Retorne aos conceitos fracos quando estiverem no momento de revisão",
-        retention: "Retenção",
+        retention: "Recordação tardia",
         retentionDetail: "Veja o que está forte, enfraquecendo e deve ser revisado",
         pricingKicker: "Faça upgrade depois de perceber o valor",
         pricingTitle: "Comece grátis. Pague quando quiser remover os limites.",
@@ -451,7 +453,7 @@ const resources = {
         groundedIn: "As respostas permanecem baseadas em {{title}}.",
         loadingDue: "Carregando conceitos para revisão…",
         currentAverage: "Média atual",
-        conceptsAbove: "Conceitos acima de 70%",
+        conceptsAbove: "Medido em {{count}} respostas em dias posteriores",
         studyDays: "Dias de estudo",
         conceptsReview: "Conceitos para revisar",
         activeRecallAttempts: "Tentativas de recordação ativa",
@@ -493,13 +495,8 @@ const resources = {
       },
     },
   },
+  ...localePacks,
 } as const;
-
-function normalizeLanguage(raw: string | undefined): SupportedLanguage {
-  const value = String(raw || "").toLowerCase();
-  if (value.startsWith("pt")) return "pt-BR";
-  return "en";
-}
 
 function initialLanguage(): SupportedLanguage {
   try {

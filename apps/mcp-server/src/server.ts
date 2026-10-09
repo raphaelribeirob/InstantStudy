@@ -15,6 +15,8 @@ import { ingestFiles } from "./ingest.js";
 import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
 import { generateStudyAssets } from "./studyAssets.js";
+import { evaluateObjectiveChoice } from "./questionGenerator.js";
+import { supportedStudyLocales } from "./studyLanguage.js";
 import { materialStore } from "./materialStore.js";
 import { buildAudioStudy, buildStudyGame } from "./offerLayer.js";
 import { studyRoomStore } from "./studyRoomStore.js";
@@ -117,6 +119,7 @@ const prepareStudySchema = z
         "Stable authenticated learner/profile identifier. Supply it to preserve mastery and due reviews across sessions.",
       ),
     billingPlan: z.enum(["free", "plus", "unlimited"]).optional(),
+    locale: z.enum(supportedStudyLocales).optional(),
     mode: z.enum(["learn", "review", "quiz", "test"]).default("learn"),
     targetMinutes: z.number().int().min(1).max(180).optional(),
     maxQuestions: z.number().int().min(1).max(50).default(12),
@@ -246,6 +249,7 @@ function createMcpServer() {
       title,
       goal,
       learnerId,
+      locale,
       mode,
       targetMinutes,
       maxQuestions,
@@ -273,6 +277,7 @@ function createMcpServer() {
 
       const studySession = await studyEngine.start(contentSession, {
         learnerId,
+        locale,
         mode,
         targetMinutes,
         maxQuestions,
@@ -1008,6 +1013,7 @@ app.post("/api/v1/audio-study", async (req, res) => {
       .object({
         learnerId: z.string().min(3).max(200),
         materialId: z.string().uuid(),
+        locale: z.enum(supportedStudyLocales).optional(),
       })
       .parse(req.body ?? {});
 
@@ -1017,7 +1023,7 @@ app.post("/api/v1/audio-study", async (req, res) => {
       return;
     }
 
-    res.json(buildAudioStudy(material.title, material.assets));
+    res.json(buildAudioStudy(material.title, material.assets, input.locale));
   } catch (error) {
     sendApiError(res, error);
   }
@@ -1149,6 +1155,7 @@ app.post("/api/v1/study/prepare", async (req, res) => {
 
     const studySession = await studyEngine.start(contentSession, {
       learnerId: input.learnerId,
+      locale: input.locale,
       mode: input.mode,
       targetMinutes: input.targetMinutes,
       maxQuestions: input.maxQuestions,
@@ -1265,11 +1272,38 @@ app.post("/api/v1/study/evaluate", async (req, res) => {
       return;
     }
 
-    const grade = await gradeStudyAnswer({
-      conceptLabel: concept.label,
-      sourceExcerpt: concept.sourceExcerpt,
-      userAnswer: input.userAnswer,
-    });
+    // Reconstruct the current question on the trusted server. Matching
+    // objective answers must NOT use keyword-overlap semantic grading.
+    const active = await studyEngine.next(input.studySessionId);
+    if (active.done || active.concept.id !== input.conceptId) {
+      res.status(409).json({ error: "question_not_current" });
+      return;
+    }
+    const type = active.questionPolicy.type;
+    const objective = active.question.answerMode === "choice" &&
+      (type === "multiple_choice" || type === "true_false");
+    const grade = objective
+      ? (() => {
+          const correct = evaluateObjectiveChoice({
+            type: type as "multiple_choice" | "true_false",
+            selected: input.userAnswer,
+            sourceExcerpt: concept.sourceExcerpt,
+            questionIndex: session.questionIndex,
+          });
+          return {
+            correctness: correct ? 1 : 0,
+            completeness: correct ? 1 : 0,
+            confidence: 1,
+            missingConcepts: correct ? [] : [concept.label],
+            feedback: correct ? "Correct." : "Review the source and try again.",
+            provider: "deterministic" as const,
+          };
+        })()
+      : await gradeStudyAnswer({
+          conceptLabel: concept.label,
+          sourceExcerpt: concept.sourceExcerpt,
+          userAnswer: input.userAnswer,
+        });
 
     const submission = await studyEngine.submit(
       input.studySessionId,

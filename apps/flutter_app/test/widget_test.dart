@@ -21,6 +21,14 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.language));
     await tester.pumpAndSettle();
+    expect(find.text('日本語'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Português'), 200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Português'));
+    await tester.pumpAndSettle();
 
     expect(find.text('Aprenda com\nqualquer coisa.'), findsOneWidget);
     expect(find.text('MODO DE ESTUDO'), findsOneWidget);
@@ -35,4 +43,36 @@ void main() {
     expect(find.text('Começar InstantStudy'), findsOneWidget);
     expect(find.byIcon(Icons.upload_file_outlined), findsOneWidget);
   });
+  testWidgets('preserves the same anonymous learner ID after widget restart', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const InstantStudyApp());
+    await tester.pumpAndSettle();
+    final prefs = await SharedPreferences.getInstance();
+    final firstId = prefs.getString('instantstudy.learner_id');
+    expect(firstId, isNotNull);
+    expect(firstId, startsWith('flutter-'));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const InstantStudyApp());
+    await tester.pumpAndSettle();
+    expect(prefs.getString('instantstudy.learner_id'), firstId);
+  });
+
+
+testWidgets('language choice is persisted and supports Japanese', (tester) async {
+  SharedPreferences.setMockInitialValues({});
+  await tester.pumpWidget(const InstantStudyApp());
+  await tester.pumpAndSettle();
+  await tester.tap(find.byIcon(Icons.language));
+  await tester.pumpAndSettle();
+  await tester.ensureVisible(find.text('日本語'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('日本語'));
+  await tester.pumpAndSettle();
+  final prefs = await SharedPreferences.getInstance();
+  expect(prefs.getString('instantstudy.locale'), 'ja');
+  expect(find.text('あらゆる教材で\n学ぼう。'), findsOneWidget);
+});
+
 }

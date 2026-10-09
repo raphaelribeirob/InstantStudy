@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { generateQuestion } from "./questionGenerator.js";
+import { generateQuestion, evaluateObjectiveChoice } from "./questionGenerator.js";
 
 const concept = {
   label: "Photosynthesis",
@@ -63,4 +63,39 @@ test("false choice does not repeat the correct source text", () => {
   const falseChoice = question.choices?.find((choice) => choice.label === "False");
   assert.ok(falseChoice);
   assert.doesNotMatch(falseChoice.value, /converts light energy into chemical energy/i);
+});
+
+test("true/false returns real answer options", () => {
+  const a = generateQuestion({type:"true_false",concept,questionIndex:0});
+  const b = generateQuestion({type:"true_false",concept,questionIndex:1});
+  assert.deepEqual(a.choices?.map(c=>c.value), ["true","false"]);
+  assert.notEqual(a.prompt,b.prompt);
+});
+test("Portuguese learning content produces Portuguese study questions", () => {
+  const q = generateQuestion({type:"free_recall",concept:{label:"Fotossíntese",sourceExcerpt:"A fotossíntese transforma energia luminosa em energia química."}});
+  assert.match(q.prompt,/Sem consultar as anotações/);
+});
+
+test("objective answer grading compares the selected value to source or truth", () => {
+  assert.equal(evaluateObjectiveChoice({
+    type:"multiple_choice",selected:concept.sourceExcerpt,
+    sourceExcerpt:concept.sourceExcerpt,questionIndex:0
+  }),true);
+  assert.equal(evaluateObjectiveChoice({
+    type:"true_false",selected:"false",
+    sourceExcerpt:concept.sourceExcerpt,questionIndex:1
+  }),true);
+  assert.equal(evaluateObjectiveChoice({
+    type:"true_false",selected:"true",
+    sourceExcerpt:concept.sourceExcerpt,questionIndex:1
+  }),false);
+});
+
+test("selected locale generates prompts in Spanish and Japanese", () => {
+  const spanish = generateQuestion({type:"free_recall",concept,locale:"es"});
+  assert.match(spanish.prompt,/Sin mirar tus apuntes/);
+  const japanese = generateQuestion({type:"true_false",concept,locale:"ja",questionIndex:0});
+  assert.match(japanese.prompt,/教材/);
+  assert.deepEqual(japanese.choices?.map(x=>x.value),["true","false"]);
+  assert.deepEqual(japanese.choices?.map(x=>x.label),["正しい","誤り"]);
 });

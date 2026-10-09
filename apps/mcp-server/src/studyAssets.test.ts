@@ -20,3 +20,9 @@ test("study assets are deterministic for identical input", () => {
     "Mitochondria generate ATP during cellular respiration. The electron transport chain creates a proton gradient. ATP synthase uses that gradient to synthesize ATP.";
   assert.deepEqual(generateStudyAssets(text), generateStudyAssets(text));
 });
+
+test("generated flashcards require recall of a hidden source concept", () => {
+  const assets = generateStudyAssets("Photosynthesis converts light energy into chemical energy in chloroplasts. Chlorophyll absorbs photons in the thylakoid membranes. Carbon dioxide fixation occurs during the Calvin cycle.");
+  assert.ok(assets.flashcards.some(card => card.front.includes("_____")));
+  assert.ok(assets.flashcards.every(card => !card.front.includes("What should you remember about")));
+});

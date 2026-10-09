@@ -69,10 +69,16 @@ export function deterministicGrade(input: GradeInput): SemanticGrade {
   const matched = expected.filter((word) => answerWords.has(word));
   const coverage = expected.length ? matched.length / expected.length : 0.5;
   const lengthFactor = Math.min(1, words(answer).length / 24);
-  const correctness = clamp(coverage * 0.78 + lengthFactor * 0.22);
+  // Lexical overlap is not evidence of correctness when polarity changes.
+  const negation = /\b(not|never|no|without|cannot|doesn't|isn't|não|nunca|sem)\b/i;
+  const polarityMismatch = negation.test(answer) !== negation.test(input.sourceExcerpt);
+  const correctness = polarityMismatch
+    ? Math.min(0.3, coverage * 0.3)
+    : clamp(coverage * 0.78 + lengthFactor * 0.22);
   const completeness = clamp(coverage * 0.88 + lengthFactor * 0.12);
   const missing = expected.filter((word) => !answerWords.has(word)).slice(0, 6);
   const confidence =
+    polarityMismatch ? 0.25 :
     expected.length >= 5 && coverage >= 0.65
       ? 0.92
       : expected.length >= 5 && coverage >= 0.45

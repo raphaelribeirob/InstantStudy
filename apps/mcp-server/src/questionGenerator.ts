@@ -1,3 +1,6 @@
+import { studyLanguage, type StudyLanguage } from "./studyLanguage.js";
+import { studyPrompt } from "./questionLocalizations.js";
+
 export type GeneratedChoice = {
   label: string;
   value: string;
@@ -50,10 +53,12 @@ export function generateQuestion(input: {
   alternatives?: ConceptLike[];
   questionIndex?: number;
   difficulty?: number;
+  locale?: StudyLanguage;
 }): GeneratedQuestion {
   const concept = clean(input.concept.label);
   const source = clean(input.concept.sourceExcerpt);
   const index = Math.max(0, input.questionIndex ?? 0);
+  const locale = input.locale ?? studyLanguage(source);
 
   if (input.type === "multiple_choice") {
     const distractors = distinctAlternativeStatements(
@@ -72,7 +77,7 @@ export function generateQuestion(input: {
 
     const values = rotate([source, ...distractors.slice(0, 3)], index);
     return {
-      prompt: `Which statement best describes ${concept} according to the study material?`,
+      prompt: studyPrompt(locale,"multiple_choice",{concept}),
       choices: values.map((value, choiceIndex) => ({
         label: String.fromCharCode(65 + choiceIndex),
         value,
@@ -83,19 +88,15 @@ export function generateQuestion(input: {
   }
 
   if (input.type === "true_false") {
-    const trueFirst = index % 2 === 0;
-    const falseValue = "No. This statement is not supported by the study material.";
+    const supported = index % 2 === 0;
+    // The false statement is provably false: this concept is in the source.
+    const statement = supported ? source : studyPrompt(locale,"false_statement",{concept});
     return {
-      prompt: `Which option matches the source about ${concept}?`,
-      choices: trueFirst
-        ? [
-            { label: "True", value: source },
-            { label: "False", value: falseValue },
-          ]
-        : [
-            { label: "False", value: falseValue },
-            { label: "True", value: source },
-          ],
+      prompt: studyPrompt(locale,"true_false",{statement}),
+      choices: [
+        { label: studyPrompt(locale,"true"), value: "true" },
+        { label: studyPrompt(locale,"false"), value: "false" },
+      ],
       answerMode: "choice",
       generatedBy: "deterministic",
     };
@@ -103,7 +104,7 @@ export function generateQuestion(input: {
 
   if (input.type === "application") {
     return {
-      prompt: `Apply ${concept} to a new example. Explain how your example follows the idea in the source.`,
+      prompt: studyPrompt(locale,"application",{concept}),
       answerMode: "text",
       generatedBy: "deterministic",
     };
@@ -111,7 +112,7 @@ export function generateQuestion(input: {
 
   if (input.type === "free_recall") {
     return {
-      prompt: `Without looking back, explain ${concept} in your own words and include the most important detail.`,
+      prompt: studyPrompt(locale,"free_recall",{concept}),
       answerMode: "text",
       generatedBy: "deterministic",
     };
@@ -119,15 +120,29 @@ export function generateQuestion(input: {
 
   if (input.type === "explain_why") {
     return {
-      prompt: `Why does ${concept} matter in this material? Explain the relationship, not just the definition.`,
+      prompt: studyPrompt(locale,"explain_why",{concept}),
       answerMode: "text",
       generatedBy: "deterministic",
     };
   }
 
   return {
-    prompt: `What is ${concept}, and what does the source say about it?`,
+    prompt: studyPrompt(locale,"short_answer",{concept}),
     answerMode: "text",
     generatedBy: "deterministic",
   };
+}
+
+/** Kept on the server: no objective answer key is returned to the student. */
+export function evaluateObjectiveChoice(input: {
+  type: "multiple_choice" | "true_false";
+  selected: string;
+  sourceExcerpt: string;
+  questionIndex: number;
+}): boolean {
+  const selected = clean(input.selected).toLocaleLowerCase();
+  const expected = input.type === "true_false"
+    ? (input.questionIndex % 2 === 0 ? "true" : "false")
+    : clean(input.sourceExcerpt).toLocaleLowerCase();
+  return selected === expected;
 }

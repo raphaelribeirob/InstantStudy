@@ -1,4 +1,5 @@
 import { readInstantAccountSession } from "./instantBilling";
+import { currentInstantStudyLanguage } from "./i18n";
 
 export type StudyMode = "learn" | "review" | "quiz" | "test";
 export type TestQuestionType =
@@ -133,7 +134,8 @@ export type RetentionInsights = {
   attempts: number;
   minutesStudied: number;
   averageMastery: number;
-  retentionScore: number;
+  retentionScore: number | null;
+  delayedReviewAttempts: number;
   dueNow: number;
   streakDays: number;
   activity7d: Array<{ date: string; attempts: number; minutes: number }>;
@@ -156,6 +158,7 @@ export type StudyGame = {
 
 export type AudioStudy = {
   title: string;
+  locale?: string;
   estimatedMinutes: number;
   segments: Array<{ speaker: "Host" | "Coach"; text: string }>;
 };
@@ -256,6 +259,7 @@ export async function prepareStudy(input: {
     return (await request(
       identified({
         action: "prepare",
+        locale: currentInstantStudyLanguage(),
         contentText: input.contentText,
         title: input.title,
         mode: input.mode,
@@ -406,7 +410,7 @@ export async function importPrivateDriveMaterial(input: {
 
 export async function getAudioStudy(materialId: string) {
   return (await request(
-    identified({ action: "audio_study", materialId }),
+    identified({ action: "audio_study", materialId, locale: currentInstantStudyLanguage() }),
   )) as AudioStudy;
 }
 

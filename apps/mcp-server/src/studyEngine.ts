@@ -6,6 +6,7 @@ import {
   type StudyPersistence,
 } from "./studyPersistence.js";
 import { generateQuestion } from "./questionGenerator.js";
+import { studyLanguage, type StudyLanguage } from "./studyLanguage.js";
 import { buildRetentionInsights } from "./offerLayer.js";
 
 export type TestQuestionType =
@@ -66,6 +67,7 @@ export type AdaptiveStudySession = {
   id: string;
   contentSessionId: string;
   learnerId?: string;
+  locale?: StudyLanguage;
   title: string;
   mode: StudyMode;
   goal?: string;
@@ -281,6 +283,7 @@ export class StudyEngine {
     content: ContentSession,
     options?: {
       learnerId?: string;
+      locale?: StudyLanguage;
       mode?: StudyMode;
       targetMinutes?: number;
       maxQuestions?: number;
@@ -327,6 +330,7 @@ export class StudyEngine {
       id: randomUUID(),
       contentSessionId: content.id,
       learnerId: options?.learnerId,
+      locale: options?.locale ?? studyLanguage(rawText),
       title: content.title,
       mode,
       goal: content.goal,
@@ -404,6 +408,7 @@ export class StudyEngine {
         })),
       questionIndex: session.questionIndex,
       difficulty: concept.difficulty,
+      locale: session.locale,
     });
 
     return {
@@ -423,7 +428,7 @@ export class StudyEngine {
       concept: {
         id: concept.id,
         label: concept.label,
-        sourceExcerpt: concept.sourceExcerpt,
+        ...(session.mode === "test" ? {} : { sourceExcerpt: concept.sourceExcerpt }),
         mastery: Number(concept.mastery.toFixed(2)),
         difficulty: concept.difficulty,
         nextReviewAt: concept.nextReviewAt,

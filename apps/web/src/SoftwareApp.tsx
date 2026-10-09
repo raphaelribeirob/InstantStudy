@@ -253,7 +253,7 @@ export function SoftwareApp() {
     void getAudioStudy(selected.id)
       .then(setAudioStudy)
       .catch(() => setAudioStudy(null));
-  }, [view, selectedId]);
+  }, [view, selectedId, i18n.language]);
 
   useEffect(() => {
     if (view !== "game" || !selected) return;
@@ -487,12 +487,13 @@ export function SoftwareApp() {
     podcastStopRef.current = false;
     setAudioPlaying(true);
     const voices = window.speechSynthesis.getVoices();
-    const english = voices.filter((voice) => /^en(-|_)/i.test(voice.lang));
-    const hostVoice = english[0] ?? voices[0];
+    const speechLocale = audioStudy.locale ?? i18n.language;
+    const localePrefix = speechLocale.toLowerCase().split("-")[0];
+    const localeVoices = voices.filter((voice) => voice.lang.toLowerCase().split("-")[0] === localePrefix);
+    const hostVoice = localeVoices[0] ?? voices[0];
     const coachVoice =
-      english.find((voice) => voice.name !== hostVoice?.name) ??
-      voices.find((voice) => voice.name !== hostVoice?.name) ??
-      hostVoice;
+      localeVoices.find((voice) => voice.name !== hostVoice?.name) ??
+      voices.find((voice) => voice.name !== hostVoice?.name) ?? hostVoice;
 
     const speakAt = (index: number) => {
       if (podcastStopRef.current || !audioStudy.segments[index]) {
@@ -501,6 +502,7 @@ export function SoftwareApp() {
       }
       const segment = audioStudy.segments[index];
       const utterance = new SpeechSynthesisUtterance(segment.text);
+      utterance.lang = speechLocale;
       utterance.rate = segment.speaker === "Host" ? 0.98 : 0.94;
       utterance.pitch = segment.speaker === "Host" ? 1.02 : 0.94;
       utterance.voice = segment.speaker === "Host" ? hostVoice ?? null : coachVoice ?? null;
@@ -1140,7 +1142,7 @@ export function SoftwareApp() {
               <>
                 <div className="software-insight-grid">
                   <article><span>{t("software.mastery")}</span><strong>{Math.round(insights.averageMastery * 100)}%</strong><small>{t("software.currentAverage")}</small></article>
-                  <article><span>{t("software.retention")}</span><strong>{Math.round(insights.retentionScore * 100)}%</strong><small>{t("software.conceptsAbove")}</small></article>
+                  <article><span>{t("software.retention")}</span><strong>{insights.retentionScore == null ? "—" : `${Math.round(insights.retentionScore * 100)}%`}</strong><small>{t("software.conceptsAbove", { count: insights.delayedReviewAttempts })}</small></article>
                   <article><span>{t("software.streak")}</span><strong>{insights.streakDays}</strong><small>{t("software.studyDays")}</small></article>
                   <article><span>{t("software.dueNow")}</span><strong>{insights.dueNow}</strong><small>{t("software.conceptsReview")}</small></article>
                   <article><span>{t("software.answers")}</span><strong>{insights.attempts}</strong><small>{t("software.activeRecallAttempts")}</small></article>

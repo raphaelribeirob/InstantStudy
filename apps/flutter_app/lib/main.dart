@@ -8,6 +8,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'i18n.dart';
+import 'locale_packs.dart';
 import 'instantstudy_api.dart';
 
 void main() {
@@ -17,15 +18,15 @@ void main() {
 class InstantStudyApp extends StatefulWidget {
   const InstantStudyApp({super.key});
 
-  static const ink = Color(0xFF11110F);
-  static const paper = Color(0xFFF2F0EA);
-  static const paper2 = Color(0xFFE9E7E1);
-  static const paper3 = Color(0xFFDEDBD3);
-  static const orange = Color(0xFFE36232);
-  static const orangeSoft = Color(0xFFF1A06F);
-  static const electric = Color(0xFF5B6CFF);
+  static const ink = Color(0xFF000000);
+  static const paper = Color(0xFFFDFCFC);
+  static const paper2 = Color(0xFFF5F3F1);
+  static const paper3 = Color(0xFFEBE8E4);
+  static const orange = Color(0xFFFF4704);
+  static const orangeSoft = Color(0xFFFFAE87);
+  static const electric = Color(0xFF0447FF);
   static const green = Color(0xFF98BD9D);
-  static const muted = Color(0xFF6E6B64);
+  static const muted = Color(0xFF777169);
 
   @override
   State<InstantStudyApp> createState() => _InstantStudyAppState();
@@ -46,21 +47,18 @@ class _InstantStudyAppState extends State<InstantStudyApp> {
     final stored = preferences.getString(_localeKey);
     if (!mounted || stored == null) return;
     setState(() {
-      _locale = stored.toLowerCase().startsWith('pt')
-          ? const Locale('pt', 'BR')
-          : const Locale('en');
+      _locale = instantStudyLocaleFromCode(stored);
     });
   }
 
   Future<void> _setLocale(Locale locale) async {
-    final normalized = locale.languageCode == 'pt'
-        ? const Locale('pt', 'BR')
-        : const Locale('en');
+    final normalized = instantStudyLocaleFromCode(
+        instantStudyLocaleCode(locale));
     setState(() => _locale = normalized);
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(
       _localeKey,
-      normalized.languageCode == 'pt' ? 'pt-BR' : 'en',
+      instantStudyLocaleCode(normalized),
     );
   }
 
@@ -77,14 +75,11 @@ class _InstantStudyAppState extends State<InstantStudyApp> {
       ],
       localeResolutionCallback: (deviceLocale, supported) {
         if (_locale != null) return _locale;
-        if (deviceLocale?.languageCode == 'pt') {
-          return const Locale('pt', 'BR');
-        }
-        return const Locale('en');
+        return instantStudyLocaleFromCode(deviceLocale?.toLanguageTag() ?? 'en');
       },
       theme: ThemeData(
         fontFamily: 'Inter',
-        scaffoldBackgroundColor: InstantStudyApp.paper2,
+        scaffoldBackgroundColor: InstantStudyApp.paper,
         colorScheme: const ColorScheme.light(
           primary: InstantStudyApp.ink,
           secondary: InstantStudyApp.orange,
@@ -93,7 +88,7 @@ class _InstantStudyAppState extends State<InstantStudyApp> {
         ),
         textSelectionTheme: const TextSelectionThemeData(
           cursorColor: InstantStudyApp.electric,
-          selectionColor: Color(0x335B6CFF),
+          selectionColor: Color(0x220447FF),
         ),
         useMaterial3: true,
       ),
@@ -120,7 +115,8 @@ class _StudyHomeState extends State<StudyHome> {
   final _answer = TextEditingController();
   final _title = TextEditingController();
   final _tts = FlutterTts();
-  late final String _learnerId;
+  late String _learnerId;
+  bool _identityReady = false;
 
   String _mode = 'learn';
   bool _busy = false;
@@ -137,10 +133,37 @@ class _StudyHomeState extends State<StudyHome> {
   @override
   void initState() {
     super.initState();
-    _learnerId = 'flutter-' +
-        DateTime.now().microsecondsSinceEpoch.toString() +
-        '-' +
-        Random.secure().nextInt(1 << 32).toString();
+    _restoreLearnerIdentity();
+  }
+
+  // Use a stable anonymous learner identity across application restarts.
+  Future<void> _restoreLearnerIdentity() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final stored = prefs.getString('instantstudy.learner_id');
+      final valid = stored != null &&
+          RegExp(r'^flutter-[A-Za-z0-9-]{8,200}$').hasMatch(stored);
+      final identifier = valid
+          ? stored
+          : 'flutter-' +
+              DateTime.now().microsecondsSinceEpoch.toString() +
+              '-' +
+              Random.secure().nextInt(1 << 32).toString();
+      if (!valid) {
+        await prefs.setString('instantstudy.learner_id', identifier);
+      }
+      if (!mounted) return;
+      setState(() {
+        _learnerId = identifier;
+        _identityReady = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Study progress storage is unavailable on this device.';
+        _identityReady = false;
+      });
+    }
   }
 
   @override
@@ -177,15 +200,14 @@ class _StudyHomeState extends State<StudyHome> {
   }
 
   Future<void> _pickFile() async {
+    if (!_identityReady) return;
     setState(() {
       _error = null;
       _busy = true;
     });
 
     try {
-      final result = await FilePicker.pickFiles(
-        allowMultiple: false,
-        withData: true,
+      final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: const [
           'pdf','docx','pptx','txt','md','csv',
@@ -194,16 +216,16 @@ class _StudyHomeState extends State<StudyHome> {
         ],
       );
 
-      if (result == null) return;
-      final file = result.files.single;
-      final bytes = file.bytes;
-      if (bytes == null) {
-        throw InstantStudyApiException(context.tr('couldNotRead'));
+      if (file == null) return;
+      // Check metadata before loading bytes into memory. Flutter file_picker
+      // 12 uses a federated API with an on-demand byte reader.
+      final length = await file.length();
+      if (length > 2500000) {
+        throw InstantStudyApiException(context.tr('uploadLimit'));
       }
+      final bytes = await file.readAsBytes();
       if (bytes.length > 2500000) {
-        throw InstantStudyApiException(
-          context.tr('uploadLimit'),
-        );
+        throw InstantStudyApiException(context.tr('uploadLimit'));
       }
 
       final extension = (file.extension ?? '').toLowerCase();
@@ -245,7 +267,7 @@ class _StudyHomeState extends State<StudyHome> {
   }
 
   Future<void> _start() async {
-    if (_material.text.trim().isEmpty) return;
+    if (!_identityReady || _material.text.trim().isEmpty) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -271,6 +293,7 @@ class _StudyHomeState extends State<StudyHome> {
         title: _title.text.trim().isEmpty ? null : _title.text.trim(),
         mode: _mode,
         learnerId: _learnerId,
+        locale: instantStudyLocaleCode(Localizations.localeOf(context)),
         maxQuestions: _mode == 'test' ? _testQuestions : 12,
         testDurationMinutes: _mode == 'test' ? _testDuration : null,
         testQuestionTypes: _mode == 'test'
@@ -358,6 +381,7 @@ class _StudyHomeState extends State<StudyHome> {
       final data = await _api.audioStudy(
         learnerId: _learnerId,
         materialId: materialId,
+        locale: instantStudyLocaleCode(Localizations.localeOf(context)),
       );
       if (!mounted) return;
       final segments = data['segments'] is List
@@ -395,6 +419,14 @@ class _StudyHomeState extends State<StudyHome> {
     }
 
     if (mounted) setState(() => _podcastPlaying = true);
+    final locale = instantStudyLocaleCode(Localizations.localeOf(context));
+    const voiceLocales = <String,String>{
+      'nl':'nl-NL','en':'en-US','fr':'fr-FR','de':'de-DE',
+      'id':'id-ID','it':'it-IT','ja':'ja-JP','ko':'ko-KR',
+      'pl':'pl-PL','pt-BR':'pt-BR','ru':'ru-RU','zh-CN':'zh-CN',
+      'es':'es-ES','tr':'tr-TR','uk':'uk-UA','vi':'vi-VN',
+    };
+    await _tts.setLanguage(voiceLocales[locale] ?? 'en-US');
     await _tts.awaitSpeakCompletion(true);
 
     for (final segment in segments) {
@@ -601,7 +633,7 @@ class _StudyHomeState extends State<StudyHome> {
         const SizedBox(height: 30),
         _SignalButton(
           label: _busy ? context.tr('building') : context.tr('start'),
-          onPressed: _busy ? null : _start,
+          onPressed: _busy || !_identityReady ? null : _start,
         ),
       ],
     );
@@ -619,7 +651,7 @@ class _StudyHomeState extends State<StudyHome> {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 34, 24, 30),
       color: _mode == 'review'
-          ? InstantStudyApp.orange
+          ? InstantStudyApp.paper2
           : InstantStudyApp.paper,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -665,6 +697,36 @@ class _StudyHomeState extends State<StudyHome> {
     );
   }
 
+  void _showLanguagePicker() {
+    final current = instantStudyLocaleCode(Localizations.localeOf(context));
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: SizedBox(
+          height: MediaQuery.sizeOf(sheetContext).height * .73,
+          child: ListView(
+            children: instantStudyLanguageOptions.entries.map((entry) =>
+              ListTile(
+                title: Text(entry.value),
+                subtitle: Text(entry.key),
+                selected: entry.key == current,
+                trailing: entry.key == current
+                    ? const Icon(Icons.check) : null,
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  widget.onLocaleChanged(instantStudyLocaleFromCode(entry.key));
+                },
+              ),
+            ).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final motionDuration =
@@ -676,7 +738,7 @@ class _StudyHomeState extends State<StudyHome> {
       body: Stack(
         children: [
           const Positioned.fill(
-            child: ColoredBox(color: InstantStudyApp.paper2),
+            child: ColoredBox(color: InstantStudyApp.paper),
           ),
           const Positioned.fill(
             child: IgnorePointer(child: _GrainLayer()),
@@ -691,14 +753,7 @@ class _StudyHomeState extends State<StudyHome> {
                   onInsights: _showInsights,
                   onPodcast: _materialId == null ? null : _showPodcast,
                   onGame: _materialId == null ? null : _showGame,
-                  onLanguage: () {
-                    final locale = Localizations.localeOf(context);
-                    widget.onLocaleChanged(
-                      locale.languageCode == 'pt'
-                          ? const Locale('en')
-                          : const Locale('pt', 'BR'),
-                    );
-                  },
+                  onLanguage: _showLanguagePicker,
                 ),
                 Expanded(
                   child: ListView(
@@ -1122,7 +1177,7 @@ class _SignalButton extends StatelessWidget {
     final background = outlined
         ? Colors.transparent
         : light
-            ? const Color(0xFFEFEDE7)
+            ? InstantStudyApp.paper2
             : InstantStudyApp.ink;
     final foreground = outlined
         ? InstantStudyApp.ink
@@ -1204,7 +1259,7 @@ class _ChoiceRow extends StatelessWidget {
               height: 28,
               alignment: Alignment.center,
               decoration: const BoxDecoration(
-                color: InstantStudyApp.orange,
+                color: InstantStudyApp.paper3,
                 shape: BoxShape.circle,
               ),
               child: Text(
@@ -1340,8 +1395,10 @@ class _InsightsScene extends StatelessWidget {
   Widget build(BuildContext context) {
     final mastery =
         ((data['averageMastery'] as num?)?.toDouble() ?? 0) * 100;
-    final retention =
-        ((data['retentionScore'] as num?)?.toDouble() ?? 0) * 100;
+    final delayedRecall = (data['retentionScore'] as num?)?.toDouble();
+    final retentionLabel = delayedRecall == null
+        ? '—'
+        : '${(delayedRecall * 100).round()}%';
     final weak = data['weakConcepts'] is List
         ? (data['weakConcepts'] as List).whereType<Map>().toList()
         : const <Map>[];
@@ -1402,7 +1459,7 @@ class _InsightsScene extends StatelessWidget {
               const SizedBox(height: 36),
               _MetricLine(
                 label: context.tr('retention'),
-                value: '${retention.round()}%',
+                value: retentionLabel,
                 accent: InstantStudyApp.green,
               ),
               _MetricLine(

@@ -54,3 +54,13 @@ test("extractive Ask returns grounded source highlights", () => {
   assert.match(result.answer, /Mitochondria/i);
   assert.ok((result.confidence ?? 0) > 0);
 });
+
+test("contradictory high-overlap answers are not approved deterministically", () => {
+  const grade = deterministicGrade({
+    conceptLabel: "Photosynthesis",
+    sourceExcerpt: "Photosynthesis converts light energy into chemical energy using chlorophyll.",
+    userAnswer: "Photosynthesis never converts light energy into chemical energy using chlorophyll.",
+  });
+  assert.ok(grade.correctness < 0.5);
+  assert.equal(shouldEscalateGrade(grade), true);
+});

@@ -955,3 +955,24 @@ button,input,textarea{font:inherit}
   .software-family-add{grid-template-columns:1fr}
   .software-family-members article{grid-template-columns:1fr}.software-family-members article{padding:14px 0}
 }
+
+/* Refero ElevenLabs — Web application component overrides; design source: DESIGN.md */
+:root{--is-bg:#fdfcfc;--is-panel:#fdfcfc;--is-ink:#000;--is-muted:#777169;--is-line:#ebe8e4;--is-blue:#0447ff;--is-orange:#ff4704;}
+.software-shell{background:#fdfcfc;color:#000;letter-spacing:.01em;}
+.software-sidebar{background:#f5f3f1;color:#000;border-right:1px solid #ebe8e4;}
+.software-brand,.software-plan a{color:#000;}
+.software-mark{border-color:#000}.software-mark i{background:#000}
+.software-nav-item{color:#44403b;border-radius:9999px}
+.software-nav-item:hover,.software-nav-item.active{background:#ebe8e4;color:#000}
+.software-nav-label,.software-plan small{color:#777169}
+.software-plan{border-color:#ebe8e4}
+.software-topbar{background:#fdfcfc}
+.software-create,.software-editor>div button,.software-test-builder>button,.software-hero>button,.software-title-row>button,.software-empty button,.software-study-stage button,.software-review-list article>button,.software-ask-box button,.software-ask-answer button{background:#000;color:#fdfcfc;border:1px solid #000;border-radius:9999px;font-weight:500}
+.software-import-tabs button,.software-mode-switch button,.software-test-types button,.software-feature-grid button{border-radius:9999px}
+.software-feature-grid button:nth-child(n){background:#f5f3f1;color:#000}
+.software-hero,.software-material-card,.software-editor,.software-study-stage>aside,.software-study-stage>article,.software-test-builder,.software-guide>article,.software-guide>aside,.software-plugin-grid article,.software-flashcards article,.software-ask,.software-library-list{border:1px solid #ebe8e4;background:#fdfcfc;border-radius:20px;box-shadow:none}
+.software-hero p,.software-title-row p,.software-workspace-head p,.software-guide>article>span,.software-guide>aside>span,.software-flashcards article span,.software-question-type,.software-test-result>span,.software-ask-answer span,.software-plugin-grid article>span{color:#44403b}
+.software-hero h1,.software-title-row h1,.software-workspace-head h1,.software-study-stage h2,.software-guide h2{font-weight:300;letter-spacing:-.02em;line-height:1.13}
+.software-editor>input,.software-editor textarea,.software-search,.software-study-stage textarea,.software-ask-box input,.software-test-builder select{border-radius:4px}
+.software-review-list>article>span{color:#44403b}
+@media(max-width:620px){.software-sidebar{background:#f5f3f1;border-top:1px solid #ebe8e4}.software-page{padding-bottom:calc(90px + env(safe-area-inset-bottom))}}
