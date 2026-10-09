@@ -90,3 +90,12 @@ test("objective answer grading compares the selected value to source or truth", 
     sourceExcerpt:concept.sourceExcerpt,questionIndex:1
   }),false);
 });
+
+test("selected locale generates prompts in Spanish and Japanese", () => {
+  const spanish = generateQuestion({type:"free_recall",concept,locale:"es"});
+  assert.match(spanish.prompt,/Sin mirar tus apuntes/);
+  const japanese = generateQuestion({type:"true_false",concept,locale:"ja",questionIndex:0});
+  assert.match(japanese.prompt,/教材/);
+  assert.deepEqual(japanese.choices?.map(x=>x.value),["true","false"]);
+  assert.deepEqual(japanese.choices?.map(x=>x.label),["正しい","誤り"]);
+});
