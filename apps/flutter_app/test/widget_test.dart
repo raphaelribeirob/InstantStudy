@@ -21,6 +21,10 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.language));
     await tester.pumpAndSettle();
+    expect(find.text('日本語'), findsOneWidget);
+    expect(find.text('简体中文'), findsOneWidget);
+    await tester.tap(find.text('Português'));
+    await tester.pumpAndSettle();
 
     expect(find.text('Aprenda com\nqualquer coisa.'), findsOneWidget);
     expect(find.text('MODO DE ESTUDO'), findsOneWidget);
@@ -52,3 +56,16 @@ void main() {
   });
 
 }
+
+testWidgets('language choice is persisted and supports Japanese', (tester) async {
+  SharedPreferences.setMockInitialValues({});
+  await tester.pumpWidget(const InstantStudyApp());
+  await tester.pumpAndSettle();
+  await tester.tap(find.byIcon(Icons.language));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('日本語'));
+  await tester.pumpAndSettle();
+  final prefs = await SharedPreferences.getInstance();
+  expect(prefs.getString('instantstudy.locale'), 'ja');
+  expect(find.text('あらゆる教材で\n学ぼう。'), findsOneWidget);
+});

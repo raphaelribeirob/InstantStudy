@@ -1,10 +1,28 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'locale_packs.dart';
 
-const supportedInstantStudyLocales = <Locale>[
-  Locale('en'),
-  Locale('pt', 'BR'),
-];
+Locale instantStudyLocaleFromCode(String raw) {
+  final normalized = raw.toLowerCase().replaceAll('_', '-');
+  final code = normalized.startsWith('zh') ? 'zh-CN' :
+      normalized.startsWith('pt') ? 'pt-BR' :
+      normalized.split('-').first;
+  if (!instantStudyLanguageOptions.containsKey(code)) return const Locale('en');
+  if (code == 'pt-BR') return const Locale('pt', 'BR');
+  if (code == 'zh-CN') return const Locale('zh', 'CN');
+  return Locale(code);
+}
+
+String instantStudyLocaleCode(Locale locale) {
+  if (locale.languageCode == 'pt') return 'pt-BR';
+  if (locale.languageCode == 'zh') return 'zh-CN';
+  return instantStudyLanguageOptions.containsKey(locale.languageCode)
+      ? locale.languageCode : 'en';
+}
+
+
+final supportedInstantStudyLocales = instantStudyLanguageOptions.keys
+    .map(instantStudyLocaleFromCode).toList(growable:false);
 
 class AppStrings {
   const AppStrings(this.locale);
@@ -20,8 +38,9 @@ class AppStrings {
   }
 
   String tr(String key, [Map<String, Object?> values = const {}]) {
-    final language = locale.languageCode == 'pt' ? 'pt-BR' : 'en';
-    var value = _messages[language]?[key] ?? _messages['en']?[key] ?? key;
+    final language = instantStudyLocaleCode(locale);
+    var value = _messages[language]?[key] ??
+        extraLocaleMessages[language]?[key] ?? _messages['en']?[key] ?? key;
     for (final entry in values.entries) {
       value = value.replaceAll('{{${entry.key}}}', '${entry.value ?? ''}');
     }
@@ -40,7 +59,7 @@ class _AppStringsDelegate extends LocalizationsDelegate<AppStrings> {
 
   @override
   bool isSupported(Locale locale) =>
-      locale.languageCode == 'en' || locale.languageCode == 'pt';
+      instantStudyLanguageOptions.containsKey(instantStudyLocaleCode(locale));
 
   @override
   Future<AppStrings> load(Locale locale) {

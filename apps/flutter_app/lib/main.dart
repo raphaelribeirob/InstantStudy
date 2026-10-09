@@ -46,21 +46,18 @@ class _InstantStudyAppState extends State<InstantStudyApp> {
     final stored = preferences.getString(_localeKey);
     if (!mounted || stored == null) return;
     setState(() {
-      _locale = stored.toLowerCase().startsWith('pt')
-          ? const Locale('pt', 'BR')
-          : const Locale('en');
+      _locale = instantStudyLocaleFromCode(stored);
     });
   }
 
   Future<void> _setLocale(Locale locale) async {
-    final normalized = locale.languageCode == 'pt'
-        ? const Locale('pt', 'BR')
-        : const Locale('en');
+    final normalized = instantStudyLocaleFromCode(
+        instantStudyLocaleCode(locale));
     setState(() => _locale = normalized);
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(
       _localeKey,
-      normalized.languageCode == 'pt' ? 'pt-BR' : 'en',
+      instantStudyLocaleCode(normalized),
     );
   }
 
@@ -77,10 +74,7 @@ class _InstantStudyAppState extends State<InstantStudyApp> {
       ],
       localeResolutionCallback: (deviceLocale, supported) {
         if (_locale != null) return _locale;
-        if (deviceLocale?.languageCode == 'pt') {
-          return const Locale('pt', 'BR');
-        }
-        return const Locale('en');
+        return instantStudyLocaleFromCode(deviceLocale?.toLanguageTag() ?? 'en');
       },
       theme: ThemeData(
         fontFamily: 'Inter',
@@ -695,6 +689,36 @@ class _StudyHomeState extends State<StudyHome> {
     );
   }
 
+  void _showLanguagePicker() {
+    final current = instantStudyLocaleCode(Localizations.localeOf(context));
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: SizedBox(
+          height: MediaQuery.sizeOf(sheetContext).height * .73,
+          child: ListView(
+            children: instantStudyLanguageOptions.entries.map((entry) =>
+              ListTile(
+                title: Text(entry.value),
+                subtitle: Text(entry.key),
+                selected: entry.key == current,
+                trailing: entry.key == current
+                    ? const Icon(Icons.check) : null,
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  widget.onLocaleChanged(instantStudyLocaleFromCode(entry.key));
+                },
+              ),
+            ).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final motionDuration =
@@ -721,14 +745,7 @@ class _StudyHomeState extends State<StudyHome> {
                   onInsights: _showInsights,
                   onPodcast: _materialId == null ? null : _showPodcast,
                   onGame: _materialId == null ? null : _showGame,
-                  onLanguage: () {
-                    final locale = Localizations.localeOf(context);
-                    widget.onLocaleChanged(
-                      locale.languageCode == 'pt'
-                          ? const Locale('en')
-                          : const Locale('pt', 'BR'),
-                    );
-                  },
+                  onLanguage: _showLanguagePicker,
                 ),
                 Expanded(
                   child: ListView(

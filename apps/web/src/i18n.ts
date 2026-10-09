@@ -1,8 +1,10 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-
-export const supportedLanguages = ["en", "pt-BR"] as const;
-export type SupportedLanguage = (typeof supportedLanguages)[number];
+import { supportedLanguages, normalizeLanguage } from "./languageCatalog";
+import type { SupportedLanguage } from "./languageCatalog";
+import { localePacks } from "./languagePacks";
+export { supportedLanguages } from "./languageCatalog";
+export type { SupportedLanguage } from "./languageCatalog";
 
 const STORAGE_KEY = "instantstudy.locale";
 
@@ -493,13 +495,8 @@ const resources = {
       },
     },
   },
+  ...localePacks,
 } as const;
-
-function normalizeLanguage(raw: string | undefined): SupportedLanguage {
-  const value = String(raw || "").toLowerCase();
-  if (value.startsWith("pt")) return "pt-BR";
-  return "en";
-}
 
 function initialLanguage(): SupportedLanguage {
   try {

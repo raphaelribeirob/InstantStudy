@@ -1240,3 +1240,13 @@ body::before{opacity:.035;}
 .nav-cta{border-radius:9999px;background:#000;color:#fdfcfc;}
 button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #000;outline-offset:3px;}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important;}}
+
+/* Native language picker matches the Refero pill control language. */
+.language-switcher select {
+  display:block;max-width:min(48vw,190px);min-height:40px;
+  border:1px solid var(--color-stone,#ebe8e4);border-radius:9999px;
+  padding:8px 30px 8px 14px;background:#fdfcfc;color:#000;
+  font:inherit;font-size:12px;letter-spacing:.01em;cursor:pointer;
+}
+.language-switcher.compact select{max-width:140px;min-height:36px;padding-left:10px;}
+.language-switcher select:focus-visible{outline:2px solid #000;outline-offset:3px;}
