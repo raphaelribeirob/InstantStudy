@@ -487,12 +487,12 @@ export function SoftwareApp() {
     podcastStopRef.current = false;
     setAudioPlaying(true);
     const voices = window.speechSynthesis.getVoices();
-    const english = voices.filter((voice) => /^en(-|_)/i.test(voice.lang));
-    const hostVoice = english[0] ?? voices[0];
+    const portuguese = /^Bem-vindo/.test(audioStudy.segments[0]?.text ?? "");
+    const localeVoices = voices.filter((voice) => (portuguese ? /^pt(-|_)/i : /^en(-|_)/i).test(voice.lang));
+    const hostVoice = localeVoices[0] ?? voices[0];
     const coachVoice =
-      english.find((voice) => voice.name !== hostVoice?.name) ??
-      voices.find((voice) => voice.name !== hostVoice?.name) ??
-      hostVoice;
+      localeVoices.find((voice) => voice.name !== hostVoice?.name) ??
+      voices.find((voice) => voice.name !== hostVoice?.name) ?? hostVoice;
 
     const speakAt = (index: number) => {
       if (podcastStopRef.current || !audioStudy.segments[index]) {

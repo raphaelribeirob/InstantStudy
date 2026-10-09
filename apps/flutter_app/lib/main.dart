@@ -424,6 +424,9 @@ class _StudyHomeState extends State<StudyHome> {
     }
 
     if (mounted) setState(() => _podcastPlaying = true);
+    final portuguese = segments.isNotEmpty &&
+        (segments.first['text']?.toString() ?? '').startsWith('Bem-vindo');
+    await _tts.setLanguage(portuguese ? 'pt-BR' : 'en-US');
     await _tts.awaitSpeakCompletion(true);
 
     for (final segment in segments) {

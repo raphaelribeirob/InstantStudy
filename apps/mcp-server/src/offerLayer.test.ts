@@ -160,3 +160,13 @@ test("retention needs actual later-day recall attempts", () => {
   assert.equal(insights.delayedReviewAttempts, 1);
   assert.equal(insights.retentionScore, 1);
 });
+
+test("podcast language follows Portuguese learning material", () => {
+  const audio = buildAudioStudy("Fotossíntese", {
+    summary: "A fotossíntese transforma energia luminosa em energia química.",
+    outline: ["O processo acontece nas células e depende da luz."],
+    keyConcepts: ["Fotossíntese", "Energia"], flashcards: [], generatedBy: "deterministic",
+  });
+  assert.match(audio.segments[0].text, /Bem-vindo/);
+  assert.match(audio.segments[2].text, /Ideia principal/);
+});

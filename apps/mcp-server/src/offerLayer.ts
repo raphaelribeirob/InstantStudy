@@ -1,5 +1,6 @@
 import type { AdaptiveStudySession } from "./studyEngine.js";
 import type { StudyAssets } from "./studyAssets.js";
+import { studyLanguage } from "./studyLanguage.js";
 
 export type InsightConcept = {
   label: string;
@@ -275,14 +276,15 @@ export function buildAudioStudy(
 ): AudioStudy {
   const outline = assets.outline.slice(0, 6);
   const concepts = assets.keyConcepts.slice(0, 8);
+  const pt = studyLanguage(`${title} ${assets.summary}`) === "pt-BR";
   const segments: AudioStudySegment[] = [
     {
       speaker: "Host",
-      text: `Welcome to InstantStudy Podcast. Today we are unpacking ${title} into the ideas you need to remember.`,
+      text: pt ? `Bem-vindo ao podcast do InstantStudy. Hoje vamos estudar ${title} e recordar os conceitos essenciais.` : `Welcome to InstantStudy Podcast. Today we are unpacking ${title} into the ideas you need to remember.`,
     },
     {
       speaker: "Host",
-      text: `Start with the big picture: ${sentence(assets.summary)}`,
+      text: pt ? `Comece pela visão geral: ${sentence(assets.summary)}` : `Start with the big picture: ${sentence(assets.summary)}`,
     },
   ];
 
@@ -290,17 +292,17 @@ export function buildAudioStudy(
     const concept = concepts[index] ?? `idea ${index + 1}`;
     segments.push({
       speaker: "Host",
-      text: `Key idea ${index + 1}: ${sentence(outline[index])}`,
+      text: pt ? `Ideia principal ${index + 1}: ${sentence(outline[index])}` : `Key idea ${index + 1}: ${sentence(outline[index])}`,
     });
     segments.push({
       speaker: "Coach",
-      text: `Let me challenge that. Before we move on, what would you say is the essential point about ${concept}? Pause and answer it out loud.`,
+      text: pt ? `Vamos praticar. Antes de continuar, qual é a ideia essencial sobre ${concept}? Pause e responda em voz alta.` : `Let me challenge that. Before we move on, what would you say is the essential point about ${concept}? Pause and answer it out loud.`,
     });
   }
 
   segments.push({
     speaker: "Host",
-    text: "Finish by explaining the topic in your own words without looking at your notes. Anything you cannot explain should go back into Review.",
+    text: pt ? "Para terminar, explique o tema com suas palavras, sem consultar as anotações. Tudo que não conseguir explicar deve voltar para Revisão." : "Finish by explaining the topic in your own words without looking at your notes. Anything you cannot explain should go back into Review.",
   });
 
   const words = segments.reduce(
