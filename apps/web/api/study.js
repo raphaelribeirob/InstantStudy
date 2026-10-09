@@ -429,6 +429,8 @@ export default async function handler(req, res) {
       });
     } else if (action === "audio_study") {
       const learnerId = await verifiedLearner(body);
+      const locales = new Set(["nl","en","fr","de","id","it","ja","ko","pl","pt-BR","ru","zh-CN","es","tr","uk","vi"]);
+      const locale = locales.has(body.locale) ? body.locale : undefined;
       const materialId = cleanId(body.materialId, 64);
       if (!learnerId || !materialId) {
         return json(res, 400, { error: "audio_study_input_invalid" });
@@ -436,6 +438,7 @@ export default async function handler(req, res) {
       result = await upstream(base, apiKey, "/api/v1/audio-study", {
         learnerId,
         materialId,
+        locale,
       });
     } else if (action === "room_create") {
       const learnerId = await verifiedLearner(body);

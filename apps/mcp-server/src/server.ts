@@ -1013,6 +1013,7 @@ app.post("/api/v1/audio-study", async (req, res) => {
       .object({
         learnerId: z.string().min(3).max(200),
         materialId: z.string().uuid(),
+        locale: z.enum(supportedStudyLocales).optional(),
       })
       .parse(req.body ?? {});
 
@@ -1022,7 +1023,7 @@ app.post("/api/v1/audio-study", async (req, res) => {
       return;
     }
 
-    res.json(buildAudioStudy(material.title, material.assets));
+    res.json(buildAudioStudy(material.title, material.assets, input.locale));
   } catch (error) {
     sendApiError(res, error);
   }

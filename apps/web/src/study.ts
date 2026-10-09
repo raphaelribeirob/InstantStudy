@@ -409,7 +409,7 @@ export async function importPrivateDriveMaterial(input: {
 
 export async function getAudioStudy(materialId: string) {
   return (await request(
-    identified({ action: "audio_study", materialId }),
+    identified({ action: "audio_study", materialId, locale: currentInstantStudyLanguage() }),
   )) as AudioStudy;
 }
 

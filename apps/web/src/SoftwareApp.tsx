@@ -253,7 +253,7 @@ export function SoftwareApp() {
     void getAudioStudy(selected.id)
       .then(setAudioStudy)
       .catch(() => setAudioStudy(null));
-  }, [view, selectedId]);
+  }, [view, selectedId, i18n.language]);
 
   useEffect(() => {
     if (view !== "game" || !selected) return;
@@ -487,8 +487,9 @@ export function SoftwareApp() {
     podcastStopRef.current = false;
     setAudioPlaying(true);
     const voices = window.speechSynthesis.getVoices();
-    const portuguese = /^Bem-vindo/.test(audioStudy.segments[0]?.text ?? "");
-    const localeVoices = voices.filter((voice) => (portuguese ? /^pt(-|_)/i : /^en(-|_)/i).test(voice.lang));
+    const speechLocale = audioStudy.locale ?? i18n.language;
+    const localePrefix = speechLocale.toLowerCase().split("-")[0];
+    const localeVoices = voices.filter((voice) => voice.lang.toLowerCase().split("-")[0] === localePrefix);
     const hostVoice = localeVoices[0] ?? voices[0];
     const coachVoice =
       localeVoices.find((voice) => voice.name !== hostVoice?.name) ??
@@ -501,6 +502,7 @@ export function SoftwareApp() {
       }
       const segment = audioStudy.segments[index];
       const utterance = new SpeechSynthesisUtterance(segment.text);
+      utterance.lang = speechLocale;
       utterance.rate = segment.speaker === "Host" ? 0.98 : 0.94;
       utterance.pitch = segment.speaker === "Host" ? 1.02 : 0.94;
       utterance.voice = segment.speaker === "Host" ? hostVoice ?? null : coachVoice ?? null;

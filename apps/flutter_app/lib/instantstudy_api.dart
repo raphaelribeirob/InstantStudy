@@ -94,11 +94,13 @@ class InstantStudyApi {
   Future<Map<String, dynamic>> audioStudy({
     required String learnerId,
     required String materialId,
+    String? locale,
   }) {
     return _post({
       'action': 'audio_study',
       'learnerId': learnerId,
       'materialId': materialId,
+      'locale': locale,
     });
   }
 

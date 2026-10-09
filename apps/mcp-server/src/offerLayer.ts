@@ -1,6 +1,7 @@
 import type { AdaptiveStudySession } from "./studyEngine.js";
 import type { StudyAssets } from "./studyAssets.js";
-import { studyLanguage } from "./studyLanguage.js";
+import { studyLanguage, type StudyLanguage } from "./studyLanguage.js";
+import { podcastScript } from "./podcastLocalizations.js";
 
 export type InsightConcept = {
   label: string;
@@ -262,6 +263,7 @@ export function buildStudyGame(title: string, assets: StudyAssets): StudyGame {
 
 export type AudioStudy = {
   title: string;
+  locale: StudyLanguage;
   estimatedMinutes: number;
   segments: AudioStudySegment[];
 };
@@ -273,18 +275,19 @@ function sentence(value: string) {
 export function buildAudioStudy(
   title: string,
   assets: StudyAssets,
+  language?: StudyLanguage,
 ): AudioStudy {
   const outline = assets.outline.slice(0, 6);
   const concepts = assets.keyConcepts.slice(0, 8);
-  const pt = studyLanguage(`${title} ${assets.summary}`) === "pt-BR";
+  const locale = language ?? studyLanguage(`${title} ${assets.summary}`);
   const segments: AudioStudySegment[] = [
     {
       speaker: "Host",
-      text: pt ? `Bem-vindo ao podcast do InstantStudy. Hoje vamos estudar ${title} e recordar os conceitos essenciais.` : `Welcome to InstantStudy Podcast. Today we are unpacking ${title} into the ideas you need to remember.`,
+      text: podcastScript(locale, "intro", {title}),
     },
     {
       speaker: "Host",
-      text: pt ? `Comece pela visão geral: ${sentence(assets.summary)}` : `Start with the big picture: ${sentence(assets.summary)}`,
+      text: podcastScript(locale, "summary", {summary:sentence(assets.summary)}),
     },
   ];
 
@@ -292,17 +295,17 @@ export function buildAudioStudy(
     const concept = concepts[index] ?? `idea ${index + 1}`;
     segments.push({
       speaker: "Host",
-      text: pt ? `Ideia principal ${index + 1}: ${sentence(outline[index])}` : `Key idea ${index + 1}: ${sentence(outline[index])}`,
+      text: podcastScript(locale, "idea", {index:index+1,outline:sentence(outline[index])}),
     });
     segments.push({
       speaker: "Coach",
-      text: pt ? `Vamos praticar. Antes de continuar, qual é a ideia essencial sobre ${concept}? Pause e responda em voz alta.` : `Let me challenge that. Before we move on, what would you say is the essential point about ${concept}? Pause and answer it out loud.`,
+      text: podcastScript(locale, "recall", {concept}),
     });
   }
 
   segments.push({
     speaker: "Host",
-    text: pt ? "Para terminar, explique o tema com suas palavras, sem consultar as anotações. Tudo que não conseguir explicar deve voltar para Revisão." : "Finish by explaining the topic in your own words without looking at your notes. Anything you cannot explain should go back into Review.",
+    text: podcastScript(locale, "finish"),
   });
 
   const words = segments.reduce(
@@ -312,6 +315,7 @@ export function buildAudioStudy(
 
   return {
     title,
+    locale,
     estimatedMinutes: Math.max(1, Math.ceil(words / 145)),
     segments,
   };

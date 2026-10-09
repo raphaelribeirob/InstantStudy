@@ -381,6 +381,7 @@ class _StudyHomeState extends State<StudyHome> {
       final data = await _api.audioStudy(
         learnerId: _learnerId,
         materialId: materialId,
+        locale: instantStudyLocaleCode(Localizations.localeOf(context)),
       );
       if (!mounted) return;
       final segments = data['segments'] is List
@@ -418,9 +419,14 @@ class _StudyHomeState extends State<StudyHome> {
     }
 
     if (mounted) setState(() => _podcastPlaying = true);
-    final portuguese = segments.isNotEmpty &&
-        (segments.first['text']?.toString() ?? '').startsWith('Bem-vindo');
-    await _tts.setLanguage(portuguese ? 'pt-BR' : 'en-US');
+    final locale = instantStudyLocaleCode(Localizations.localeOf(context));
+    const voiceLocales = <String,String>{
+      'nl':'nl-NL','en':'en-US','fr':'fr-FR','de':'de-DE',
+      'id':'id-ID','it':'it-IT','ja':'ja-JP','ko':'ko-KR',
+      'pl':'pl-PL','pt-BR':'pt-BR','ru':'ru-RU','zh-CN':'zh-CN',
+      'es':'es-ES','tr':'tr-TR','uk':'uk-UA','vi':'vi-VN',
+    };
+    await _tts.setLanguage(voiceLocales[locale] ?? 'en-US');
     await _tts.awaitSpeakCompletion(true);
 
     for (final segment in segments) {
