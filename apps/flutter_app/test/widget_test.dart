@@ -22,7 +22,10 @@ void main() {
     await tester.tap(find.byIcon(Icons.language));
     await tester.pumpAndSettle();
     expect(find.text('日本語'), findsOneWidget);
-    await tester.ensureVisible(find.text('Português'));
+    await tester.scrollUntilVisible(
+      find.text('Português'), 200,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Português'));
     await tester.pumpAndSettle();
