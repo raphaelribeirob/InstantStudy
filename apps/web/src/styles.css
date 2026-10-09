@@ -5,17 +5,17 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 
-  --ink: #11110f;
-  --paper: #f2f0ea;
-  --paper-2: #e9e7e1;
-  --paper-3: #dedbd3;
-  --line: rgba(17, 17, 15, 0.18);
-  --muted: #6e6b64;
-  --faint: #9d9990;
-  --black: #0c0c0b;
-  --orange: #e36232;
-  --orange-soft: #f1a06f;
-  --electric: #5b6cff;
+  --ink: #000;
+  --paper: #fdfcfc;
+  --paper-2: #f5f3f1;
+  --paper-3: #ebe8e4;
+  --line: #ebe8e4;
+  --muted: #777169;
+  --faint: #a59f97;
+  --black: #000;
+  --orange: #ff4704;
+  --orange-soft: #ffae87;
+  --electric: #0447ff;
   --green: #98bd9d;
 }
 
@@ -1228,3 +1228,15 @@ footer > span { justify-self: center; }
   white-space:nowrap!important;
   border:0!important;
 }
+
+/* Canonical Refero ElevenLabs: ink UI, paper surfaces and artwork-only sparks. */
+:root{--color-eggshell:#fdfcfc;--color-taupe:#f5f3f1;--color-stone:#ebe8e4;--color-ink:#000;--color-graphite:#44403b;--color-smoke:#777169;--color-ash:#a59f97;--color-violet-spark:#0447ff;--color-ember-orange:#ff4704;}
+html,body{background:#fdfcfc;}
+body{background:#fdfcfc;color:#000;letter-spacing:.01em;}
+body::before{opacity:.035;}
+.future-title{font-size:clamp(48px,8vw,96px);line-height:1.08;letter-spacing:-.02em;font-weight:300;}
+.future-title span:nth-child(2){padding-left:min(7vw,100px);}
+.nav-shell,.hero{max-width:1280px;}
+.nav-cta{border-radius:9999px;background:#000;color:#fdfcfc;}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #000;outline-offset:3px;}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important;}}
