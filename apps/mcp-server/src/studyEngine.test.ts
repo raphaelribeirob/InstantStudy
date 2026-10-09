@@ -69,6 +69,7 @@ test("Test mode records answers without immediate correctness feedback", async (
   assert.equal(next.done, false);
   if (next.done) throw new Error("expected an active test question");
 
+  assert.equal("sourceExcerpt" in next.concept, false);
   const result = await engine.submit(session.id, next.concept.id, {
     correctness: 0.8,
     completeness: 0.8,

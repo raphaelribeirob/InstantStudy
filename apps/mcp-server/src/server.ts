@@ -15,6 +15,7 @@ import { ingestFiles } from "./ingest.js";
 import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
 import { generateStudyAssets } from "./studyAssets.js";
+import { evaluateObjectiveChoice } from "./questionGenerator.js";
 import { materialStore } from "./materialStore.js";
 import { buildAudioStudy, buildStudyGame } from "./offerLayer.js";
 import { studyRoomStore } from "./studyRoomStore.js";
@@ -1265,11 +1266,38 @@ app.post("/api/v1/study/evaluate", async (req, res) => {
       return;
     }
 
-    const grade = await gradeStudyAnswer({
-      conceptLabel: concept.label,
-      sourceExcerpt: concept.sourceExcerpt,
-      userAnswer: input.userAnswer,
-    });
+    // Reconstruct the current question on the trusted server. Matching
+    // objective answers must NOT use keyword-overlap semantic grading.
+    const active = await studyEngine.next(input.studySessionId);
+    if (active.done || active.concept.id !== input.conceptId) {
+      res.status(409).json({ error: "question_not_current" });
+      return;
+    }
+    const type = active.questionPolicy.type;
+    const objective = active.question.answerMode === "choice" &&
+      (type === "multiple_choice" || type === "true_false");
+    const grade = objective
+      ? (() => {
+          const correct = evaluateObjectiveChoice({
+            type: type as "multiple_choice" | "true_false",
+            selected: input.userAnswer,
+            sourceExcerpt: concept.sourceExcerpt,
+            questionIndex: session.questionIndex,
+          });
+          return {
+            correctness: correct ? 1 : 0,
+            completeness: correct ? 1 : 0,
+            confidence: 1,
+            missingConcepts: correct ? [] : [concept.label],
+            feedback: correct ? "Correct." : "Review the source and try again.",
+            provider: "deterministic" as const,
+          };
+        })()
+      : await gradeStudyAnswer({
+          conceptLabel: concept.label,
+          sourceExcerpt: concept.sourceExcerpt,
+          userAnswer: input.userAnswer,
+        });
 
     const submission = await studyEngine.submit(
       input.studySessionId,

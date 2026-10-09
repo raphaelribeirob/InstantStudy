@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { generateQuestion } from "./questionGenerator.js";
+import { generateQuestion, evaluateObjectiveChoice } from "./questionGenerator.js";
 
 const concept = {
   label: "Photosynthesis",
@@ -74,4 +74,19 @@ test("true/false returns real answer options", () => {
 test("Portuguese learning content produces Portuguese study questions", () => {
   const q = generateQuestion({type:"free_recall",concept:{label:"Fotossíntese",sourceExcerpt:"A fotossíntese transforma energia luminosa em energia química."}});
   assert.match(q.prompt,/Sem consultar as anotações/);
+});
+
+test("objective answer grading compares the selected value to source or truth", () => {
+  assert.equal(evaluateObjectiveChoice({
+    type:"multiple_choice",selected:concept.sourceExcerpt,
+    sourceExcerpt:concept.sourceExcerpt,questionIndex:0
+  }),true);
+  assert.equal(evaluateObjectiveChoice({
+    type:"true_false",selected:"false",
+    sourceExcerpt:concept.sourceExcerpt,questionIndex:1
+  }),true);
+  assert.equal(evaluateObjectiveChoice({
+    type:"true_false",selected:"true",
+    sourceExcerpt:concept.sourceExcerpt,questionIndex:1
+  }),false);
 });

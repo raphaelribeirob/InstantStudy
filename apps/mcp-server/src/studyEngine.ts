@@ -423,7 +423,7 @@ export class StudyEngine {
       concept: {
         id: concept.id,
         label: concept.label,
-        sourceExcerpt: concept.sourceExcerpt,
+        ...(session.mode === "test" ? {} : { sourceExcerpt: concept.sourceExcerpt }),
         mastery: Number(concept.mastery.toFixed(2)),
         difficulty: concept.difficulty,
         nextReviewAt: concept.nextReviewAt,
