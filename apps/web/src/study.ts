@@ -133,7 +133,8 @@ export type RetentionInsights = {
   attempts: number;
   minutesStudied: number;
   averageMastery: number;
-  retentionScore: number;
+  retentionScore: number | null;
+  delayedReviewAttempts: number;
   dueNow: number;
   streakDays: number;
   activity7d: Array<{ date: string; attempts: number; minutes: number }>;

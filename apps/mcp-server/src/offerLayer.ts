@@ -14,7 +14,8 @@ export type RetentionInsights = {
   attempts: number;
   minutesStudied: number;
   averageMastery: number;
-  retentionScore: number;
+  retentionScore: number | null;
+  delayedReviewAttempts: number;
   dueNow: number;
   streakDays: number;
   activity7d: Array<{ date: string; attempts: number; minutes: number }>;
@@ -101,10 +102,32 @@ export function buildRetentionInsights(
       new Date(concept.nextReviewAt).getTime() <= nowMs,
   ).length;
 
-  const retained = latestConcepts.filter((concept) => concept.mastery >= 0.7).length;
-  const retentionScore = latestConcepts.length
-    ? retained / latestConcepts.length
-    : 0;
+  // Observe recall ONLY when a concept is retested on a later calendar day.
+  // Mastery is a separate estimate; it must not be labeled as retention.
+  const firstEncounter = new Map<string, string>();
+  let delayedReviewAttempts = 0;
+  let delayedCorrectAttempts = 0;
+  const chronologically = [...sessions].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  for (const session of chronologically) {
+    for (const attempt of [...session.attempts].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
+      const concept = session.concepts.find((item) => item.id === attempt.conceptId);
+      if (!concept) continue;
+      const conceptKey = concept.label.trim().toLocaleLowerCase();
+      const day = dayKey(attempt.createdAt);
+      const originalDay = firstEncounter.get(conceptKey);
+      if (!originalDay) {
+        firstEncounter.set(conceptKey, day);
+      } else if (day > originalDay) {
+        delayedReviewAttempts += 1;
+        if (attempt.correctness >= 0.8 && attempt.completeness >= 0.7) {
+          delayedCorrectAttempts += 1;
+        }
+      }
+    }
+  }
+  const retentionScore = delayedReviewAttempts
+    ? Number((delayedCorrectAttempts / delayedReviewAttempts).toFixed(2))
+    : null;
 
   const activity7d = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(now);
@@ -130,7 +153,8 @@ export function buildRetentionInsights(
     attempts,
     minutesStudied,
     averageMastery: Number(averageMastery.toFixed(2)),
-    retentionScore: Number(retentionScore.toFixed(2)),
+    retentionScore,
+    delayedReviewAttempts,
     dueNow,
     streakDays,
     activity7d,

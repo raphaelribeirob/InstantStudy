@@ -66,7 +66,8 @@ test("retention insights are derived from actual study state", () => {
   assert.equal(insights.completedSessions, 1);
   assert.equal(insights.attempts, 2);
   assert.equal(insights.averageMastery, 0.84);
-  assert.equal(insights.retentionScore, 1);
+  assert.equal(insights.retentionScore, null);
+  assert.equal(insights.delayedReviewAttempts, 0);
   assert.equal(insights.strongConcepts[0]?.label, "Photosynthesis");
   assert.equal(insights.charms.find((item) => item.id === "first-session")?.unlocked, true);
 });
@@ -122,4 +123,40 @@ test("audio study is a two-speaker conversational podcast", () => {
   assert.ok(audio.segments.some((segment) => segment.speaker === "Host"));
   assert.ok(audio.segments.some((segment) => segment.speaker === "Coach"));
   assert.ok(audio.segments.some((segment) => /challenge/i.test(segment.text)));
+});
+
+test("retention needs actual later-day recall attempts", () => {
+  const first = session({
+    id: randomUUID(),
+    createdAt: "2026-10-01T10:00:00.000Z",
+    attempts: [{
+      id: randomUUID(), conceptId: "c1", questionIndex: 1,
+      createdAt: "2026-10-01T10:05:00.000Z",
+      correctness: 1, completeness: 1, confidence: 1, missingConcepts: [],
+    }],
+    concepts: [{
+      id: "c1", label: "Photosynthesis",
+      sourceExcerpt: "Photosynthesis converts energy.",
+      mastery: .8, attempts: 1, correct: 1, partial: 0, incorrect: 0,
+      difficulty: 2, missingConcepts: [],
+    }],
+  });
+  const retest = session({
+    id: randomUUID(),
+    createdAt: "2026-10-04T10:00:00.000Z",
+    attempts: [{
+      id: randomUUID(), conceptId: "c2", questionIndex: 1,
+      createdAt: "2026-10-04T10:05:00.000Z",
+      correctness: 1, completeness: .9, confidence: 1, missingConcepts: [],
+    }],
+    concepts: [{
+      id: "c2", label: "Photosynthesis",
+      sourceExcerpt: "Photosynthesis converts energy.",
+      mastery: .9, attempts: 1, correct: 1, partial: 0, incorrect: 0,
+      difficulty: 2, missingConcepts: [],
+    }],
+  });
+  const insights = buildRetentionInsights([retest, first]);
+  assert.equal(insights.delayedReviewAttempts, 1);
+  assert.equal(insights.retentionScore, 1);
 });
