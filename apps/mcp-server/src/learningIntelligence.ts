@@ -70,7 +70,7 @@ export function deterministicGrade(input: GradeInput): SemanticGrade {
   const coverage = expected.length ? matched.length / expected.length : 0.5;
   const lengthFactor = Math.min(1, words(answer).length / 24);
   // Lexical overlap is not evidence of correctness when polarity changes.
-  const negation = /\\b(not|never|no|without|cannot|doesn't|isn't|não|nunca|sem)\\b/i;
+  const negation = /\b(not|never|no|without|cannot|doesn't|isn't|não|nunca|sem)\b/i;
   const polarityMismatch = negation.test(answer) !== negation.test(input.sourceExcerpt);
   const correctness = polarityMismatch
     ? Math.min(0.3, coverage * 0.3)

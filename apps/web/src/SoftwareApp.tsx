@@ -1140,7 +1140,7 @@ export function SoftwareApp() {
               <>
                 <div className="software-insight-grid">
                   <article><span>{t("software.mastery")}</span><strong>{Math.round(insights.averageMastery * 100)}%</strong><small>{t("software.currentAverage")}</small></article>
-                  <article><span>{t("software.retention")}</span><strong>{Math.round(insights.retentionScore * 100)}%</strong><small>{t("software.conceptsAbove")}</small></article>
+                  <article><span>{t("software.retention")}</span><strong>{insights.retentionScore == null ? "—" : `${Math.round(insights.retentionScore * 100)}%`}</strong><small>{t("software.conceptsAbove", { count: insights.delayedReviewAttempts })}</small></article>
                   <article><span>{t("software.streak")}</span><strong>{insights.streakDays}</strong><small>{t("software.studyDays")}</small></article>
                   <article><span>{t("software.dueNow")}</span><strong>{insights.dueNow}</strong><small>{t("software.conceptsReview")}</small></article>
                   <article><span>{t("software.answers")}</span><strong>{insights.attempts}</strong><small>{t("software.activeRecallAttempts")}</small></article>

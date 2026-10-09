@@ -149,7 +149,7 @@ class _StudyHomeState extends State<StudyHome> {
       final valid = stored != null &&
           RegExp(r'^flutter-[A-Za-z0-9-]{8,200}$').hasMatch(stored);
       final identifier = valid
-          ? stored
+          ? stored!
           : 'flutter-' +
               DateTime.now().microsecondsSinceEpoch.toString() +
               '-' +
@@ -1369,8 +1369,10 @@ class _InsightsScene extends StatelessWidget {
   Widget build(BuildContext context) {
     final mastery =
         ((data['averageMastery'] as num?)?.toDouble() ?? 0) * 100;
-    final retention =
-        ((data['retentionScore'] as num?)?.toDouble() ?? 0) * 100;
+    final delayedRecall = (data['retentionScore'] as num?)?.toDouble();
+    final retentionLabel = delayedRecall == null
+        ? '—'
+        : '${(delayedRecall * 100).round()}%';
     final weak = data['weakConcepts'] is List
         ? (data['weakConcepts'] as List).whereType<Map>().toList()
         : const <Map>[];
@@ -1431,7 +1433,7 @@ class _InsightsScene extends StatelessWidget {
               const SizedBox(height: 36),
               _MetricLine(
                 label: context.tr('retention'),
-                value: '${retention.round()}%',
+                value: retentionLabel,
                 accent: InstantStudyApp.green,
               ),
               _MetricLine(
