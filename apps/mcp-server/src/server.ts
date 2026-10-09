@@ -16,6 +16,7 @@ import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
 import { generateStudyAssets } from "./studyAssets.js";
 import { evaluateObjectiveChoice } from "./questionGenerator.js";
+import { supportedStudyLocales } from "./studyLanguage.js";
 import { materialStore } from "./materialStore.js";
 import { buildAudioStudy, buildStudyGame } from "./offerLayer.js";
 import { studyRoomStore } from "./studyRoomStore.js";
@@ -118,6 +119,7 @@ const prepareStudySchema = z
         "Stable authenticated learner/profile identifier. Supply it to preserve mastery and due reviews across sessions.",
       ),
     billingPlan: z.enum(["free", "plus", "unlimited"]).optional(),
+    locale: z.enum(supportedStudyLocales).optional(),
     mode: z.enum(["learn", "review", "quiz", "test"]).default("learn"),
     targetMinutes: z.number().int().min(1).max(180).optional(),
     maxQuestions: z.number().int().min(1).max(50).default(12),
@@ -247,6 +249,7 @@ function createMcpServer() {
       title,
       goal,
       learnerId,
+      locale,
       mode,
       targetMinutes,
       maxQuestions,
@@ -274,6 +277,7 @@ function createMcpServer() {
 
       const studySession = await studyEngine.start(contentSession, {
         learnerId,
+        locale,
         mode,
         targetMinutes,
         maxQuestions,
@@ -1150,6 +1154,7 @@ app.post("/api/v1/study/prepare", async (req, res) => {
 
     const studySession = await studyEngine.start(contentSession, {
       learnerId: input.learnerId,
+      locale: input.locale,
       mode: input.mode,
       targetMinutes: input.targetMinutes,
       maxQuestions: input.maxQuestions,
