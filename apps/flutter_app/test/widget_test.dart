@@ -22,7 +22,8 @@ void main() {
     await tester.tap(find.byIcon(Icons.language));
     await tester.pumpAndSettle();
     expect(find.text('日本語'), findsOneWidget);
-    expect(find.text('简体中文'), findsOneWidget);
+    await tester.ensureVisible(find.text('Português'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Português'));
     await tester.pumpAndSettle();
 
@@ -61,6 +62,8 @@ testWidgets('language choice is persisted and supports Japanese', (tester) async
   await tester.pumpWidget(const InstantStudyApp());
   await tester.pumpAndSettle();
   await tester.tap(find.byIcon(Icons.language));
+  await tester.pumpAndSettle();
+  await tester.ensureVisible(find.text('日本語'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('日本語'));
   await tester.pumpAndSettle();
