@@ -52,3 +52,11 @@ jobs:
       - name: Test Flutter client
         working-directory: apps/flutter_app
         run: flutter test
+
+      - name: Generate Flutter Web scaffolding
+        working-directory: apps/flutter_app
+        run: flutter create . --platforms=web --project-name instantstudy
+
+      - name: Build Flutter Web
+        working-directory: apps/flutter_app
+        run: flutter build web --release

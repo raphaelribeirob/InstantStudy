@@ -1,44 +1,45 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 class InstantStudyApi {
-  InstantStudyApi({
-    String? baseUrl,
-  }) : baseUrl = (baseUrl ??
-            const String.fromEnvironment(
-              'INSTANTSTUDY_BFF_URL',
-              defaultValue: 'https://instantstudy-web.vercel.app',
-            ))
-        .replaceAll(RegExp(r'/+$'), '');
+  InstantStudyApi({String? baseUrl})
+      : baseUrl = (baseUrl ?? _defaultBaseUrl())
+            .replaceAll(RegExp(r'/+$'), '');
+
+  // Flutter Web uses same-origin BFF; Android/iOS use configured public URL.
+  static String _defaultBaseUrl() {
+    const configured = String.fromEnvironment('INSTANTSTUDY_BFF_URL');
+    if (configured.isNotEmpty) return configured;
+    return kIsWeb ? Uri.base.origin : 'https://instantstudy-web.vercel.app';
+  }
 
   final String baseUrl;
 
   Future<Map<String, dynamic>> _post(Map<String, dynamic> payload) async {
-    final client = HttpClient();
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/api/study'),
+          headers: {'content-type': 'application/json', 'accept': 'application/json'},
+          body: jsonEncode(payload),
+        )
+        .timeout(const Duration(seconds: 45));
+    final Map<String, dynamic> body;
     try {
-      final request = await client.postUrl(Uri.parse(baseUrl + '/api/study'));
-      request.headers.contentType = ContentType.json;
-      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-      request.write(jsonEncode(payload));
-
-      final response = await request.close().timeout(const Duration(seconds: 45));
-      final text = await utf8.decoder.bind(response).join();
-      final body = text.isEmpty
+      body = response.body.isEmpty
           ? <String, dynamic>{}
-          : (jsonDecode(text) as Map<String, dynamic>);
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw InstantStudyApiException(
-          body['message']?.toString() ??
-              body['error']?.toString() ??
-              'Request failed (' + response.statusCode.toString() + ')',
-        );
-      }
-
-      return body;
-    } finally {
-      client.close(force: true);
+          : Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+    } catch (_) {
+      throw InstantStudyApiException('The study server returned an invalid response.');
     }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw InstantStudyApiException(
+        body['message']?.toString() ??
+            body['error']?.toString() ??
+            'Request failed (${response.statusCode})',
+      );
+    }
+    return body;
   }
 
   Future<Map<String, dynamic>> prepare({
