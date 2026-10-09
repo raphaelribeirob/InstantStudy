@@ -138,7 +138,7 @@ test("retention needs actual later-day recall attempts", () => {
       id: "c1", label: "Photosynthesis",
       sourceExcerpt: "Photosynthesis converts energy.",
       mastery: .8, attempts: 1, correct: 1, partial: 0, incorrect: 0,
-      difficulty: 2, missingConcepts: [],
+      difficulty: 2, stabilityDays: 1, missingConcepts: [],
     }],
   });
   const retest = session({
@@ -153,7 +153,7 @@ test("retention needs actual later-day recall attempts", () => {
       id: "c2", label: "Photosynthesis",
       sourceExcerpt: "Photosynthesis converts energy.",
       mastery: .9, attempts: 1, correct: 1, partial: 0, incorrect: 0,
-      difficulty: 2, missingConcepts: [],
+      difficulty: 2, stabilityDays: 1, missingConcepts: [],
     }],
   });
   const insights = buildRetentionInsights([retest, first]);
