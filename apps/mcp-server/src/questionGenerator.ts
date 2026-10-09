@@ -1,3 +1,5 @@
+import { studyLanguage } from "./studyLanguage.js";
+
 export type GeneratedChoice = {
   label: string;
   value: string;
@@ -54,6 +56,7 @@ export function generateQuestion(input: {
   const concept = clean(input.concept.label);
   const source = clean(input.concept.sourceExcerpt);
   const index = Math.max(0, input.questionIndex ?? 0);
+  const pt = studyLanguage(source) === "pt-BR";
 
   if (input.type === "multiple_choice") {
     const distractors = distinctAlternativeStatements(
@@ -72,7 +75,7 @@ export function generateQuestion(input: {
 
     const values = rotate([source, ...distractors.slice(0, 3)], index);
     return {
-      prompt: `Which statement best describes ${concept} according to the study material?`,
+      prompt: pt ? `Qual afirmação descreve corretamente ${concept} de acordo com o material?` : `Which statement best describes ${concept} according to the study material?`,
       choices: values.map((value, choiceIndex) => ({
         label: String.fromCharCode(65 + choiceIndex),
         value,
@@ -83,19 +86,18 @@ export function generateQuestion(input: {
   }
 
   if (input.type === "true_false") {
-    const trueFirst = index % 2 === 0;
-    const falseValue = "No. This statement is not supported by the study material.";
+    const supported = index % 2 === 0;
+    // The false statement is provably false: this concept is in the source.
+    const statement = supported ? source :
+      pt ? `O material nunca menciona ${concept}.` :
+      `The study material never mentions ${concept}.`;
     return {
-      prompt: `Which option matches the source about ${concept}?`,
-      choices: trueFirst
-        ? [
-            { label: "True", value: source },
-            { label: "False", value: falseValue },
-          ]
-        : [
-            { label: "False", value: falseValue },
-            { label: "True", value: source },
-          ],
+      prompt: pt ? `Verdadeiro ou falso de acordo com o material? ${statement}` :
+        `True or false according to the study material? ${statement}`,
+      choices: [
+        { label: pt ? "Verdadeiro" : "True", value: "true" },
+        { label: pt ? "Falso" : "False", value: "false" },
+      ],
       answerMode: "choice",
       generatedBy: "deterministic",
     };
@@ -103,7 +105,7 @@ export function generateQuestion(input: {
 
   if (input.type === "application") {
     return {
-      prompt: `Apply ${concept} to a new example. Explain how your example follows the idea in the source.`,
+      prompt: pt ? `Aplique ${concept} a um novo exemplo e explique a relação com a fonte.` : `Apply ${concept} to a new example. Explain how your example follows the idea in the source.`,
       answerMode: "text",
       generatedBy: "deterministic",
     };
@@ -111,7 +113,7 @@ export function generateQuestion(input: {
 
   if (input.type === "free_recall") {
     return {
-      prompt: `Without looking back, explain ${concept} in your own words and include the most important detail.`,
+      prompt: pt ? `Sem consultar as anotações, explique ${concept} com suas palavras e inclua o detalhe mais importante.` : `Without looking back, explain ${concept} in your own words and include the most important detail.`,
       answerMode: "text",
       generatedBy: "deterministic",
     };
@@ -119,15 +121,29 @@ export function generateQuestion(input: {
 
   if (input.type === "explain_why") {
     return {
-      prompt: `Why does ${concept} matter in this material? Explain the relationship, not just the definition.`,
+      prompt: pt ? `Por que ${concept} é importante neste material? Explique a relação, não apenas a definição.` : `Why does ${concept} matter in this material? Explain the relationship, not just the definition.`,
       answerMode: "text",
       generatedBy: "deterministic",
     };
   }
 
   return {
-    prompt: `What is ${concept}, and what does the source say about it?`,
+    prompt: pt ? `O que é ${concept} e como aparece no material?` : `What is ${concept}, and what does the source say about it?`,
     answerMode: "text",
     generatedBy: "deterministic",
   };
+}
+
+/** Kept on the server: no objective answer key is returned to the student. */
+export function evaluateObjectiveChoice(input: {
+  type: "multiple_choice" | "true_false";
+  selected: string;
+  sourceExcerpt: string;
+  questionIndex: number;
+}): boolean {
+  const selected = clean(input.selected).toLocaleLowerCase();
+  const expected = input.type === "true_false"
+    ? (input.questionIndex % 2 === 0 ? "true" : "false")
+    : clean(input.sourceExcerpt).toLocaleLowerCase();
+  return selected === expected;
 }

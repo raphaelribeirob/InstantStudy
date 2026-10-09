@@ -1,3 +1,5 @@
+import { studyLanguage } from "./studyLanguage.js";
+
 export type StudyFlashcard = {
   id: string;
   front: string;
@@ -59,6 +61,7 @@ export function generateStudyAssets(contentText: string): StudyAssets {
   const clean = contentText.replace(/\s+/g, " ").trim().slice(0, 200000);
   const sourceSentences = sentences(clean);
   const keyConcepts = keywords(clean, 12);
+  const pt = studyLanguage(clean) === "pt-BR";
 
   const scored = sourceSentences.map((sentence, index) => {
     const bag = new Set(normalizedWords(sentence));
@@ -90,8 +93,8 @@ export function generateStudyAssets(contentText: string): StudyAssets {
 
     flashcards.push({
       id: `card-${flashcards.length + 1}-${concept}`,
-      front: `What should you remember about ${titleCase(concept)}?`,
-      back: sentence,
+      front: `${pt ? "Qual conceito completa a afirmação" : "Which concept completes the statement"}: ${sentence.replace(new RegExp(`\\b${concept}\\b`, "i"), "_____").slice(0, 250)}?`,
+      back: `${titleCase(concept)} — ${sentence}`,
       concept: titleCase(concept),
     });
 
@@ -102,7 +105,7 @@ export function generateStudyAssets(contentText: string): StudyAssets {
     for (const [index, sentence] of sourceSentences.slice(0, 8).entries()) {
       flashcards.push({
         id: `card-${index + 1}`,
-        front: `Explain this idea in your own words: ${sentence.slice(0, 90)}${sentence.length > 90 ? "…" : ""}`,
+        front: `${pt ? "Explique a ideia principal apresentada neste trecho" : "Explain the central claim in this excerpt"}: ${sentence.slice(0, 75)}${sentence.length > 75 ? "…" : ""}?`,
         back: sentence,
         concept: `Idea ${index + 1}`,
       });

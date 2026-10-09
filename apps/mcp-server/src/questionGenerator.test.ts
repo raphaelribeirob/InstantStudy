@@ -64,3 +64,14 @@ test("false choice does not repeat the correct source text", () => {
   assert.ok(falseChoice);
   assert.doesNotMatch(falseChoice.value, /converts light energy into chemical energy/i);
 });
+
+test("true/false returns real answer options", () => {
+  const a = generateQuestion({type:"true_false",concept,questionIndex:0});
+  const b = generateQuestion({type:"true_false",concept,questionIndex:1});
+  assert.deepEqual(a.choices?.map(c=>c.value), ["true","false"]);
+  assert.notEqual(a.prompt,b.prompt);
+});
+test("Portuguese learning content produces Portuguese study questions", () => {
+  const q = generateQuestion({type:"free_recall",concept:{label:"Fotossíntese",sourceExcerpt:"A fotossíntese transforma energia luminosa em energia química."}});
+  assert.match(q.prompt,/Sem consultar as anotações/);
+});
