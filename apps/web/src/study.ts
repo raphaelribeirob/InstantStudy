@@ -1,4 +1,5 @@
 import { readInstantAccountSession } from "./instantBilling";
+import { currentInstantStudyLanguage } from "./i18n";
 
 export type StudyMode = "learn" | "review" | "quiz" | "test";
 export type TestQuestionType =
@@ -257,6 +258,7 @@ export async function prepareStudy(input: {
     return (await request(
       identified({
         action: "prepare",
+        locale: currentInstantStudyLanguage(),
         contentText: input.contentText,
         title: input.title,
         mode: input.mode,
