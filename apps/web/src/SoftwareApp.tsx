@@ -760,7 +760,7 @@ export function SoftwareApp() {
       <main className="software-main">
         <header className="software-topbar">
           <button type="button" className="software-orbital-brand" onClick={() => openWorkspace("home")} aria-label={i18n.language.startsWith("pt") ? "Voltar à Órbita" : "Return to Orbital home"}>
-            <SiriOrb size="35px" state="idle" />
+            <SiriOrb size="35px" state="idle" colors={{ bg: "#fdfcfc", c1: "#0447ff", c2: "#ff4704", c3: "#bda9d8", c4: "#f7baa4" }} />
             <span>InstantStudy<sup>™</sup><small>ÓRBITA</small></span>
           </button>
           <div className="software-topbar-actions">
