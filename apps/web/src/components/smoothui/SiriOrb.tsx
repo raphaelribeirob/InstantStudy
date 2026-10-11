@@ -247,6 +247,7 @@ const SiriOrb: React.FC<SiriOrbProps> = ({
           "--orb-size": size,
           height: size,
           width: size,
+          position: "relative",
         } as MotionStyle
       }
       transition={getRootTransition()}
@@ -256,6 +257,8 @@ const SiriOrb: React.FC<SiriOrbProps> = ({
         animate={{ opacity: stateMotion.glow * GLOW_MAX_OPACITY }}
         className="absolute rounded-full"
         style={{
+          position: "absolute",
+          borderRadius: "50%",
           background: `radial-gradient(circle at 50% 50%, ${glowColor} 0%, transparent 64%)`,
           filter: `blur(calc(var(--orb-size) * ${GLOW_BLUR_RATIO}))`,
           inset: "-12%",
