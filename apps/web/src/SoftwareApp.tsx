@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import {
   BookOpen,
+  BookOpenCheck,
   Brain,
   BarChart3,
   Camera,
