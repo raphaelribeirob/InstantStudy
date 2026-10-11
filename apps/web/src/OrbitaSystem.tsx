@@ -7,6 +7,7 @@ import {
   RotateCcw, Sparkles, Users, type LucideIcon,
 } from "lucide-react";
 import SiriOrb from "./components/smoothui/SiriOrb";
+import { useRealtimeTutor } from "./useRealtimeTutor";
 import { getDueReviews, getRetentionInsights, type DueReview, type RetentionInsights, type StudyMaterial } from "./study";
 import type { AIState } from "./components/smoothui/ai-core";
 import "./orbita-system.css";
@@ -106,10 +107,11 @@ export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial }
   const [commandStatus, setCommandStatus] = useState("");
   const [listening, setListening] = useState(false);
   const [highlight, setHighlight] = useState<OrbitalAction>("orbita");
+  const tutor = useRealtimeTutor();
   const recognitionRef = useRef<SpeechListener | null>(null);
   const speechWindow = window as SpeechBrowser;
   const canRecognize = Boolean(speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition);
-  const orbState: AIState = listening ? "listening" : "idle";
+  const orbState: AIState = tutor.state === "connecting" || tutor.state === "thinking" ? "thinking" : tutor.state === "speaking" ? "streaming" : tutor.state === "listening" || listening ? "listening" : tutor.state === "error" ? "error" : "idle";
 
   async function refresh() {
     setPending(true);
@@ -141,6 +143,7 @@ export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial }
   }, []);
 
   function open(id: OrbitalAction) {
+    tutor.stop();
     setHighlight(id);
     onAction(id);
   }
@@ -162,6 +165,7 @@ export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial }
       setListening(false);
       return;
     }
+    if (tutor.active) return;
     const Engine = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
     if (!Engine) return;
     const recognition = new Engine();
@@ -220,7 +224,7 @@ export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial }
           <div className="orbital-system-ring orbital-system-ring-inner" aria-hidden="true" />
 
           <div className="orbital-system-core" aria-hidden="true">
-            <SiriOrb size="204px" state={orbState} colors={{ bg: "#fdfcfc", c1: "#0447ff", c2: "#ff4704", c3: "#bda9d8", c4: "#f7baa4" }} />
+            <SiriOrb size="204px" state={orbState} amplitude={tutor.amplitude} colors={{ bg: "#fdfcfc", c1: "#0447ff", c2: "#ff4704", c3: "#bda9d8", c4: "#f7baa4" }} />
           </div>
           {MODULES.filter(x => typeof x.orbit === "number").map(module => {
             const angle = (module.orbit ?? 0) * Math.PI / 180;
@@ -241,7 +245,7 @@ export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial }
           })}
           <div className="orbital-system-core-caption">
             <span className={"orbital-system-pulse" + (listening ? " is-live" : "")} />
-            {listening ? tr("Ouvindo comando", "Listening for a command") : tr("Selecione uma ferramenta para começar", "Choose a tool to begin")}
+            {tutor.state === "speaking" ? tr("Tutora OpenAI falando", "OpenAI tutor speaking") : tutor.state === "thinking" ? tr("Tutora OpenAI pensando", "OpenAI tutor thinking") : tutor.state === "connecting" ? tr("Conectando à OpenAI", "Connecting to OpenAI") : tutor.state === "listening" ? tr("Tutora OpenAI ouvindo", "OpenAI tutor listening") : listening ? tr("Ouvindo comando", "Listening for a command") : tr("Selecione uma ferramenta para começar", "Choose a tool to begin")}
           </div>
           <span className="orbital-system-footnote">{tr("Um motor de estudo. Várias maneiras de aprender.", "One study engine. Multiple ways to learn.")}</span>
         </section>
@@ -270,6 +274,41 @@ export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial }
               <ArrowRight size={18} />
             </button>
           </div>
+
+          <section className="orbital-realtime" aria-label={tr("Tutoria OpenAI por voz", "OpenAI voice tutor")}>
+            <div className="orbital-realtime-head"><span>OPENAI / REALTIME</span><strong>{tr("Converse com sua Órbita.", "Talk to your Órbita.")}</strong></div>
+            <p>{selected
+              ? tr("A tutora trabalha com o material selecionado: ", "Your tutor uses the selected material: ") + selected.title
+              : tr("Escolha um material para estudar por voz, ou pratique técnicas gerais de estudo.", "Select material for grounded practice, or discuss general study skills.")}</p>
+            <button className={tutor.active ? "orbital-realtime-stop" : "orbital-realtime-start"} type="button"
+              disabled={tutor.state === "connecting"}
+              onClick={() => {
+                if (tutor.active) {
+                  tutor.stop();
+                  return;
+                }
+                if (recognitionRef.current) {
+                  recognitionRef.current.stop();
+                  recognitionRef.current = null;
+                  setListening(false);
+                }
+                void tutor.start({
+                  title: selected?.title || "Study skills",
+                  sourceExcerpt: selected?.content || "",
+                  locale: pt ? "pt-BR" : "en-US",
+                });
+              }}>
+              {tutor.active ? <MicOff size={17}/> : <Mic size={17}/>}
+              {tutor.state === "connecting" ? tr("Conectando…", "Connecting…") : tutor.active
+                ? tr("Encerrar conversa", "End conversation") : tr("Falar com a OpenAI", "Speak with OpenAI")}
+            </button>
+            {tutor.error && <small role="alert" className="orbital-realtime-error">{tutor.error}</small>}
+            {tutor.transcript && <div role="status" className="orbital-realtime-caption">{tutor.transcript}</div>}
+            <small>{tr(
+              "Conta Plus/Unlimited necessária. Uso limitado a 3 minutos por sessão e cota diária. A voz vai para a OpenAI. Conversas não registram notas automaticamente.",
+              "Plus/Unlimited account required. 3-minute per-session and daily limits apply. Voice is sent to OpenAI. Conversations do not auto-record grades.",
+            )}</small>
+          </section>
 
           <form className="orbital-system-command" onSubmit={e => { e.preventDefault(); runCommand(command); }}>
             <label htmlFor="orbital-command">{tr("NAVEGAR POR VOZ OU TEXTO", "NAVIGATE BY VOICE OR TEXT")}</label>
