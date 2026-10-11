@@ -237,6 +237,10 @@ export function SoftwareApp() {
   useEffect(() => cacheLibrary(library), [library]);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
+
+  useEffect(() => {
     if (view !== "review") return;
     setReviewBusy(true);
     void getDueReviews()
@@ -780,6 +784,24 @@ export function SoftwareApp() {
             </button>
           </div>
         </header>
+
+        {view !== "home" && (
+          <div className="software-orbital-context">
+            <button type="button" className="software-orbital-center" onClick={() => openWorkspace("home")}>
+              <Orbit size={16} /> {i18n.language.startsWith("pt") ? "Voltar à Órbita" : "Back to Órbita"}
+            </button>
+            <nav className="software-orbital-context-nav" aria-label={i18n.language.startsWith("pt") ? "Modos de aprendizagem" : "Learning modes"}>
+              <button type="button" className={view === "orbita" ? "active" : ""} onClick={() => openOrbitalAction("orbita")}><Orbit size={15} />{t("common.review")}</button>
+              <button type="button" className={view === "learn" && session?.mode !== "quiz" ? "active" : ""} onClick={() => openOrbitalAction("learn")}><Brain size={15} />{t("common.learn")}</button>
+              <button type="button" className={view === "learn" && session?.mode === "quiz" ? "active" : ""} onClick={() => openOrbitalAction("quiz")}><BookOpenCheck size={15} />Quiz</button>
+              <button type="button" className={view === "test" ? "active" : ""} onClick={() => openOrbitalAction("test")}><GraduationCap size={15} />{t("common.test")}</button>
+              <button type="button" className={view === "ask" ? "active" : ""} onClick={() => openOrbitalAction("ask")}><MessageCircle size={15} />{t("common.ask")}</button>
+              <button type="button" className={view === "flashcards" ? "active" : ""} onClick={() => openOrbitalAction("flashcards")}><FileText size={15} />Flashcards</button>
+              <button type="button" className={view === "audio" ? "active" : ""} onClick={() => openOrbitalAction("audio")}><Headphones size={15} />Podcast</button>
+              <button type="button" className={view === "insights" ? "active" : ""} onClick={() => openOrbitalAction("insights")}><BarChart3 size={15} />{t("common.insights")}</button>
+            </nav>
+          </div>
+        )}
 
         {view === "home" && (
           <OrbitaSystem materials={library} selected={selected} onAction={openOrbitalAction} onSelectMaterial={openMaterial} />
