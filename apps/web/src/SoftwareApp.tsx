@@ -13,6 +13,7 @@ import {
   Headphones,
   Home,
   Orbit,
+  Layers3,
   Library,
   MessageCircle,
   Mic,
@@ -66,6 +67,8 @@ import {
   type InstantStudyFamily,
 } from "./instantBilling";
 import { OrbitaReview } from "./OrbitaReview";
+import { OrbitaSystem, type OrbitalAction } from "./OrbitaSystem";
+import SiriOrb from "./components/smoothui/SiriOrb";
 import "./software.css";
 
 type View =
@@ -124,6 +127,7 @@ export function SoftwareApp() {
   const { t, i18n } = useTranslation();
   const cached = readCachedLibrary();
   const [view, setView] = useState<View>("home");
+  const [showTools, setShowTools] = useState(false);
   const [library, setLibrary] = useState<StudyMaterial[]>(cached);
   const [selectedId, setSelectedId] = useState<string | null>(cached[0]?.id ?? null);
   const [sourceType, setSourceType] = useState<SourceType>("paste");
@@ -445,8 +449,35 @@ export function SoftwareApp() {
 
   function openMaterial(item: StudyMaterial) {
     setSelectedId(item.id);
+    setShowTools(false);
     setView("learn");
     void startMode("learn", item);
+  }
+
+  function openWorkspace(destination: View) {
+    setShowTools(false);
+    setView(destination);
+  }
+
+  function openOrbitalAction(action: OrbitalAction) {
+    setShowTools(false);
+    if (["learn", "quiz", "test", "ask", "guide", "flashcards", "audio", "game"].includes(action) && !selected) {
+      setView("create");
+      return;
+    }
+    if (action === "learn" || action === "quiz") {
+      setView("learn");
+      void startMode(action);
+      return;
+    }
+    if (action === "test") {
+      setSession(null);
+      setSummary(null);
+      setFeedback("");
+      setView("test");
+      return;
+    }
+    setView(action);
   }
 
   function toggleTestType(type: TestQuestionType) {
@@ -683,8 +714,8 @@ export function SoftwareApp() {
         : selectedFiles.length > 0;
 
   return (
-    <div className={`software-shell software-view-${view}`}>
-      <aside className="software-sidebar">
+    <div className={`software-shell software-orbital-shell software-view-${view} ${showTools ? "software-tools-open" : ""}`}>
+      <aside className="software-sidebar" id="software-tools-sidebar" aria-label={i18n.language.startsWith("pt") ? "Navegação clássica" : "Classic navigation"}>
         <a className="software-brand" href="/">
           <span className="software-mark"><i /></span>
           <strong>InstantStudy<span>™</span></strong>
@@ -695,23 +726,23 @@ export function SoftwareApp() {
         </button>
 
         <nav>
-          {navItem("home", view, <Home size={17}/>, t("common.home"), setView)}
-          {navItem("library", view, <Library size={17}/>, t("common.library"), setView)}
-          {navItem("orbita", view, <Orbit size={17}/>, "Órbita", setView)}
+          {navItem("home", view, <Home size={17}/>, t("common.home"), openWorkspace)}
+          {navItem("library", view, <Library size={17}/>, t("common.library"), openWorkspace)}
+          {navItem("orbita", view, <Orbit size={17}/>, "Órbita", openWorkspace)}
           <div className="software-nav-label">{t("software.study")}</div>
-          {navItem("guide", view, <BookOpen size={17}/>, t("common.guide"), setView)}
-          {navItem("flashcards", view, <FileText size={17}/>, t("common.flashcards"), setView)}
-          {navItem("learn", view, <Brain size={17}/>, t("common.learn"), setView)}
-          {navItem("test", view, <GraduationCap size={17}/>, t("common.test"), setView)}
-          {navItem("ask", view, <MessageCircle size={17}/>, t("common.ask"), setView)}
-          {navItem("review", view, <BookOpen size={17}/>, t("common.review"), setView)}
-          {navItem("insights", view, <BarChart3 size={17}/>, t("common.insights"), setView)}
-          {navItem("audio", view, <Headphones size={17}/>, t("common.podcast"), setView)}
-          {navItem("game", view, <Puzzle size={17}/>, t("common.studyGame"), setView)}
-          {navItem("friends", view, <Users size={17}/>, t("common.friends"), setView)}
-          {navItem("family", view, <UserRoundPlus size={17}/>, t("common.family"), setView)}
+          {navItem("guide", view, <BookOpen size={17}/>, t("common.guide"), openWorkspace)}
+          {navItem("flashcards", view, <FileText size={17}/>, t("common.flashcards"), openWorkspace)}
+          {navItem("learn", view, <Brain size={17}/>, t("common.learn"), openWorkspace)}
+          {navItem("test", view, <GraduationCap size={17}/>, t("common.test"), openWorkspace)}
+          {navItem("ask", view, <MessageCircle size={17}/>, t("common.ask"), openWorkspace)}
+          {navItem("review", view, <BookOpen size={17}/>, t("common.review"), openWorkspace)}
+          {navItem("insights", view, <BarChart3 size={17}/>, t("common.insights"), openWorkspace)}
+          {navItem("audio", view, <Headphones size={17}/>, t("common.podcast"), openWorkspace)}
+          {navItem("game", view, <Puzzle size={17}/>, t("common.studyGame"), openWorkspace)}
+          {navItem("friends", view, <Users size={17}/>, t("common.friends"), openWorkspace)}
+          {navItem("family", view, <UserRoundPlus size={17}/>, t("common.family"), openWorkspace)}
           <div className="software-nav-label">{t("software.ai")}</div>
-          {navItem("plugin", view, <Plug size={17}/>, t("common.plugin"), setView)}
+          {navItem("plugin", view, <Plug size={17}/>, t("common.plugin"), openWorkspace)}
         </nav>
 
         <div className="software-plan">
@@ -723,64 +754,35 @@ export function SoftwareApp() {
 
       <main className="software-main">
         <header className="software-topbar">
-          <div className="software-search">
-            <Search size={16}/>
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") void searchLibrary();
-              }}
-              placeholder={t("software.searchLibrary")}
-            />
+          <button type="button" className="software-orbital-brand" onClick={() => openWorkspace("home")} aria-label={i18n.language.startsWith("pt") ? "Voltar à Órbita" : "Return to Orbital home"}>
+            <SiriOrb size="35px" state="idle" />
+            <span>InstantStudy<sup>™</sup><small>ÓRBITA</small></span>
+          </button>
+          <div className="software-topbar-actions">
+            {view !== "home" && (
+              <div className="software-search">
+                <Search size={16}/>
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") void searchLibrary();
+                  }}
+                  placeholder={t("software.searchLibrary")}
+                  aria-label={t("software.searchLibrary")}
+                />
+              </div>
+            )}
+            <LanguageSwitcher compact />
+            <button className="software-tool-toggle" type="button" onClick={() => setShowTools((open) => !open)}
+              aria-expanded={showTools} aria-controls="software-tools-sidebar">
+              <Layers3 size={17}/><span>{i18n.language.startsWith("pt") ? "Ferramentas" : "Tools"}</span>
+            </button>
           </div>
-          <LanguageSwitcher compact />
-          <span className="software-sync"><CheckCircle2 size={14}/> {t("software.persistentState")}</span>
         </header>
 
         {view === "home" && (
-          <section className="software-page">
-            <div className="software-hero">
-              <p>{t("software.futureLearning")}</p>
-              <h1>{t("software.homeTitle")}</h1>
-              <span>{t("software.homeBody")}</span>
-              <button onClick={() => setView("create")}><Sparkles size={17}/> {t("software.createMaterial")}</button>
-            </div>
-
-            <div className="software-orbita-home-cta">
-              <div><span>INSTANTSTUDY / ACTIVE RECALL</span><strong>Órbita.</strong><small>{i18n.language.startsWith("pt") ? "Revise sua memória com uma interface orbital e respostas por voz ou texto." : "Review your memory in an orbital interface with voice or text."}</small></div>
-              <button onClick={() => setView("orbita")}>{i18n.language.startsWith("pt") ? "Abrir Órbita" : "Open Órbita"} <Orbit size={18}/></button>
-            </div>
-            <div className="software-section-head"><h2>{t("software.continueStudying")}</h2><button onClick={() => setView("library")}>{t("software.viewLibrary")}</button></div>
-            <div className="software-library-grid">
-              {filteredLibrary.length ? filteredLibrary.slice(0, 6).map((item) => (
-                <button className="software-material-card" key={item.id} onClick={() => openMaterial(item)}>
-                  <span><FileText size={18}/></span>
-                  <strong>{item.title}</strong>
-                  <small>{new Date(item.updatedAt || item.createdAt).toLocaleDateString(i18n.language)}</small>
-                </button>
-              )) : (
-                <div className="software-empty">
-                  <Upload size={24}/>
-                  <strong>{t("software.libraryEmptyTitle")}</strong>
-                  <p>{t("software.libraryEmptyBody")}</p>
-                </div>
-              )}
-            </div>
-
-            <div className="software-feature-grid">
-              <button onClick={() => setView("orbita")}><Orbit/><strong>Órbita</strong><span>{i18n.language.startsWith("pt") ? "Revisão por voz com memória adaptativa" : "Voice-enabled active recall"}</span></button>
-              <button onClick={() => setView("guide")}><BookOpen/><strong>{t("common.guide")}</strong><span>{t("software.guideDetail")}</span></button>
-              <button onClick={() => setView("flashcards")}><FileText/><strong>{t("common.flashcards")}</strong><span>{t("software.flashcardsDetail")}</span></button>
-              <button onClick={() => setView("learn")}><Brain/><strong>{t("common.learn")}</strong><span>{t("software.learnDetail")}</span></button>
-              <button onClick={() => setView("test")}><GraduationCap/><strong>{t("common.test")}</strong><span>{t("software.testDetail")}</span></button>
-              <button onClick={() => setView("insights")}><BarChart3/><strong>Retention Insights</strong><span>Mastery, streaks and weak concepts</span></button>
-              <button onClick={() => setView("audio")}><Headphones/><strong>{t("common.podcast")}</strong><span>{t("software.podcastBody")}</span></button>
-              <button onClick={() => setView("game")}><Puzzle/><strong>{t("common.studyGame")}</strong><span>{t("software.matchKnowledge")}</span></button>
-              <button onClick={() => setView("friends")}><Users/><strong>{t("common.friends")}</strong><span>{t("software.studyTogether")}</span></button>
-              <button onClick={() => setView("family")}><UserRoundPlus/><strong>{t("common.family")}</strong><span>{t("software.familyKicker")}</span></button>
-            </div>
-          </section>
+          <OrbitaSystem materials={library} selected={selected} onAction={openOrbitalAction} onSelectMaterial={openMaterial} />
         )}
 
         {view === "library" && (
@@ -918,7 +920,7 @@ export function SoftwareApp() {
             ) : (
               <>
                 <div className="software-workspace-head">
-                  <div><p>{selected.title}</p><h1>{view === "test" ? t("common.test") : view === "guide" ? t("common.guide") : view === "flashcards" ? t("common.flashcards") : view === "learn" ? t("common.learn") : t("common.ask")}</h1></div>
+                  <div><p>{selected.title}</p><h1>{view === "test" ? t("common.test") : view === "guide" ? t("common.guide") : view === "flashcards" ? t("common.flashcards") : view === "learn" ? (session?.mode === "quiz" ? "Quiz" : t("common.learn")) : t("common.ask")}</h1></div>
                   <div className="software-mode-switch">
                     <button onClick={() => setView("guide")}>{t("common.guide")}</button>
                     <button onClick={() => setView("flashcards")}>{t("common.flashcards")}</button>
