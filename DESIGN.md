@@ -100,7 +100,7 @@ Never imply that a font file has been installed when the app only uses a fallbac
 ### 5.4 Import, recording and voice
 - Import UI supports paste, uploaded documents and audio using the existing ingestion pipeline.
 - Browser speech recognition requires explicit user action and has a typed fallback. Disclose potential remote recognition by the browser provider.
-- OpenAI Realtime duplex speech is **not delivered** merely by rendering the Siri Orb.
+- OpenAI Realtime WebRTC tutoring is implemented in the Web Orbital cockpit behind authenticated Plus/Unlimited entitlement and a configured backend feature flag. The voice tutor is **practice-only** and does not persist mastery or official scores; users still submit answers through the Study Engine.
 - Release microphone tracks immediately when transcription ends or is cancelled.
 
 ### 5.5 Pricing and plugin surfaces
@@ -148,4 +148,16 @@ Verify on PR:
 
 ## 9. Explicit non-goals
 
-No copying ElevenLabs text/assets/identity; no redistribution of Waldenburg fonts. No fake "retention percentage" claim, FSRS migration, ChatGPT hosted voice guarantee, Realtime voice installation, new backend data models, app store payment changes or Flutter native parity as side effects of this design change.
+No copying ElevenLabs text/assets/identity; no redistribution of Waldenburg fonts. No fake "retention percentage" claim, FSRS migration, ChatGPT hosted voice guarantee, OpenAI-hosted tools or auto-grading for live voice, app store payment changes or Flutter native parity as side effects of this design change.
+
+
+## 10. OpenAI Realtime — voice tutor connection
+
+- Only initiate a real WebRTC session on explicit **Speak with OpenAI** user action; microphone permission requires a user gesture.
+- Route SDP through `/api/study` → authenticated paid learner validation → bearer-protected Study API → `POST /v1/realtime/calls` from the backend. `OPENAI_API_KEY` never goes to Web/PWA source or network response.
+- Scope the tutor to a limited excerpt of the selected learner material, treat it as untrusted, prompt one Socratic question at a time, and never imply spoken feedback writes grades, durable memory or scheduled reviews.
+- Voice output and audio input use negotiated WebRTC media tracks. The Siri Orb reacts to actual analyser amplitude. Navigation by Web Speech API remains a distinct, optional feature.
+- Session startup requires `INSTANTSTUDY_REALTIME_ENABLED=true`, configured OpenAI credentials, a paid signed-in account, and durable per-user daily admission quota in Neon. Fail closed on missing identity, entitlement, flags, key or quota storage.
+- Client ends/cleans tracks after **3 minutes**. This is a client-side safeguard, not a provider-enforced hard spend cap; operate with OpenAI project limits and usage alerting. Starting a voice session may incur charges.
+- Color/motion and status text follow this DESIGN.md; the voice controls remain eggshell/taupe/black. Offer an error fallback that leaves normal study features usable.
+- Native Flutter WebRTC parity and automated attribution of voice practice to the Study Engine require separate projects.
