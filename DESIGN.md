@@ -328,3 +328,46 @@ Every screen should answer:
 > Does this feel like the next generation of learning, or just another study app?
 
 If it looks like a conventional flashcard product, simplify and increase the sense of system, memory, and continuity.
+
+
+---
+
+## 15. Órbita — the spoken active-recall surface
+
+Órbita is the primary **visual interaction for Review** in the web software, not a replacement for InstantStudy's learning engine, library, or existing LLM/MCP integration.
+
+**Layout**
+
+- Warm editorial heading and mineral paper canvas follow this document's existing identity.
+- The left stage is nearly black and shows a luminous indigo sphere at the center of three thin concentric orbital tracks.
+- Burnt-orange satellites represent **due concepts** from the real due-review API. Click a satellite to start a review.
+- The right stage contains one question at a time, an editable text answer, optional spoken dictation, evaluation feedback, completion, and the due queue.
+- Green means a successful answer state; orange means an answer needs repair; indigo means focus/listening. These transient colors are **not** a certified measure of knowledge.
+- Responsive web: side-by-side desktop, stacked compact stage on mobile. Reduced-motion mode disables pulsing.
+
+**Behavior and boundaries**
+
+1. Fetch scheduled reviews using `getDueReviews`; display only actual returned concepts. Do not fabricate progress or reviews.
+2. Start review with `prepareStudy(mode: "review")`, reuse `submitStudyAnswer` for grading, and persist through the shared Study Engine.
+3. When the due queue is empty, allow optional practice from a selected library material; label it practice rather than calling it due.
+4. Voice input uses browser SpeechRecognition when present and only after a click. If unsupported, text input works normally.
+5. Narration uses browser speech synthesis and is **off by default**. The user explicitly opts in by pressing “Ouvir perguntas / Read aloud”.
+6. Do not send API secrets, raw microphone audio, or per-user credentials into frontend bundles. Browser speech recognition may be processed by the browser provider; disclose that to the user.
+7. Error and backend-unavailable states must be visible. Never present local fallback placeholder as a real study question.
+8. Support EN / PT-BR; avoid relying on color alone to explain learning state.
+
+**Current technical scope**
+
+- The web frontend includes Órbita as a review workspace; the previous Review view remains available as a compatibility path.
+- This is **not yet OpenAI Realtime**. Voice is browser speech input/output around the existing text-based grading API; speech support differs between browsers.
+- The existing `Study Engine` uses its own mastery/stability-based review schedule. **Do not label the current backend FSRS** before a dedicated integration and schedule-migration tests are implemented.
+- Flutter parity, genuine duplex Realtime voice, audio usage metering, auth/OAuth hardening for public ChatGPT distribution, and validated FSRS scheduling are later scoped deliverables.
+
+**Acceptance criteria**
+
+- A student with due concepts sees clickable orange satellites and can complete a persisted review.
+- A student without due concepts sees an accurate empty state and can practice a library material.
+- Voice buttons appear only when APIs exist; typing is always available.
+- No microphone interaction occurs before user action; speech output is muted by default.
+- UI remains functional at 360px and with prefers-reduced-motion.
+- The existing Learn, Quiz, Test, library, and MCP capabilities remain unchanged.
