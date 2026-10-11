@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
+import SiriOrb from "./components/smoothui/SiriOrb";
+import { useAudioAmplitude, type AIState } from "./components/smoothui/ai-core";
 import { ArrowRight, AudioLines, BookOpen, Check, Mic, MicOff, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import {
   getDueReviews,
@@ -54,6 +56,7 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const recognitionRef = useRef<Recognition | null>(null);
   const requestRef = useRef(false);
+  const { amplitude, start: startAudioMeter, stop: stopAudioMeter } = useAudioAmplitude();
   const speechAvailable = typeof window !== "undefined" && "speechSynthesis" in window;
   const speechWindow = typeof window !== "undefined" ? (window as SpeechWindow) : null;
   const recognitionAvailable = Boolean(speechWindow?.SpeechRecognition || speechWindow?.webkitSpeechRecognition);
@@ -81,6 +84,7 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
     if (speechAvailable) window.speechSynthesis.cancel();
     recognitionRef.current?.stop();
     recognitionRef.current = null;
+    stopAudioMeter();
     setState("ready");
   }
 
@@ -192,25 +196,33 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
       if (transcript.trim()) setAnswer(transcript.trim());
     };
     recognition.onerror = () => {
+      stopAudioMeter();
       setState("ready");
       setError(copy("Microfone indisponível. Digite sua resposta.", "Microphone unavailable. Type your answer."));
     };
     recognition.onend = () => {
       recognitionRef.current = null;
+      stopAudioMeter();
       setState("ready");
     };
     recognitionRef.current = recognition;
     setError("");
     try {
       recognition.start();
+      void startAudioMeter().then(() => {
+        // If recognition was stopped during the permission prompt, release the microphone.
+        if (recognitionRef.current !== recognition) stopAudioMeter();
+      });
       setState("listening");
     } catch {
       recognitionRef.current = null;
+      stopAudioMeter();
       setState("ready");
       setError(copy("Microfone indisponível neste navegador.", "Microphone unavailable in this browser."));
     }
   }
 
+  const smoothState: AIState = state === "ready" ? "idle" : state === "speaking" ? "streaming" : state === "success" ? "done" : state === "repair" ? "error" : state;
   const currentLabel = question?.concept?.label || "";
   const showIntro = !session && !summary;
   const dots = due.slice(0, 6);
@@ -255,10 +267,8 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
                 disabled={busy}
               ><span /></button>
             ))}
-            <div className="orbita-core" aria-hidden="true">
-              <div className="orbita-core-glow" />
-              <div className="orbita-core-inner"><div className="orbita-core-sheen" /></div>
-              <div className="orbita-core-point" />
+            <div className="orbita-siri-wrap" aria-hidden="true">
+              <SiriOrb size="205px" state={smoothState} amplitude={amplitude} />
             </div>
           </div>
           <div className="orbita-status" role="status" aria-live="polite"><span className="orbita-status-indicator" /> {stateLabel[state]}</div>
