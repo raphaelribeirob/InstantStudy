@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import SiriOrb from "./components/smoothui/SiriOrb";
+import { useRealtimeTutor } from "./useRealtimeTutor";
 import { useAudioAmplitude, type AIState } from "./components/smoothui/ai-core";
 import { ArrowRight, AudioLines, BookOpen, Check, Mic, MicOff, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import {
@@ -43,6 +44,7 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
   const locale = pt ? "pt-BR" : "en-US";
   const copy = (portuguese: string, english: string) => (pt ? portuguese : english);
   const [due, setDue] = useState<DueReview[]>([]);
+  const realtimeTutor = useRealtimeTutor();
   const [dueLoading, setDueLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [state, setState] = useState<OrbState>("ready");
@@ -105,6 +107,7 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
     if (requestRef.current) return;
     if (!item && !material) return;
     stopVoice();
+    realtimeTutor.stop();
     requestRef.current = true;
     setBusy(true);
     setState("thinking");
@@ -141,6 +144,7 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
   async function submit(value = answer) {
     if (requestRef.current || !value.trim() || !session?.studySessionId || !question?.concept?.id) return;
     stopVoice();
+    realtimeTutor.stop();
     requestRef.current = true;
     setBusy(true);
     setState("thinking");
@@ -184,6 +188,7 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
       setState("ready");
       return;
     }
+    if (realtimeTutor.active) return;
     const SpeechConstructor = speechWindow?.SpeechRecognition || speechWindow?.webkitSpeechRecognition;
     if (!SpeechConstructor || busy || !question) return;
     if (speechAvailable) window.speechSynthesis.cancel();
@@ -222,7 +227,7 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
     }
   }
 
-  const smoothState: AIState = state === "ready" ? "idle" : state === "speaking" ? "streaming" : state === "success" ? "done" : state === "repair" ? "error" : state;
+  const smoothState: AIState = realtimeTutor.state === "connecting" || realtimeTutor.state === "thinking" ? "thinking" : realtimeTutor.state === "speaking" ? "streaming" : realtimeTutor.state === "listening" ? "listening" : realtimeTutor.state === "error" ? "error" : state === "ready" ? "idle" : state === "speaking" ? "streaming" : state === "success" ? "done" : state === "repair" ? "error" : state;
   const currentLabel = question?.concept?.label || "";
   const showIntro = !session && !summary;
   const dots = due.slice(0, 6);
@@ -268,7 +273,7 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
               ><span /></button>
             ))}
             <div className="orbita-siri-wrap" aria-hidden="true">
-              <SiriOrb size="205px" state={smoothState} amplitude={amplitude} colors={{ bg: "#fdfcfc", c1: "#0447ff", c2: "#ff4704", c3: "#bda9d8", c4: "#f7baa4" }} />
+              <SiriOrb size="205px" state={smoothState} amplitude={realtimeTutor.active ? realtimeTutor.amplitude : amplitude} colors={{ bg: "#fdfcfc", c1: "#0447ff", c2: "#ff4704", c3: "#bda9d8", c4: "#f7baa4" }} />
             </div>
           </div>
           <div className="orbita-status" role="status" aria-live="polite"><span className="orbita-status-indicator" /> {stateLabel[state]}</div>
@@ -370,6 +375,36 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
             <div className="orbita-card"><p>{copy("Preparando revisão…", "Preparing review…")}</p></div>
           )}
 
+          <section className="orbital-realtime" aria-label={copy("Tutora OpenAI", "OpenAI tutor")}>
+            <div className="orbital-realtime-head"><span>OPENAI / REALTIME</span>
+              <strong>{copy("Estude conversando.", "Learn through conversation.")}</strong>
+            </div>
+            <p>{copy(
+              "Converse sobre o conceito atual com a OpenAI. Para registrar domínio, continue respondendo às perguntas do InstantStudy acima.",
+              "Discuss the current concept with OpenAI. To record mastery, continue answering InstantStudy questions above."
+            )}</p>
+            <button className={realtimeTutor.active ? "orbital-realtime-stop" : "orbital-realtime-start"}
+              type="button" disabled={realtimeTutor.state === "connecting"}
+              onClick={() => {
+                if (realtimeTutor.active) { realtimeTutor.stop(); return; }
+                stopVoice();
+                void realtimeTutor.start({
+                  title: activeTitle || material?.title || "Study session",
+                  sourceExcerpt: question?.concept?.sourceExcerpt || material?.content || "",
+                  locale: pt ? "pt-BR" : "en-US",
+                });
+              }}>
+              {realtimeTutor.active ? <MicOff size={16}/> : <Mic size={16}/>}
+              {realtimeTutor.state === "connecting" ? copy("Conectando…", "Connecting…") : realtimeTutor.active
+                ? copy("Encerrar conversa", "End conversation") : copy("Conversar com OpenAI", "Talk with OpenAI")}
+            </button>
+            {realtimeTutor.error && <small role="alert" className="orbital-realtime-error">{realtimeTutor.error}</small>}
+            {realtimeTutor.transcript && <div className="orbital-realtime-caption" role="status">{realtimeTutor.transcript}</div>}
+            <small>{copy(
+              "Requer conta Plus/Unlimited. 3 minutos por sessão, com cota diária. A OpenAI processa o áudio. Esta conversa não altera notas.",
+              "Plus/Unlimited required; 3 minutes per session with daily limits. OpenAI processes audio. This conversation does not change grades."
+            )}</small>
+          </section>
           {error && <div className="orbita-error" role="alert">{error}</div>}
           <div className="orbita-due">
             <div className="orbita-due-title"><strong>{copy("Na sua órbita", "In your orbit")}</strong>
