@@ -955,3 +955,14 @@ button,input,textarea{font:inherit}
   .software-family-add{grid-template-columns:1fr}
   .software-family-members article{grid-template-columns:1fr}.software-family-members article{padding:14px 0}
 }
+
+
+/* Entry point for the orbital active-recall workspace. */
+.software-orbita-home-cta{display:flex;align-items:center;justify-content:space-between;gap:20px;background:#11110f;color:#f2f0ea;margin-top:16px;padding:28px 32px;position:relative;overflow:hidden}
+.software-orbita-home-cta:after{content:"";position:absolute;width:240px;height:240px;border:1px solid rgba(91,108,255,.38);border-radius:50%;right:12%;top:-80px;pointer-events:none}
+.software-orbita-home-cta>div{display:flex;flex-direction:column;gap:8px;z-index:1}
+.software-orbita-home-cta span{font-size:10px;letter-spacing:.17em;color:#f1a06f;font-weight:700}
+.software-orbita-home-cta strong{font-weight:500;font-size:clamp(34px,4vw,60px);letter-spacing:-.07em;line-height:1}
+.software-orbita-home-cta small{font-size:13px;line-height:1.5;color:#aaa8a4;max-width:350px}
+.software-orbita-home-cta button{z-index:1;flex-shrink:0;background:#f2f0ea;border:0;padding:13px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;color:#11110f;font-weight:650}
+@media(max-width:620px){.software-orbita-home-cta{flex-direction:column;align-items:start;padding:24px}.software-orbita-home-cta button{width:100%;justify-content:space-between}}
