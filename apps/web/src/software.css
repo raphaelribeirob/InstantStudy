@@ -1005,3 +1005,14 @@ button,input,textarea{font:inherit}
   .software-orbital-shell .software-tool-toggle span{display:none}
   .software-orbital-brand>span{font-size:12px}
 }
+
+
+/* Small orbit of actions remains visible while studying in a contextual workspace. */
+.software-orbital-context{position:relative;z-index:3;background:#ece9e2;padding:11px 28px;display:flex;align-items:center;gap:14px;min-width:0;border-bottom:1px solid #d8d4cc}
+.software-orbital-center{background:#11110f;color:#f2f0ea;border:0;display:flex;gap:8px;align-items:center;justify-content:center;padding:10px 13px;font-size:12px;font-weight:650;cursor:pointer;flex-shrink:0}
+.software-orbital-context-nav{display:flex;align-items:center;gap:5px;overflow-x:auto;scrollbar-width:thin;min-width:0;padding:2px}
+.software-orbital-context-nav button{display:flex;align-items:center;gap:7px;white-space:nowrap;flex-shrink:0;background:transparent;color:#65615d;border:1px solid #d9d4cc;padding:9px 11px;font-size:11px;cursor:pointer}
+.software-orbital-context-nav button:hover{background:#f7f6f2;color:#11110f}
+.software-orbital-context-nav button.active{background:#e9eaff;color:#313ab9;border-color:#a6aeed}
+.software-orbital-context button:focus-visible{outline:3px solid #5b6cff;outline-offset:2px}
+@media(max-width:620px){.software-orbital-context{padding:9px 13px;gap:8px}.software-orbital-center{padding:10px;font-size:0}.software-orbital-center svg{width:18px;height:18px}.software-orbital-context-nav button{padding:10px 12px}}
