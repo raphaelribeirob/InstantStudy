@@ -268,7 +268,7 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
               ><span /></button>
             ))}
             <div className="orbita-siri-wrap" aria-hidden="true">
-              <SiriOrb size="205px" state={smoothState} amplitude={amplitude} />
+              <SiriOrb size="205px" state={smoothState} amplitude={amplitude} colors={{ bg: "#fdfcfc", c1: "#0447ff", c2: "#ff4704", c3: "#bda9d8", c4: "#f7baa4" }} />
             </div>
           </div>
           <div className="orbita-status" role="status" aria-live="polite"><span className="orbita-status-indicator" /> {stateLabel[state]}</div>
