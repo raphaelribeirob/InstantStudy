@@ -12,6 +12,7 @@ import {
   GraduationCap,
   Headphones,
   Home,
+  Orbit,
   Library,
   MessageCircle,
   Mic,
@@ -64,6 +65,7 @@ import {
   removeInstantStudyFamilyMember,
   type InstantStudyFamily,
 } from "./instantBilling";
+import { OrbitaReview } from "./OrbitaReview";
 import "./software.css";
 
 type View =
@@ -76,6 +78,7 @@ type View =
   | "test"
   | "ask"
   | "review"
+  | "orbita"
   | "insights"
   | "audio"
   | "game"
@@ -694,6 +697,7 @@ export function SoftwareApp() {
         <nav>
           {navItem("home", view, <Home size={17}/>, t("common.home"), setView)}
           {navItem("library", view, <Library size={17}/>, t("common.library"), setView)}
+          {navItem("orbita", view, <Orbit size={17}/>, "Órbita", setView)}
           <div className="software-nav-label">{t("software.study")}</div>
           {navItem("guide", view, <BookOpen size={17}/>, t("common.guide"), setView)}
           {navItem("flashcards", view, <FileText size={17}/>, t("common.flashcards"), setView)}
@@ -743,6 +747,10 @@ export function SoftwareApp() {
               <button onClick={() => setView("create")}><Sparkles size={17}/> {t("software.createMaterial")}</button>
             </div>
 
+            <div className="software-orbita-home-cta">
+              <div><span>INSTANTSTUDY / ACTIVE RECALL</span><strong>Órbita.</strong><small>{i18n.language.startsWith("pt") ? "Revise sua memória com uma interface orbital e respostas por voz ou texto." : "Review your memory in an orbital interface with voice or text."}</small></div>
+              <button onClick={() => setView("orbita")}>{i18n.language.startsWith("pt") ? "Abrir Órbita" : "Open Órbita"} <Orbit size={18}/></button>
+            </div>
             <div className="software-section-head"><h2>{t("software.continueStudying")}</h2><button onClick={() => setView("library")}>{t("software.viewLibrary")}</button></div>
             <div className="software-library-grid">
               {filteredLibrary.length ? filteredLibrary.slice(0, 6).map((item) => (
@@ -761,6 +769,7 @@ export function SoftwareApp() {
             </div>
 
             <div className="software-feature-grid">
+              <button onClick={() => setView("orbita")}><Orbit/><strong>Órbita</strong><span>{i18n.language.startsWith("pt") ? "Revisão por voz com memória adaptativa" : "Voice-enabled active recall"}</span></button>
               <button onClick={() => setView("guide")}><BookOpen/><strong>{t("common.guide")}</strong><span>{t("software.guideDetail")}</span></button>
               <button onClick={() => setView("flashcards")}><FileText/><strong>{t("common.flashcards")}</strong><span>{t("software.flashcardsDetail")}</span></button>
               <button onClick={() => setView("learn")}><Brain/><strong>{t("common.learn")}</strong><span>{t("software.learnDetail")}</span></button>
@@ -1093,6 +1102,10 @@ export function SoftwareApp() {
               </>
             )}
           </section>
+        )}
+
+        {view === "orbita" && (
+          <OrbitaReview material={selected} onCreateMaterial={() => setView("create")} />
         )}
 
         {view === "review" && (
