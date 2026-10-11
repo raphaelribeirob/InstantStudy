@@ -371,3 +371,36 @@ If it looks like a conventional flashcard product, simplify and increase the sen
 - No microphone interaction occurs before user action; speech output is muted by default.
 - UI remains functional at 360px and with prefers-reduced-motion.
 - The existing Learn, Quiz, Test, library, and MCP capabilities remain unchanged.
+
+
+---
+
+## 16. Órbita OS — default product navigation
+
+**Decision:** Orbital-First replaces the former dashboard as the primary `/app` landing surface on Web/PWA. The independent study features and existing storage/entitlement APIs remain intact.
+
+### Layout
+
+1. **Hero:** monumental editorial title over warm paper.
+2. **Orbit field:** near-black cinematic stage, SmoothUI Siri Orb at the center, thin concentric traces and up to eight large navigable satellites.
+3. **Today console:** live due queue, library size, estimated mastery, most relevant study action, voice/text command launcher and recent material shortcuts.
+4. **Tool sectors:** Practice, Build knowledge, Grow — accessible action cards for **all** existing learning/offer surfaces.
+5. **Contextual rail:** a smaller orbit of common modes persists across Learn, Test, Flashcards, Ask, Review and other workspaces. A visible return-to-center control brings the learner back to Órbita.
+6. **Compatibility drawer:** the former sidebar is available only via the Tools button, not the default layout.
+
+### Cognitive and accessibility rules
+
+- Navigation is *orbital*; answer composition, long passages, tests, sharing and payments remain readable contextual panels.
+- On screens narrower than 620px, hide tiny orbital targets and prefer full-size module cards for touch/keyboard access.
+- Never treat colors or animations as the sole feedback channel; provide descriptive text and state labels.
+- Use real `getDueReviews` and `getRetentionInsights` values. Represent average mastery as **estimated**; do not claim a scientifically measured retention probability.
+- Voice command recognition requires user intent and uses deterministic allowlisted navigation; it does not claim to provide general conversational AI.
+- Keep language options EN and PT-BR, with a text-only navigation path always available.
+- Follow `prefers-reduced-motion` through SmoothUI motion settings and avoid mandatory decorative loops.
+- Do not silently switch billing/paywall rules, expose credentials, or replace the existing scheduler.
+
+### Delivery boundaries
+
+This is a complete **Web navigation shell** around the offer, not a validated replacement for each feature's underlying algorithms. Flutter parity, FSRS, duplex OpenAI Realtime, real-audio podcasts, UX testing on devices, and scientific assessment of learning are separate future increments.
+
+Detailed route mapping and acceptance cases: [docs/ORBITAL_OS_ACCEPTANCE.md](docs/ORBITAL_OS_ACCEPTANCE.md).
