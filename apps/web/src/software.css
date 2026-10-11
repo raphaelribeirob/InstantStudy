@@ -966,3 +966,42 @@ button,input,textarea{font:inherit}
 .software-orbita-home-cta small{font-size:13px;line-height:1.5;color:#aaa8a4;max-width:350px}
 .software-orbita-home-cta button{z-index:1;flex-shrink:0;background:#f2f0ea;border:0;padding:13px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;color:#11110f;font-weight:650}
 @media(max-width:620px){.software-orbita-home-cta{flex-direction:column;align-items:start;padding:24px}.software-orbita-home-cta button{width:100%;justify-content:space-between}}
+
+
+/* Orbital-first product shell. Legacy navigation remains available by explicit choice. */
+.software-shell.software-orbital-shell{grid-template-columns:minmax(0,1fr)}
+.software-orbital-shell .software-sidebar{display:none}
+.software-shell.software-orbital-shell.software-tools-open{grid-template-columns:232px minmax(0,1fr)}
+.software-orbital-shell.software-tools-open .software-sidebar{display:flex}
+.software-orbital-shell .software-topbar{gap:18px;justify-content:space-between;background:rgba(242,240,234,.97)}
+.software-orbital-brand{display:flex;align-items:center;gap:10px;background:transparent;border:0;padding:0;color:#11110f;cursor:pointer;text-align:left}
+.software-orbital-brand>span{display:flex;flex-direction:column;font-size:14px;font-weight:650;letter-spacing:-.045em}
+.software-orbital-brand sup{font-size:8px;vertical-align:super}
+.software-orbital-brand small{color:#5b6cff;font-size:8px;letter-spacing:.18em;line-height:1.6}
+.software-orbital-brand>div{pointer-events:none;flex-shrink:0}
+.software-orbital-brand:focus-visible,.software-tool-toggle:focus-visible{outline:3px solid #5b6cff;outline-offset:3px}
+.software-topbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:16px;min-width:0}
+.software-tool-toggle{background:#11110f;color:#f2f0ea;display:flex;gap:8px;align-items:center;padding:11px 14px;border:0;cursor:pointer;font-size:12px;font-weight:650}
+.software-tool-toggle[aria-expanded=true]{background:#5b6cff}
+.software-orbital-shell .software-topbar .software-search{width:min(320px,36vw)}
+.software-orbital-shell .software-main{min-width:0;width:100%}
+@media(max-width:920px){
+  .software-shell.software-orbital-shell.software-tools-open{grid-template-columns:minmax(0,1fr)}
+  .software-orbital-shell.software-tools-open .software-sidebar{position:fixed;z-index:35;left:0;top:64px;bottom:0;width:min(330px,88vw);height:calc(100dvh - 64px);display:flex;flex-direction:column;gap:10px;padding:16px;overflow-y:auto;box-shadow:15px 0 30px rgba(0,0,0,.22)}
+  .software-orbital-shell.software-tools-open .software-sidebar nav{width:100%;display:flex;flex-direction:column;justify-content:flex-start;gap:3px}
+  .software-orbital-shell.software-tools-open .software-sidebar .software-brand{display:flex}
+  .software-orbital-shell.software-tools-open .software-sidebar .software-brand strong{display:inline}
+  .software-orbital-shell.software-tools-open .software-sidebar .software-create{display:flex;font-size:13px;justify-content:flex-start}
+  .software-orbital-shell.software-tools-open .software-sidebar .software-nav-item{display:flex;justify-content:flex-start}
+  .software-orbital-shell.software-tools-open .software-sidebar .software-nav-item span{display:inline}
+  .software-orbital-shell.software-tools-open .software-sidebar .software-nav-label{display:block}
+  .software-orbital-shell.software-tools-open .software-sidebar .software-plan{display:flex}
+}
+@media(max-width:620px){
+  .software-orbital-shell .software-topbar{padding:0 16px;gap:8px}
+  .software-orbital-shell .software-topbar-actions{gap:9px}
+  .software-orbital-shell .software-topbar .software-search{display:none}
+  .software-orbital-shell .software-tool-toggle{padding:11px}
+  .software-orbital-shell .software-tool-toggle span{display:none}
+  .software-orbital-brand>span{font-size:12px}
+}
