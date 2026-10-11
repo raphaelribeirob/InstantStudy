@@ -183,6 +183,7 @@ export default async function handler(req, res) {
     "room_join",
     "room_get",
     "room_progress",
+    "realtime_offer",
   ];
   const action = allowedActions.includes(body.action) ? body.action : "prepare";
 
@@ -423,6 +424,43 @@ export default async function handler(req, res) {
             inline_base64: bytes.toString("base64"),
           },
         ],
+      });
+    } else if (action === "realtime_offer") {
+      // Realtime voice is intentionally paid + signed-in only. The anonymous
+      // "web-UUID" identity accepted for free study is NOT a billing identity.
+      const learnerId = cleanId(body.learnerId);
+      const verified = await verifiedLearner(body);
+      if (!learnerId || !verified || learnerId !== verified || ANON_ID.test(learnerId)) {
+        return json(res, 401, { error: "instant_account_required_for_voice" });
+      }
+      const billingPlan = await verifiedBillingPlan(body);
+      if (billingPlan === "free") {
+        return json(res, 403, { error: "paid_plan_required_for_voice" });
+      }
+      // Block credential misuse from third-party origins even when bearer is known.
+      const origin = String(req.headers.origin || "");
+      const requestHost = String(req.headers["x-forwarded-host"] || req.headers.host || "");
+      const normalizedHost = requestHost.split(",")[0].trim();
+      if (origin) {
+        let allowed = false;
+        try { allowed = new URL(origin).host === normalizedHost; } catch { /* invalid origin */ }
+        if (!allowed) return json(res, 403, { error: "origin_denied" });
+      }
+
+      const sdp = typeof body.sdp === "string" ? body.sdp : "";
+      const sourceExcerpt = typeof body.sourceExcerpt === "string"
+        ? body.sourceExcerpt.slice(0, 6000) : "";
+      if (sdp.length < 100 || sdp.length > 40000 || !sdp.startsWith("v=0")) {
+        return json(res, 400, { error: "invalid_realtime_sdp" });
+      }
+
+      result = await upstream(base, apiKey, "/api/v1/realtime/offer", {
+        learnerId: verified,
+        billingPlan,
+        sdp,
+        locale: body.locale === "pt-BR" ? "pt-BR" : "en-US",
+        title: typeof body.title === "string" ? body.title.slice(0, 160) : "Study session",
+        sourceExcerpt,
       });
     } else if (action === "audio_study") {
       const learnerId = await verifiedLearner(body);
