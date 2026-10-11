@@ -220,7 +220,7 @@ export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial }
           <div className="orbital-system-ring orbital-system-ring-inner" aria-hidden="true" />
 
           <div className="orbital-system-core" aria-hidden="true">
-            <SiriOrb size="204px" state={orbState} />
+            <SiriOrb size="204px" state={orbState} colors={{ bg: "#fdfcfc", c1: "#0447ff", c2: "#ff4704", c3: "#bda9d8", c4: "#f7baa4" }} />
           </div>
           {MODULES.filter(x => typeof x.orbit === "number").map(module => {
             const angle = (module.orbit ?? 0) * Math.PI / 180;
