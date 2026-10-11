@@ -326,3 +326,18 @@ body::before{opacity:.04}
   .orbital-system-pulse.is-live{animation:none}
   .orbital-system-node,.orbita-satellite{transition:none}
 }
+
+
+/* Voice tutoring surface — follows REFERO eggshell/taupe design contract. */
+.orbital-realtime{border:1px solid var(--study-stone,#ebe8e4);border-radius:20px;background:var(--study-taupe,#f5f3f1);padding:20px 22px;display:flex;flex-direction:column;gap:11px}
+.orbital-realtime-head{display:flex;flex-direction:column;gap:7px}
+.orbital-realtime-head>span{font-size:10px;letter-spacing:.17em;font-weight:600;color:#44403b}
+.orbital-realtime-head>strong{font-size:22px;font-weight:300;line-height:1.17;letter-spacing:-.02em}
+.orbital-realtime p{margin:0;font-size:12px;line-height:1.55;color:#44403b}
+.orbital-realtime button{border:0;border-radius:9999px;display:flex;justify-content:center;align-items:center;gap:10px;padding:12px 15px;font-size:12px;font-weight:500;min-height:46px}
+.orbital-realtime-start{background:#000;color:#fff}
+.orbital-realtime-stop{background:#ebe8e4;color:#000}
+.orbital-realtime button:disabled{opacity:.6;cursor:wait}
+.orbital-realtime>small{font-size:10px;line-height:1.5;color:#777169}
+.orbital-realtime>.orbital-realtime-error{color:#742d21;background:#fff6f3;padding:10px;border:1px solid #e3c8c0;border-radius:9px;overflow-wrap:anywhere}
+.orbital-realtime-caption{background:#fdfcfc;border-radius:12px;border:1px solid #ebe8e4;padding:11px;font-size:12px;line-height:1.55;max-height:105px;overflow-y:auto}
