@@ -1,0 +1,328 @@
+/*
+ * InstantStudy Refero editorial adaptation.
+ * Reference: https://styles.refero.design/style/031056ff-7af1-46db-8daa-115f731c5d26
+ * These are InstantStudy-specific CSS rules, not copied ElevenLabs components.
+ */
+:root{
+  --study-eggshell:#fdfcfc;
+  --study-taupe:#f5f3f1;
+  --study-stone:#ebe8e4;
+  --study-ink:#000000;
+  --study-graphite:#44403b;
+  --study-smoke:#777169;
+  --study-ash:#a59f97;
+  --study-violet:#0447ff;
+  --study-orange:#ff4704;
+  --study-radius-card:20px;
+  --study-radius-feature:24px;
+  --study-radius-pill:9999px;
+  --study-max-width:1280px;
+  --ink:#000000;
+  --paper:#fdfcfc;
+  --paper-2:#f5f3f1;
+  --paper-3:#ebe8e4;
+  --line:#ebe8e4;
+  --muted:#777169;
+  --faint:#a59f97;
+  --black:#000000;
+  --orange:#ff4704;
+  --orange-soft:#f7baa4;
+  --electric:#0447ff;
+}
+html{background:var(--study-eggshell)}
+body{background:var(--study-eggshell);color:var(--study-ink)}
+body::before{opacity:.04}
+:where(button,a,input,textarea,select,[role="button"]):focus-visible{outline:2px solid var(--study-ink);outline-offset:4px}
+
+/* Editorial landing: unchanged wording/offer, restrained new color system. */
+.nav-shell,.hero{max-width:var(--study-max-width)}
+.nav-shell{border-bottom:1px solid var(--study-stone)}
+.future-title,.future-material-copy strong,
+.feature-copy h2,.pricing-heading h2,.final-cta h2{
+  font-family:Inter,"Helvetica Neue",system-ui,sans-serif;
+  font-weight:300;
+  letter-spacing:-.02em;
+}
+.future-title{line-height:.95}
+.future-title::after{box-shadow:none}
+.nav-cta,.hero-primary{background:var(--study-ink);border-color:var(--study-ink);color:var(--study-eggshell)}
+.hero-secondary{background:var(--study-eggshell);border-color:var(--study-stone);color:var(--study-ink)}
+.nav-cta,.hero-primary,.hero-secondary,
+.pricing-card a,.billing-switch button,.agent-list button,
+.study-rail button,.primary-plan,.secondary-plan{border-radius:var(--study-radius-pill)}
+.source-card{background:var(--study-taupe);border-radius:var(--study-radius-card)}
+.study-window,.learn-band,.feature-band,.pricing-card,.final-cta{border-radius:var(--study-radius-feature)}
+.study-window{box-shadow:none}
+.source-stack-label,.future-kicker{color:var(--study-graphite)}
+.source-card small,.future-intro>p{color:var(--study-smoke)}
+.review-band{background:var(--study-taupe);color:var(--study-ink)}
+.review-band .feature-copy>p,.dark-points span{color:var(--study-smoke)}
+.learn-band{background:var(--study-taupe)}
+.billing-switch span{color:var(--study-smoke)}
+/* Preserve purposeful dark assessment/focus as a functional exception. */
+
+/* All Web product workspaces use shared semantic tokens. */
+.software-orbital-shell{
+  --is-bg:var(--study-eggshell);
+  --is-panel:var(--study-eggshell);
+  --is-ink:var(--study-ink);
+  --is-muted:var(--study-smoke);
+  --is-line:var(--study-stone);
+  --is-blue:var(--study-ink);
+  --is-orange:var(--study-ink);
+  font-family:Inter,"Helvetica Neue",system-ui,sans-serif;
+  color:var(--study-ink);
+  background:var(--study-eggshell);
+}
+.software-orbital-shell .software-topbar{
+  background:rgba(253,252,252,.98);
+  border-color:var(--study-stone);
+  box-shadow:none;
+}
+.software-orbital-shell .software-tool-toggle,
+.software-orbital-shell .software-orbital-center{
+  background:var(--study-ink);color:var(--study-eggshell);
+  border-radius:var(--study-radius-pill);
+  font-weight:500;
+}
+.software-orbital-shell .software-tool-toggle[aria-expanded=true]{background:var(--study-graphite)}
+.software-orbital-shell .software-orbital-brand small{color:var(--study-smoke)}
+.software-orbital-shell .software-search{background:var(--study-taupe);border-color:var(--study-stone)}
+.software-orbital-shell .software-orbital-context{background:var(--study-eggshell);border-color:var(--study-stone)}
+.software-orbital-shell .software-orbital-context-nav button{
+  border:1px solid var(--study-stone);border-radius:var(--study-radius-pill);
+  background:var(--study-eggshell);color:var(--study-graphite);font-weight:500;
+}
+.software-orbital-shell .software-orbital-context-nav button.active{
+  background:var(--study-ink);border-color:var(--study-ink);color:var(--study-eggshell);
+}
+.software-orbital-shell .software-sidebar{background:var(--study-ink)}
+.software-orbital-shell .software-sidebar .software-nav-item{border-radius:var(--study-radius-pill)}
+.software-orbital-shell .software-sidebar .software-create{border-radius:var(--study-radius-pill)}
+.software-orbital-shell .software-page{max-width:var(--study-max-width)}
+.software-orbital-shell .software-title-row h1,
+.software-orbital-shell .software-workspace-head h1,
+.software-orbital-shell .software-guide>article h2,
+.software-orbital-shell .software-study-stage h2{
+  font-weight:300;letter-spacing:-.02em;line-height:1.12;
+}
+.software-orbital-shell .software-title-row p,
+.software-orbital-shell .software-workspace-head p,
+.software-orbital-shell .software-guide>article>span,
+.software-orbital-shell .software-guide>aside>span,
+.software-orbital-shell .software-ask-answer span,
+.software-orbital-shell .software-test-result>span{color:var(--study-graphite)}
+.software-orbital-shell .software-material-card,
+.software-orbital-shell .software-empty,
+.software-orbital-shell .software-editor,
+.software-orbital-shell .software-ask,
+.software-orbital-shell .software-test-builder,
+.software-orbital-shell .software-ask-answer,
+.software-orbital-shell .software-study-stage>aside,
+.software-orbital-shell .software-study-stage>article,
+.software-orbital-shell .software-guide>article,
+.software-orbital-shell .software-guide>aside,
+.software-orbital-shell .software-flashcards article,
+.software-orbital-shell .software-review-list article,
+.software-orbital-shell .software-plugin-grid article,
+.software-orbital-shell .software-library-list{
+  background:var(--study-taupe);
+  border:1px solid var(--study-stone);
+  border-radius:var(--study-radius-card);
+  box-shadow:none;
+}
+.software-orbital-shell .software-library-list>button{
+  background:var(--study-taupe);
+  border-color:var(--study-stone);
+}
+.software-orbital-shell .software-library-list>button:hover{background:var(--study-eggshell)}
+.software-orbital-shell .software-feature-grid button{
+  background:var(--study-taupe)!important;color:var(--study-ink)!important;
+  border:1px solid var(--study-stone);
+  border-radius:var(--study-radius-card);
+}
+.software-orbital-shell .software-feature-grid button svg{color:var(--study-graphite)}
+.software-orbital-shell .software-editor textarea,
+.software-orbital-shell .software-editor input{background:var(--study-eggshell);color:var(--study-ink)}
+.software-orbital-shell .software-editor input,
+.software-orbital-shell textarea,
+.software-orbital-shell input:not([type="checkbox"]):not([type="radio"]),
+.software-orbital-shell select{border-radius:4px}
+.software-orbital-shell .software-upload-control{background:var(--study-eggshell);border-color:var(--study-stone);border-radius:var(--study-radius-card)}
+.software-orbital-shell .software-test-builder>button,
+.software-orbital-shell .software-review-list article>button,
+.software-orbital-shell .software-ask-answer button,
+.software-orbital-shell .software-hero>button,
+.software-orbital-shell .software-title-row>button,
+.software-orbital-shell .software-empty button{
+  background:var(--study-ink);color:var(--study-eggshell);border-color:var(--study-ink);
+  border-radius:var(--study-radius-pill);font-weight:500;
+}
+.software-orbital-shell .software-test-types button,
+.software-orbital-shell .software-mode-switch button,
+.software-orbital-shell .software-import-tabs button,
+.software-orbital-shell .software-question-choices button{
+  border-radius:var(--study-radius-pill);
+  background:var(--study-eggshell);color:var(--study-ink);border-color:var(--study-stone);
+}
+.software-orbital-shell .software-test-types button.active,
+.software-orbital-shell .software-mode-switch button.active,
+.software-orbital-shell .software-import-tabs button.active{background:var(--study-ink);color:var(--study-eggshell)}
+.software-orbital-shell .software-feedback{background:var(--study-eggshell);color:var(--study-graphite);border-color:var(--study-stone)}
+.software-orbital-shell .software-file-icon,
+.software-orbital-shell .software-material-card>span{background:var(--study-stone)}
+
+/* Orbital-First cockpit — light Refero stage and monochrome navigation. */
+.orbital-system{
+  --os-ink:var(--study-ink);
+  --os-paper:var(--study-eggshell);
+  --os-quiet:var(--study-smoke);
+  --os-electric:var(--study-ink);
+  --os-orange:var(--study-graphite);
+  max-width:var(--study-max-width);
+  background:var(--study-eggshell);
+  color:var(--study-ink);
+}
+.orbital-system-head>p,.orbital-system-section-label,
+.orbital-system-section-heading span{color:var(--study-graphite);font-weight:500}
+.orbital-system-head h1{
+  font-weight:300;letter-spacing:-.02em;line-height:1.05;
+  font-size:clamp(42px,6.1vw,78px);
+}
+.orbital-system-head>span{color:var(--study-smoke)}
+.orbital-system-galaxy{
+  background:var(--study-taupe);color:var(--study-ink);
+  border:1px solid var(--study-stone);border-radius:var(--study-radius-feature);
+}
+.orbital-system-galaxy:before{opacity:.035;mix-blend-mode:multiply}
+.orbital-system-galaxy:after{background:radial-gradient(circle,rgba(4,71,255,.035),transparent 65%)}
+.orbital-system-ring-outer{border-color:#dcd8d4}
+.orbital-system-ring-mid{border-color:#dedad6}
+.orbital-system-ring-inner{border-color:#ebe8e4}
+.orbital-system-corner,.orbital-system-footnote{color:var(--study-smoke)}
+.orbital-system-core{filter:none}
+.orbital-system-core-caption{color:var(--study-graphite)}
+.orbital-system-pulse{background:var(--study-graphite);box-shadow:none}
+.orbital-system-pulse.is-live{background:var(--study-ink);box-shadow:none}
+.orbital-system-node{
+  background:var(--study-eggshell);color:var(--study-ink);
+  border:1px solid var(--study-stone);border-radius:var(--study-radius-pill);
+  min-width:112px;min-height:50px;padding:10px 13px;
+  box-shadow:0 1px 2px rgba(0,0,0,.035);
+}
+.orbital-system-node svg{color:var(--study-graphite)}
+.orbital-system-node span{font-weight:500;font-size:11px}
+.orbital-system-node b{
+  background:var(--study-ink);color:var(--study-eggshell);
+  border-radius:var(--study-radius-pill);
+}
+.orbital-system-node:hover,.orbital-system-node.is-highlighted{
+  background:var(--study-ink);color:var(--study-eggshell);
+  border-color:var(--study-ink);box-shadow:none;
+}
+.orbital-system-node:hover svg,.orbital-system-node.is-highlighted svg{color:var(--study-eggshell)}
+.orbital-system-console{
+  background:var(--study-eggshell);border:1px solid var(--study-stone);
+  border-radius:var(--study-radius-feature);padding:32px;
+}
+.orbital-system-metrics>div{border-color:var(--study-stone)}
+.orbital-system-metrics strong{font-weight:300;letter-spacing:-.02em}
+.orbital-system-today{
+  background:var(--study-taupe);color:var(--study-ink);
+  border-radius:var(--study-radius-card);padding:28px;
+}
+.orbital-system-today>span{color:var(--study-graphite);font-weight:500}
+.orbital-system-today h2{font-weight:300;letter-spacing:-.02em;line-height:1.16}
+.orbital-system-today p{color:var(--study-smoke)}
+.orbital-system-today button{
+  background:var(--study-ink);color:var(--study-eggshell);
+  border-radius:var(--study-radius-pill);font-weight:500;
+}
+.orbital-system-today button:hover{background:var(--study-graphite)}
+.orbital-system-command>label{color:var(--study-graphite);font-weight:500}
+.orbital-system-command input{background:var(--study-eggshell);border-color:var(--study-stone);border-radius:4px}
+.orbital-system-command button{
+  background:var(--study-eggshell);color:var(--study-ink);
+  border:1px solid var(--study-stone);border-radius:var(--study-radius-pill);
+}
+.orbital-system-command .orbital-system-go{background:var(--study-ink);color:var(--study-eggshell);border-color:var(--study-ink)}
+.orbital-system-command .orbital-system-mic[aria-pressed=true]{background:var(--study-stone);border-color:var(--study-graphite);color:var(--study-ink)}
+.orbital-system-command [role=status]{color:var(--study-graphite)}
+.orbital-system-quick button{border-radius:var(--study-radius-pill);border-color:var(--study-stone)}
+.orbital-system-quick button:hover{border-color:var(--study-graphite);color:var(--study-ink)}
+.orbital-system-section-heading h2{font-weight:300;letter-spacing:-.02em;line-height:1.15}
+.orbital-system-section-heading button{border-radius:var(--study-radius-pill);border-color:var(--study-stone)}
+.orbital-system-groups{gap:18px}
+.orbital-system-group{
+  background:var(--study-taupe);border:0;border-radius:var(--study-radius-card);overflow:hidden;
+}
+.orbital-system-group-head{background:var(--study-taupe);min-height:130px}
+.orbital-system-group-head strong{font-weight:400;letter-spacing:-.02em}
+.orbital-system-modules button{border-color:var(--study-stone)}
+.orbital-system-modules button:hover{background:var(--study-eggshell)}
+.orbital-system-modules button>svg:first-child{color:var(--study-graphite)}
+.orbital-system-footer{border-color:var(--study-stone)}
+.orbital-system-footer svg{color:var(--study-graphite)}
+
+/* Review surface: same material, same typography, same button hierarchy. */
+.orbita-page{max-width:var(--study-max-width);color:var(--study-ink)}
+.orbita-heading h1{font-weight:300;letter-spacing:-.02em;line-height:1.05}
+.orbita-heading p{color:var(--study-graphite);font-weight:500}
+.orbita-heading-dot{color:var(--study-ink)}
+.orbita-heading>div:first-child>span{color:var(--study-smoke)}
+.orbita-count{border-color:var(--study-stone)}
+.orbita-count strong{font-weight:300}
+.orbita-stage{
+  background:var(--study-taupe);color:var(--study-ink);
+  border:1px solid var(--study-stone);border-radius:var(--study-radius-feature);
+}
+.orbita-stage:after{opacity:.025;mix-blend-mode:multiply}
+.orbita-ring-inner,.orbita-ring-middle,.orbita-ring-outer{border-color:#dcd8d4}
+.orbita-satellite{
+  background:var(--study-ink);border:1px solid var(--study-eggshell);
+  box-shadow:0 1px 2px rgba(0,0,0,.08)
+}
+.orbita-satellite span{background:var(--study-eggshell)}
+.orbita-satellite-active,.orbita-satellite:hover{background:var(--study-graphite);box-shadow:0 0 0 4px rgba(0,0,0,.08)}
+.orbita-status,.orbita-stage-note{color:var(--study-graphite)}
+.orbita-status-indicator,.orbita-state-repair .orbita-status-indicator,
+.orbita-state-success .orbita-status-indicator{background:var(--study-ink);box-shadow:none}
+.orbita-legend{color:var(--study-smoke)}
+.orbita-legend i{background:var(--study-graphite)}
+.orbita-card{
+  background:var(--study-taupe);border:1px solid var(--study-stone);
+  border-radius:var(--study-radius-card);
+}
+.orbita-card h2{font-weight:300;letter-spacing:-.02em;line-height:1.14}
+.orbita-card p{color:var(--study-smoke)}
+.orbita-eyebrow,.orbita-topic{color:var(--study-graphite);font-weight:500}
+.orbita-primary{
+  background:var(--study-ink);color:var(--study-eggshell);
+  border-radius:var(--study-radius-pill);font-weight:500;
+}
+.orbita-primary:hover{background:var(--study-graphite)}
+.orbita-secondary{
+  background:var(--study-eggshell);color:var(--study-ink);
+  border:1px solid var(--study-stone);border-radius:var(--study-radius-pill)
+}
+.orbita-secondary[aria-pressed=true]{background:var(--study-stone);border-color:var(--study-graphite);color:var(--study-ink)}
+.orbita-options button{background:var(--study-eggshell);border-color:var(--study-stone);border-radius:var(--study-radius-pill)}
+.orbita-options button:hover{border-color:var(--study-graphite)}
+.orbita-answer-label textarea{background:var(--study-eggshell);border:1px solid var(--study-stone);border-radius:4px}
+.orbita-feedback{background:var(--study-eggshell);border:1px solid var(--study-stone);border-radius:12px;color:var(--study-graphite)}
+.orbita-error{background:var(--study-taupe);border-left:3px solid var(--study-ink);border-radius:8px;color:var(--study-ink)}
+.orbita-due{background:var(--study-taupe);border:1px solid var(--study-stone);border-radius:var(--study-radius-card)}
+.orbita-due-item{border-color:var(--study-stone)}
+.orbita-due-dot{background:var(--study-ink)}
+.orbita-due-item em{color:var(--study-graphite)}
+.orbita-score strong{font-weight:300}
+@media(max-width:620px){
+  .orbital-system-console{padding:20px}
+  .orbital-system-today{padding:20px}
+  .orbital-system-head h1{font-size:clamp(38px,10vw,52px)}
+  .orbita-heading h1{font-size:clamp(48px,10vw,68px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .orbital-system-pulse.is-live{animation:none}
+  .orbital-system-node,.orbita-satellite{transition:none}
+}
