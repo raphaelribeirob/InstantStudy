@@ -60,8 +60,45 @@ This release is a **UI and interaction transformation**. It is not a claim that 
 ## What remains outside this PR
 
 - Flutter's native homepage is **not yet orbital-first**. Web/PWA on mobile is responsive but is not native Flutter parity.
-- The app still has browser speech recognition/TTS where supported, not OpenAI Realtime duplex audio.
+- Web/PWA offers **OpenAI Realtime WebRTC voice tutoring** with a paid account and backend flag, separately from browser navigation dictation; normal Browser Speech APIs remain fallbacks for existing study and navigation. A live voice response **does not** update Study Engine mastery or replace signed answer submission.
 - The scheduler remains InstantStudy's existing heuristic, not migrated to FSRS.
 - Study-guide and flashcard quality, podcast generation, retention validity and game richness require separate pedagogical/product validation and upgrades.
 - ChatGPT plugin display is still controlled by the host environment; this Web design does not imply identical widgets inside ChatGPT.
 - Deployment, user-facing smoke testing and accessibility audits must be performed before replacing production.
+
+## OpenAI Realtime voice — integration acceptance
+
+- `apps/web/src/useRealtimeTutor.ts` creates WebRTC media tracks only after clicking the dedicated **Speak with OpenAI** button in the main Orbital OS or the Review workspace.
+- User's study material is capped to 6,000 reference characters (voice quality and cost constraint); untrusted source data cannot override tutor policy.
+- Browser sends its SDP through `/api/study` with `action: "realtime_offer"`. The BFF requires a **verified, non-anonymous Instant Account** and active **Plus/Unlimited** entitlement; the browser never receives a provider API key.
+- `apps/mcp-server/src/server.ts` enforces bearer API authorization, `INSTANTSTUDY_REALTIME_ENABLED=true`, `OPENAI_API_KEY`, request validation, and 3 starts/day by default through **atomic Neon quota** before forwarding the SDP to `https://api.openai.com/v1/realtime/calls`.
+- Server uses `gpt-realtime-mini` by default (overridable by backend `INSTANTSTUDY_REALTIME_MODEL`), voice `marin`, server VAD, max 360 output tokens per response, and no AI tools.
+- Audio flows directly on negotiated WebRTC tracks. The vendor Siri Orb reacts to **real** microphone/audio amplitude; microphone and peer connection are released when the learner ends the call, navigates away, encounters failure or reaches the **3-minute client timer**.
+- The separate deterministic Learn/Review/Test flows remain the sole source of truth for grading, mastery and next-review timing. Live conversation does not write grades or schedule reviews.
+- The prior `microphone=()` Permissions Policy has been corrected to `microphone=(self)` so first-party opted-in recording is possible.
+- On missing Account login, insufficient paid entitlement, disabled feature flag, missing OpenAI key, unavailable Neon, declined microphone or provider outage, the UI **must show a real error**; it must never simulate a connected voice session.
+- **Operating caveat:** the 3-minute timer is enforced by the cooperative browser, not a server-side spend meter. Configure an OpenAI project budget, monitor OpenAI usage and consider server-side active-session enforcement before a broad paid release.
+
+### Deployment switches
+
+| Setting | Owner | Where |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | Secret | **InstantStudy API server** only |
+| `DATABASE_URL` | Secret | **InstantStudy API server** (Neon) |
+| `INSTANTSTUDY_REALTIME_ENABLED` | Boolean | API server; enable explicitly in preview and later in approved production |
+| `INSTANTSTUDY_REALTIME_MODEL` | Optional | API server; default `gpt-realtime-mini` |
+| `INSTANTSTUDY_REALTIME_SESSIONS_PER_DAY` | Optional | API server; default `3` |
+
+The Web app needs no OpenAI key. It uses the existing `INSTANTSTUDY_API_URL` and `INSTANTSTUDY_API_KEY` private BFF settings.
+
+### Additional validation
+
+1. No account → session creation returns 401; no microphone session is started with paid features.
+2. Signed-in Free → 403; authenticated paid plan → allowed if quota and flag permit.
+3. Missing OpenAI key/feature flag/Neon → 503, without emitting an SDP response.
+4. Quota exhausted → 429, no request to OpenAI.
+5. WebRTC SDP answer is accepted and audio/assistant conversation works on supported browsers.
+6. Switch pages or terminate → microphone indicator disappears, audio stops and state resets.
+7. Transcript and voice feedback do not increase mastery without an explicit StudyEngine answer.
+8. Mobile Web/PWA 360px and keyboard controls remain usable with the new voice tutor.
+9. Usage/spend report is inspected before considering release; CI and OWASP dependency checks are **not** live call or cost validation.
