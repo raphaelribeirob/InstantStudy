@@ -16,7 +16,8 @@
     "react-dom": "^19.1.1",
     "lucide-react": "^0.536.0",
     "i18next": "^26.4.2",
-    "react-i18next": "^17.0.15"
+    "react-i18next": "^17.0.15",
+    "motion": "^12.23.25"
   },
   "devDependencies": {
     "@types/react": "^19.1.12",
