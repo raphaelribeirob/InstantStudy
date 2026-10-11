@@ -10,6 +10,7 @@ const MAX_VOICE_SESSION_MS = 3 * 60 * 1000;
 type SessionResources = {
   pc: RTCPeerConnection;
   dc: RTCDataChannel;
+  abort: AbortController;
   input: MediaStream;
   audio: HTMLAudioElement;
   context: AudioContext | null;
@@ -53,6 +54,7 @@ export function useRealtimeTutor() {
     current.current = null;
     if (session) {
       if (session.timer !== null) window.clearTimeout(session.timer);
+      session.abort.abort();
       if (session.meter !== null) window.clearInterval(session.meter);
       session.dc.onmessage = null;
       session.dc.onopen = null;
@@ -107,7 +109,7 @@ export function useRealtimeTutor() {
       const audio = new Audio();
       audio.autoplay = true;
       const resources: SessionResources = {
-        pc, dc, input: stream, audio, context: null,
+        pc, dc, input: stream, audio, abort: new AbortController(), context: null,
         inputAnalyser: null, outputAnalyser: null, meter: null, timer: null,
       };
       current.current = resources;
@@ -178,6 +180,7 @@ export function useRealtimeTutor() {
       // This is real microphone/audio amplitude, not the simulated docs animation.
       try {
         const context = new AudioContext();
+        void context.resume().catch(() => undefined);
         const analyser = context.createAnalyser();
         analyser.fftSize = 512;
         context.createMediaStreamSource(stream).connect(analyser);
@@ -200,6 +203,21 @@ export function useRealtimeTutor() {
 
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
+      if (pc.iceGatheringState !== "complete") {
+        await new Promise<void>((resolve) => {
+          const finish = () => {
+            pc.removeEventListener("icegatheringstatechange", onChange);
+            window.clearTimeout(timeout);
+            resolve();
+          };
+          const onChange = () => {
+            if (pc.iceGatheringState === "complete") finish();
+          };
+          const timeout = window.setTimeout(finish, 6500);
+          pc.addEventListener("icegatheringstatechange", onChange);
+          onChange();
+        });
+      }
       if (cancelled.current || current.current !== resources) return;
       const payload = {
         action: "realtime_offer",
@@ -213,7 +231,7 @@ export function useRealtimeTutor() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(35_000),
+        signal: AbortSignal.any([resources.abort.signal, AbortSignal.timeout(35_000)]),
       });
       const answer = await response.json().catch(() => ({})) as {
         sdp?: string; error?: string; message?: string; remainingStartsToday?: number;
