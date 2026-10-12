@@ -230,6 +230,7 @@ export async function completeOfferAgentStep(
 
 export type DueReview = {
   sessionId: string;
+  materialId?: string;
   title: string;
   conceptId: string;
   label: string;
@@ -295,6 +296,7 @@ function identified(payload: Record<string, unknown>) {
 export async function prepareStudy(input: {
   contentText: string;
   mode: StudyMode;
+  materialId?: string;
   title?: string;
   maxQuestions?: number;
   testDurationMinutes?: number;
@@ -306,6 +308,7 @@ export async function prepareStudy(input: {
       identified({
         action: "prepare",
         contentText: input.contentText,
+        materialId: input.materialId,
         title: input.title,
         mode: input.mode,
         maxQuestions: input.maxQuestions,
