@@ -14,7 +14,7 @@
 
 This document supersedes **Future of Learning v2** color, shape, typography, chrome and navigation rules. The former mineral-gray/orange dashboard treatments and strong indigo interactive buttons are **deprecated** for new UI. Learning workflows, API interfaces, security constraints, and acceptance documents remain in force.
 
-A visual change does not authorize rewriting Study Engine scheduling, importing additional tracking libraries, using hard-coded fake learner data, changing checkout behavior, exposing secrets, or claiming OpenAI Realtime/FSRS functionality before integration.
+A visual change does not authorize unreviewed learning-algorithm changes, hard-coded fake learner data, changing checkout behavior, exposing secrets, or claiming learning benefits without tests. The separate pedagogical upgrade now uses ts-fsrs for newly submitted reviews.
 
 ## 1. Visual language — light, warm, editorial
 
@@ -149,7 +149,7 @@ Verify on PR:
 
 ## 9. Explicit non-goals
 
-No copying ElevenLabs text/assets/identity; no redistribution of Waldenburg fonts. No fake "retention percentage" claim, FSRS migration, ChatGPT hosted voice guarantee, OpenAI-hosted grading tools, new app store payment changes, or claiming Flutter native SiriOrb/Realtime parity.
+No copying ElevenLabs text/assets/identity; no redistribution of Waldenburg fonts. No fake "retention percentage" claim, unverified historic-FSRS migration, ChatGPT hosted voice guarantee, OpenAI-hosted grading tools, new app store payment changes, or claiming Flutter native SiriOrb/Realtime parity.
 
 
 ## 10. OpenAI Realtime — voice tutor connection
@@ -192,3 +192,13 @@ Do **not** grant Realtime a tool that directly updates mastery, issues charges, 
 4. Keyboard/touch hit areas are accessible on 360px mobile and phone layouts; radial satellites can disappear in favor of readable controls.
 5. Flutter widget tests use finite `pump` cycles, not `pumpAndSettle` on the continuously animated native sphere.
 6. Record visual QA, API-level validation, consent, entitlement checks and app-store readiness separately from compiler/test success.
+
+## 12. Sensor Tower / Quizlet pedagogy and recording upgrade
+
+- Content may be converted to structured study cards and source-grounded guides by OpenAI if `INSTANTSTUDY_AI_ASSETS_ENABLED=true`, a verified learner identity, usable OpenAI credentials and a durable Neon per-user daily quota are all available. The server checks every proposed card's literal evidence against learner material and reverts safely to the deterministic version on failure.
+- Normal Learn, Quiz and Test pass the grounded flashcard prompts into the Study Engine. Objective answer choices are checked against a source-backed correct statement, not rewarded for superficial word overlap.
+- New review attempts are scheduled by `ts-fsrs` and serialized with each concept. Legacy dates remain as saved until that concept is next reviewed; no invented prior history.
+- Large recordings of up to 25 MB use authenticated, paid Web/PWA chunking with bounded Neon staging. The native Flutter app still has the smaller legacy limit. Uploads expire after 24 hours and must not be claimed to support arbitrarily long lectures.
+- Existing audio podcasts remain scripted/browser TTS; they are not downloadable audio episodes. Existing game/social mechanics remain limited; no parity assertion should overstate them.
+- The embedded Review hides its duplicate orb to keep only one main voice sphere within the focus layout.
+- These engineering changes do not authorize production activation or claims of human-tested Quizlet equivalence.
