@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'i18n.dart';
 import 'instantstudy_api.dart';
+import 'orbital_home.dart';
 
 void main() {
   runApp(const InstantStudyApp());
@@ -17,13 +18,13 @@ void main() {
 class InstantStudyApp extends StatefulWidget {
   const InstantStudyApp({super.key});
 
-  static const ink = Color(0xFF11110F);
-  static const paper = Color(0xFFF2F0EA);
-  static const paper2 = Color(0xFFE9E7E1);
-  static const paper3 = Color(0xFFDEDBD3);
-  static const orange = Color(0xFFE36232);
-  static const orangeSoft = Color(0xFFF1A06F);
-  static const electric = Color(0xFF5B6CFF);
+  static const ink = Color(0xFF000000);
+  static const paper = Color(0xFFFDFCFC);
+  static const paper2 = Color(0xFFF5F3F1);
+  static const paper3 = Color(0xFFEBE8E4);
+  static const orange = Color(0xFFFF4704);
+  static const orangeSoft = Color(0xFFF7BAA4);
+  static const electric = Color(0xFF0447FF);
   static const green = Color(0xFF98BD9D);
   static const muted = Color(0xFF6E6B64);
 
@@ -120,7 +121,19 @@ class _StudyHomeState extends State<StudyHome> {
   final _answer = TextEditingController();
   final _title = TextEditingController();
   final _tts = FlutterTts();
-  late final String _learnerId;
+  late String _learnerId;
+  bool _identityReady = false;
+  String _nativePanel = 'orbit';
+  Map<String, dynamic>? _assets;
+  final _askPrompt = TextEditingController();
+  final _roomCode = TextEditingController();
+  final _roomName = TextEditingController(text: 'Learner');
+  String? _askResponse;
+  String? _roomMessage;
+  List<Map<String, dynamic>> _savedMaterials = [];
+  List<Map<String, dynamic>> _dueConcepts = [];
+  bool _cardFlipped = false;
+  int _cardIndex = 0;
 
   String _mode = 'learn';
   bool _busy = false;
@@ -139,18 +152,39 @@ class _StudyHomeState extends State<StudyHome> {
     super.initState();
     _learnerId = 'flutter-' +
         DateTime.now().microsecondsSinceEpoch.toString() +
-        '-' +
-        Random.secure().nextInt(1 << 32).toString();
+        '-' + Random.secure().nextInt(1 << 32).toString();
+    _loadLearnerId();
   }
 
   @override
   void dispose() {
+    _askPrompt.dispose();
+    _roomCode.dispose();
+    _roomName.dispose();
     _material.dispose();
     _answer.dispose();
     _title.dispose();
     _tts.stop();
     super.dispose();
   }
+
+  Future<void> _loadLearnerId() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final stored = preferences.getString('instantstudy.learner_id.v1');
+      if (stored != null && stored.startsWith('flutter-')) {
+        _learnerId = stored;
+      } else {
+        await preferences.setString('instantstudy.learner_id.v1', _learnerId);
+      }
+    } catch (_) {
+      // No persistence available. Remain explicit about local-only continuity.
+    }
+    if (mounted) setState(() => _identityReady = true);
+  }
+
+  bool get _isPt => Localizations.localeOf(context).languageCode == 'pt';
+  String _txt(String pt, String en) => _isPt ? pt : en;
 
   Map<String, dynamic>? get _next =>
       _session?['next'] is Map<String, dynamic>
@@ -235,6 +269,9 @@ class _StudyHomeState extends State<StudyHome> {
         _title.text = material['title']?.toString() ?? file.name;
         _materialId = material['id']?.toString();
         _sourceLabel = file.name;
+        _assets = material['assets'] is Map
+            ? Map<String, dynamic>.from(material['assets'] as Map)
+            : null;
       });
     } catch (error) {
       if (!mounted) return;
@@ -263,6 +300,9 @@ class _StudyHomeState extends State<StudyHome> {
         final material = imported['material'];
         if (material is Map) {
           _materialId = material['id']?.toString();
+          _assets = material['assets'] is Map
+              ? Map<String, dynamic>.from(material['assets'] as Map)
+              : null;
         }
       }
 
