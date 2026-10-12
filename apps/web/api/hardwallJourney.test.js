@@ -87,6 +87,21 @@ test("E2E Hardwall: no account -> denied; checkout binds account; paid study -> 
       assert.equal(payload.billingPlan,"plus");
       return jsonResult(200,{studySessionId:"session-mock",mode:"learn",next:{question:{prompt:"Recall photosynthesis"}}});
     }
+    if (address.hostname==="study-api.test" &&
+      ["/api/v1/study/evaluate","/api/v1/study/next","/api/v1/study/finish","/api/v1/ask"].includes(address.pathname)) {
+      upstreamCalls++;
+      const stamp=options.headers["x-instantstudy-timestamp"];
+      const proof=options.headers["x-instantstudy-signature"];
+      const signed=createHmac("sha256",vars.INSTANTSTUDY_BFF_SIGNING_SECRET)
+        .update([stamp,"POST",address.pathname,options.body].join(String.fromCharCode(10))).digest("hex");
+      assert.equal(proof,signed);
+      const payload=JSON.parse(options.body);
+      if (address.pathname!=="/api/v1/ask") assert.equal(payload.learnerId,identity.accountUserId);
+      if (address.pathname==="/api/v1/ask") return jsonResult(200,{answer:"Chloroplasts capture light energy."});
+      if (address.pathname==="/api/v1/study/evaluate") return jsonResult(200,{grade:{feedback:"Correct"},next:null});
+      if (address.pathname==="/api/v1/study/finish") return jsonResult(200,{completed:true});
+      return jsonResult(200,{done:false,question:{prompt:"Next question"}});
+    }
     throw Error("Unexpected test URL: "+url);
   };
   let response=collector();
@@ -114,15 +129,28 @@ test("E2E Hardwall: no account -> denied; checkout binds account; paid study -> 
   assert.equal(response.data.studySessionId,"session-mock");
   assert.equal(upstreamCalls,1);
 
+  // Every paid follow-up still traverses entitlement checks and a signed BFF.
+  for (const payload of [
+    {...identity,action:"answer",studySessionId:"session-mock",conceptId:"concept-mock",userAnswer:"chloroplast"},
+    {...identity,action:"next",studySessionId:"session-mock"},
+    {...identity,action:"finish",studySessionId:"session-mock"},
+    {...identity,action:"ask",contentText:studyBody.contentText,question:"Where is light captured?"},
+  ]) {
+    response=collector();
+    await study(req(payload),response);
+    assert.equal(response.code,200);
+  }
+  assert.equal(upstreamCalls,5);
+
   phase="canceled";
   response=collector();
   await study(req(studyBody),response);
   assert.equal(response.code,402);
-  assert.equal(upstreamCalls,1);
+  assert.equal(upstreamCalls,5);
 
   phase="expired";
   response=collector();
   await study(req(studyBody),response);
   assert.equal(response.code,402);
-  assert.equal(upstreamCalls,1);
+  assert.equal(upstreamCalls,5);
 });
