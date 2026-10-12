@@ -45,7 +45,7 @@ This release is a **UI and interaction transformation**. It is not a claim that 
 
 ## Acceptance tests
 
-1. `/app` opens Orbital OS with the central SmoothUI orb.
+1. `/app` opens Orbital OS with the central SmoothUI orb, and keeps a compact live Siri Orb plus optional voice control beside **every active workspace** on larger screens (stacked on phones).
 2. Empty learner: no invented due items, recommended action -> Import.
 3. Existing learner: nonempty library shows material links and can open Learn.
 4. Learner with due reviews: count matches `getDueReviews` and recommended action -> Review.
@@ -59,7 +59,7 @@ This release is a **UI and interaction transformation**. It is not a claim that 
 
 ## What remains outside this PR
 
-- Flutter's native homepage is **not yet orbital-first**. Web/PWA on mobile is responsive but is not native Flutter parity.
+- Flutter native now has an **Orbital-First home and contextual learning scenes** connected to the existing BFF. Its animated sphere is a Flutter-native gradient interpretation, **not** the vendored React SmoothUI component. Native OpenAI Realtime duplex voice, live microphone recording, full podcast parity, native billing/ChatGPT plugin configuration and visual device QA are still pending.
 - Web/PWA offers **OpenAI Realtime WebRTC voice tutoring** with a paid account and backend flag, separately from browser navigation dictation; normal Browser Speech APIs remain fallbacks for existing study and navigation. A live voice response **does not** update Study Engine mastery or replace signed answer submission.
 - The scheduler remains InstantStudy's existing heuristic, not migrated to FSRS.
 - Study-guide and flashcard quality, podcast generation, retention validity and game richness require separate pedagogical/product validation and upgrades.
@@ -102,3 +102,30 @@ The Web app needs no OpenAI key. It uses the existing `INSTANTSTUDY_API_URL` and
 7. Transcript and voice feedback do not increase mastery without an explicit StudyEngine answer.
 8. Mobile Web/PWA 360px and keyboard controls remain usable with the new voice tutor.
 9. Usage/spend report is inspected before considering release; CI and OWASP dependency checks are **not** live call or cost validation.
+
+## Orbital app unification (October 2026)
+
+**Web/PWA:** `SoftwareApp.tsx` now **always mounts one `OrbitaSystem`**. Selecting an offer module changes a contextual workspace on the right (desktop) or below the compact orb (mobile), rather than replacing the entire orbital experience. The same materials, feedback, persistence, scheduler and billing backends continue to serve every workspace. The compact study sidecar is `orbital-focus.css`. All fifteen existing offer surfaces remain linked.
+
+**Web voice:** OpenAI Realtime can call two **explicit, non-destructive functions**: `open_study_mode` (allowlisted 15 routes, UI navigation only) and `get_study_context` (read-only selected material name, due queue size and *estimated* mastery). The client validates the mode before executing. Voice tools **cannot** evaluate or store answers, purchase plans, join rooms or start uploads. Explicit learner submissions in the Study Engine continue to be authoritative. On user-clicked navigation, the tutor closes; voice-initiated tool navigation preserves the call, within its 3-minute client budget.
+
+**Flutter native:** `orbital_home.dart` provides the default Refero-like Orbital OS entrypoint with an animated gradient sphere and a full-size 12-mode action grid. Actions reuse existing API flows via `main.dart` and `instantstudy_api.dart`. Native contexts include:
+- Import material (paste, files and selected audio), library load/select, generated extractive guide, flashcard reveal, Ask sourced questions
+- Adaptive Learn, Quiz, Practice Test, and due-concept Review with persisted StudyEngine grading
+- Podcast via existing native TTS, insights, study matching game, and Create/Join Study Room
+- Learner ID stored in SharedPreferences for continuity between app launches
+
+**Not yet equivalent:** Flutter sphere does not reproduce exact SmoothUI/ElevenLabs animation; native OpenAI Realtime voice is not installed. Flutter does not provide every Web offer management surface (family billing, MCP configuration, native live recording) yet. Web voice does not write graded answers, and generated content remains deterministic/extractive in parts. A responsive codebase and passing CI are not proof of real-device readiness or Quizlet pedagogical parity.
+
+### Acceptance checklist
+
+1. Web remains visually orbital on Home, Test, Flashcards, Ask, Library, Review, Insights and Friends, including 360px phone widths.
+2. Opening a new contextual scene never discards the current material or restarts an active live voice call unless the user clicked manual navigation.
+3. An explicitly spoken 'open quiz' executes only the allowlisted local navigation function and returns a tool result; no durable grade is written.
+4. Speech requests for payments, saving fake scores or deleting records do **not** have an executable model tool.
+5. Native Flutter cold start displays the native OrbitalHome, not the legacy import form; Import is one of the offered actions.
+6. Native learner identity persists and due reviews are read from the authenticated study BFF.
+7. Native Question/Answer session writes grade through existing StudyEngine, while flashcard flip does **not** falsely claim graded retention.
+8. Native Talk-to-OpenAI action is **not** represented as active until native WebRTC client and paid authentication are completed.
+9. Flutter analyze/test, TypeScript checks, JS tests, Web build and security workflow pass before merge.
+10. Live WebRTC, file imports, app store purchase flows, keyboard and screen-reader behavior must be manually validated on representative real devices.
