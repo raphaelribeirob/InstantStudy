@@ -394,6 +394,8 @@ export function SoftwareApp() {
           studyPrompt: card.front,
         })),
       }));
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Secure study service unavailable.");
     } finally {
       setBusy(false);
     }
@@ -826,8 +828,8 @@ export function SoftwareApp() {
         </nav>
 
         <div className="software-plan">
-          <span>{t("software.freePlan")}</span>
-          <small>{t("software.upgradeLimits")}</small>
+          <span>{i18n.language.startsWith("pt") ? "Acesso por assinatura" : "Subscription-only access"}</span>
+          <small>{i18n.language.startsWith("pt") ? "Estude com assinatura verificada" : "Study with a verified subscription"}</small>
           <a href="/#pricing">{t("software.viewPlans")}</a>
         </div>
       </aside>
@@ -1086,6 +1088,7 @@ export function SoftwareApp() {
                 {view === "test" && !session && !busy && !summary && (
                   <div className="software-test-builder">
                     <h2>{t("software.buildTest")}</h2>
+                    {feedback ? <p role="alert">{feedback}</p> : null}
                     <label>
                       {t("software.questions")}
                       <select value={testQuestions} onChange={(event) => setTestQuestions(Number(event.target.value))}>
@@ -1202,7 +1205,7 @@ export function SoftwareApp() {
                 {view === "learn" && !session && !busy && !summary && (
                   <div className="software-study-stage">
                     <aside><span>{t("software.studyGuide")}</span><p>{selected.assets.summary}</p></aside>
-                    <article><h2>{t("software.readyStudy")}</h2><p>{t("software.readyStudyBody")}</p><button onClick={() => void startMode("learn")}>{t("software.startLearn")}</button></article>
+                    <article><h2>{t("software.readyStudy")}</h2><p>{t("software.readyStudyBody")}</p>{feedback ? <p role="alert">{feedback}</p> : null}<button onClick={() => void startMode("learn")}>{t("software.startLearn")}</button></article>
                   </div>
                 )}
 
