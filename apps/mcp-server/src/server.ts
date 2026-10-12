@@ -15,6 +15,7 @@ import { ingestFiles } from "./ingest.js";
 import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
 import { generateStudyAssets } from "./studyAssets.js";
+import { generatePedagogicalStudyAssets } from "./studyAssetIntelligence.js";
 import { materialStore } from "./materialStore.js";
 import { consumeRealtimeVoiceStart } from "./realtimeQuota.js";
 import { buildAudioStudy, buildStudyGame } from "./offerLayer.js";
@@ -892,7 +893,7 @@ app.post("/api/v1/materials/import", async (req, res) => {
       return;
     }
 
-    const assets = generateStudyAssets(content);
+    const assets = await generatePedagogicalStudyAssets(content);
     const material = await materialStore.save({
       learnerId: input.learnerId,
       title:
@@ -959,7 +960,7 @@ app.post("/api/v1/assets/generate", async (req, res) => {
     const input = z
       .object({ contentText: z.string().min(1).max(200000) })
       .parse(req.body ?? {});
-    res.json(generateStudyAssets(input.contentText));
+    res.json(await generatePedagogicalStudyAssets(input.contentText));
   } catch (error) {
     sendApiError(res, error);
   }
