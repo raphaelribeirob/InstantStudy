@@ -94,20 +94,9 @@ type View =
 
 type SourceType = "paste" | "upload" | "drive" | "audio" | "scan";
 
-const STORAGE_KEY = "instantstudy.library.v2";
-
-function readCachedLibrary(): StudyMaterial[] {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function cacheLibrary(items: StudyMaterial[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items.slice(0, 50)));
-}
+// Legacy versions cached entire private documents in a browser-wide key.
+// Always load study materials from authenticated Neon instead.
+const LEGACY_LIBRARY_STORAGE_KEY = "instantstudy.library.v2";
 
 function navItem(view: View, active: View, icon: ReactNode, label: string, setView: (view: View) => void) {
   return (
@@ -128,11 +117,10 @@ function dueLabel(value: string, t: TFunction) {
 
 export function SoftwareApp() {
   const { t, i18n } = useTranslation();
-  const cached = readCachedLibrary();
   const [view, setView] = useState<View>("home");
   const [showTools, setShowTools] = useState(false);
-  const [library, setLibrary] = useState<StudyMaterial[]>(cached);
-  const [selectedId, setSelectedId] = useState<string | null>(cached[0]?.id ?? null);
+  const [library, setLibrary] = useState<StudyMaterial[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sourceType, setSourceType] = useState<SourceType>("paste");
   const [draft, setDraft] = useState("");
   const [title, setTitle] = useState("");
@@ -240,18 +228,19 @@ export function SoftwareApp() {
   }, [library, search]);
 
   useEffect(() => {
+    localStorage.removeItem(LEGACY_LIBRARY_STORAGE_KEY);
+    let active = true;
     void listStudyMaterials()
       .then(({ materials }) => {
+        if (!active) return;
         setLibrary(materials);
-        cacheLibrary(materials);
-        if (!selectedId && materials[0]) setSelectedId(materials[0].id);
+        setSelectedId(materials[0]?.id ?? null);
       })
       .catch(() => {
-        // Cached library remains available offline.
+        if (active) { setLibrary([]); setSelectedId(null); }
       });
+    return () => { active = false; };
   }, []);
-
-  useEffect(() => cacheLibrary(library), [library]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -522,7 +511,7 @@ export function SoftwareApp() {
     try {
       const { materials } = await listStudyMaterials(search);
       setLibrary(materials);
-      cacheLibrary(materials);
+      // Authenticated Neon library is never cached across browser accounts.
     } catch {
       // Local filtering still works.
     }
@@ -1046,7 +1035,7 @@ export function SoftwareApp() {
                   </div>
                 </div>
 
-                {(view === "guide" || view === "flashcards") && <MaterialEditor key={selected.id} material={selected} onSaved={material => { setLibrary(current => { const next=current.map(row=>row.id===material.id?material:row); cacheLibrary(next); return next; }); setSession(null); setSummary(null); setFlippedCard(null); }} />}
+                {(view === "guide" || view === "flashcards") && <MaterialEditor key={selected.id} material={selected} onSaved={material => { setLibrary(current => current.map(row=>row.id===material.id?material:row)); setSession(null); setSummary(null); setFlippedCard(null); }} />}
 
                 {view === "guide" && (
                   <div className="software-guide">
