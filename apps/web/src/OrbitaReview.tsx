@@ -36,9 +36,10 @@ type SpeechWindow = Window & {
 type Props = {
   material: StudyMaterial | null;
   onCreateMaterial: () => void;
+  suppressVisualOrb?: boolean;
 };
 
-export function OrbitaReview({ material, onCreateMaterial }: Props) {
+export function OrbitaReview({ material, onCreateMaterial, suppressVisualOrb = false }: Props) {
   const { i18n } = useTranslation();
   const pt = i18n.language.toLowerCase().startsWith("pt");
   const locale = pt ? "pt-BR" : "en-US";
@@ -254,8 +255,8 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
         <div className="orbita-count"><strong>{dueLoading ? "—" : due.length}</strong><span>{copy("conceitos para revisar", "concepts due")}</span></div>
       </header>
 
-      <div className="orbita-layout">
-        <div className={"orbita-stage orbita-state-" + state}>
+      <div className={"orbita-layout" + (suppressVisualOrb ? " orbita-layout-compact" : "")}>
+        {!suppressVisualOrb && <div className={"orbita-stage orbita-state-" + state}>
           <div className="orbita-galaxy" role="img" aria-label={copy("Órbita de memória com conceitos a revisar", "Memory orbit with due concepts")}>
             <div className="orbita-ring orbita-ring-outer" />
             <div className="orbita-ring orbita-ring-middle" />
@@ -283,7 +284,7 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
             <span><i className="orbita-key-focus" />{copy("Em foco", "In focus")}</span>
             <span><i className="orbita-key-strong" />{copy("Memória forte", "Strong memory")}</span>
           </div>
-        </div>
+        </div>}
 
         <div className="orbita-content">
           {showIntro ? (
@@ -375,7 +376,7 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
             <div className="orbita-card"><p>{copy("Preparando revisão…", "Preparing review…")}</p></div>
           )}
 
-          <section className="orbital-realtime" aria-label={copy("Tutora OpenAI", "OpenAI tutor")}>
+          {!suppressVisualOrb && <section className="orbital-realtime" aria-label={copy("Tutora OpenAI", "OpenAI tutor")}>
             <div className="orbital-realtime-head"><span>OPENAI / REALTIME</span>
               <strong>{copy("Estude conversando.", "Learn through conversation.")}</strong>
             </div>
@@ -404,7 +405,7 @@ export function OrbitaReview({ material, onCreateMaterial }: Props) {
               "Requer conta Plus/Unlimited. 3 minutos por sessão, com cota diária. A OpenAI processa o áudio. Esta conversa não altera notas.",
               "Plus/Unlimited required; 3 minutes per session with daily limits. OpenAI processes audio. This conversation does not change grades."
             )}</small>
-          </section>
+          </section>}
           {error && <div className="orbita-error" role="alert">{error}</div>}
           <div className="orbita-due">
             <div className="orbita-due-title"><strong>{copy("Na sua órbita", "In your orbit")}</strong>
