@@ -11,6 +11,7 @@ import 'i18n.dart';
 import 'instantstudy_api.dart';
 import 'orbital_home.dart';
 import 'native_hard_paywall.dart';
+import 'native_material_editor.dart';
 import 'study_splash_intro.dart';
 
 void main() {
@@ -190,6 +191,7 @@ class _StudyHomeState extends State<StudyHome> {
   Map<String, dynamic>? _summary;
   int _testQuestions = 20;
   int _testDuration = 30;
+  String _testDifficulty = 'standard';
 
   @override
   void initState() {
@@ -358,6 +360,7 @@ class _StudyHomeState extends State<StudyHome> {
         learnerId: _learnerId,
         maxQuestions: _mode == 'test' ? _testQuestions : 12,
         testDurationMinutes: _mode == 'test' ? _testDuration : null,
+        testDifficulty: _mode == 'test' ? _testDifficulty : null,
         testQuestionTypes: _mode == 'test'
             ? const [
                 'multiple_choice',
@@ -838,6 +841,55 @@ class _StudyHomeState extends State<StudyHome> {
           )))),
     ]);
 
+
+  Future<void> _editNativeMaterial() async {
+    final id = _materialId;
+    final assets = _assets;
+    if (id == null || assets == null) {
+      setState(() => _error = _txt(
+        'Selecione um material salvo antes de editar.',
+        'Select a saved material before editing.'));
+      return;
+    }
+    final edits = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(builder: (_) => NativeMaterialEditor(
+        title: _title.text,
+        assets: assets,
+      )),
+    );
+    if (!mounted || edits == null) return;
+    setState(() { _busy = true; _error = null; });
+    try {
+      final result = await _api.updateMaterial(
+        learnerId: _learnerId,
+        materialId: id,
+        title: edits['title'] as String,
+        summary: edits['summary'] as String,
+        outline: List<String>.from(edits['outline'] as List),
+        flashcards: (edits['flashcards'] as List)
+          .map((value) => Map<String, dynamic>.from(value as Map))
+          .toList(),
+      );
+      final saved = result['material'];
+      if (saved is! Map) throw InstantStudyApiException(
+        'The server did not return the edited material.');
+      if (!mounted) return;
+      setState(() {
+        _title.text = saved['title']?.toString() ?? _title.text;
+        _assets = saved['assets'] is Map
+          ? Map<String, dynamic>.from(saved['assets'] as Map) : _assets;
+        _session = null;
+        _summary = null;
+        _cardIndex = 0;
+        _cardFlipped = false;
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Widget _nativeGuide(){
     final assets=_assets;
     final outline=assets?['outline'] is List
@@ -851,6 +903,7 @@ class _StudyHomeState extends State<StudyHome> {
         _txt('Resumo e conceitos extraídos do seu material.','Summary and concepts extracted from your material.')),
       if(assets==null) Text(_txt('Importe um material para criar o guia.','Import material to create a guide.')),
       if(assets!=null)...[
+        TextButton.icon(onPressed:_busy?null:_editNativeMaterial,icon:const Icon(Icons.edit_outlined),label:Text(_txt('Editar material','Edit study set'))),
         Container(width:double.infinity,padding:const EdgeInsets.all(22),
           decoration:BoxDecoration(color:OrbitalHome.taupe,borderRadius:BorderRadius.circular(20)),
           child:Text(assets['summary']?.toString()??'',style:const TextStyle(fontSize:15,height:1.6))),
@@ -880,6 +933,7 @@ class _StudyHomeState extends State<StudyHome> {
         'Recall and reveal. Use Learn or Review to record mastery.')),
       if(card==null) Text(_txt('Nenhum cartão disponível.','No flashcards available.')),
       if(card!=null)...[
+        TextButton.icon(onPressed:_busy?null:_editNativeMaterial,icon:const Icon(Icons.edit_outlined),label:Text(_txt('Editar cartões','Edit cards'))),
         Text((index+1).toString()+' / '+cards.length.toString(),
           style:const TextStyle(color:OrbitalHome.smoke)),
         const SizedBox(height:12),
@@ -1059,6 +1113,19 @@ class _StudyHomeState extends State<StudyHome> {
             duration: _testDuration,
             onQuestions: (value) => setState(() => _testQuestions = value),
             onDuration: (value) => setState(() => _testDuration = value),
+          ),
+          const SizedBox(height: 12),
+          DropdownButton<String>(
+            value: _testDifficulty,
+            isExpanded: true,
+            items: [
+              DropdownMenuItem(value: 'foundation', child: Text(_txt('Fundamentos', 'Foundation'))),
+              DropdownMenuItem(value: 'standard', child: Text(_txt('Padrão', 'Standard'))),
+              DropdownMenuItem(value: 'advanced', child: Text(_txt('Avançado', 'Advanced'))),
+            ],
+            onChanged: (value) {
+              if (value != null) setState(() => _testDifficulty = value);
+            },
           ),
         ],
         const SizedBox(height: 30),

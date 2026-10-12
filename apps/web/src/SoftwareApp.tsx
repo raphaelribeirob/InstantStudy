@@ -69,6 +69,7 @@ import {
   type InstantStudyFamily,
 } from "./instantBilling";
 import { OrbitaReview } from "./OrbitaReview";
+import { MaterialEditor } from "./MaterialEditor";
 import { OrbitaSystem, type OrbitalAction } from "./OrbitaSystem";
 import SiriOrb from "./components/smoothui/SiriOrb";
 import "./software.css";
@@ -153,6 +154,7 @@ export function SoftwareApp() {
   const [reviewBusy, setReviewBusy] = useState(false);
   const [testQuestions, setTestQuestions] = useState(20);
   const [testDuration, setTestDuration] = useState(30);
+  const [testDifficulty, setTestDifficulty] = useState<"foundation" | "standard" | "advanced">("standard");
   const [testTypes, setTestTypes] = useState<TestQuestionType[]>([
     "multiple_choice",
     "true_false",
@@ -372,6 +374,7 @@ export function SoftwareApp() {
         mode,
         maxQuestions: mode === "test" ? testQuestions : 12,
         testDurationMinutes: mode === "test" ? testDuration : undefined,
+        testDifficulty: mode === "test" ? testDifficulty : undefined,
         testQuestionTypes: mode === "test" ? testTypes : undefined,
         concepts: material.assets.flashcards.slice(0, 12).map(card => ({
           label: card.concept,
@@ -985,6 +988,8 @@ export function SoftwareApp() {
                   </div>
                 </div>
 
+                {(view === "guide" || view === "flashcards") && <MaterialEditor key={selected.id} material={selected} onSaved={material => { setLibrary(current => { const next=current.map(row=>row.id===material.id?material:row); cacheLibrary(next); return next; }); setSession(null); setSummary(null); setFlippedCard(null); }} />}
+
                 {view === "guide" && (
                   <div className="software-guide">
                     <article>
@@ -1035,6 +1040,13 @@ export function SoftwareApp() {
                       {t("software.timeLimit")}
                       <select value={testDuration} onChange={(event) => setTestDuration(Number(event.target.value))}>
                         {[15,30,45,60,90].map((minutes) => <option key={minutes} value={minutes}>{minutes} min</option>)}
+                      </select>
+                    </label>
+                    <label>{i18n.language.startsWith("pt") ? "Dificuldade" : "Difficulty"}
+                      <select value={testDifficulty} onChange={e=>setTestDifficulty(e.target.value as typeof testDifficulty)}>
+                        <option value="foundation">{i18n.language.startsWith("pt") ? "Fundamentos" : "Foundation"}</option>
+                        <option value="standard">{i18n.language.startsWith("pt") ? "Padrão" : "Standard"}</option>
+                        <option value="advanced">{i18n.language.startsWith("pt") ? "Avançado" : "Advanced"}</option>
                       </select>
                     </label>
                     <div className="software-test-types">

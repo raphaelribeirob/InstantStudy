@@ -51,6 +51,7 @@ class InstantStudyApi {
     String? title,
     int? maxQuestions,
     int? testDurationMinutes,
+    String? testDifficulty,
     List<String>? testQuestionTypes,
     List<Map<String, String>>? concepts,
   }) {
@@ -62,6 +63,7 @@ class InstantStudyApi {
       'learnerId': learnerId,
       'maxQuestions': maxQuestions,
       'testDurationMinutes': testDurationMinutes,
+      'testDifficulty': testDifficulty,
       'testQuestionTypes': testQuestionTypes,
       'concepts': concepts,
     });
@@ -95,6 +97,26 @@ class InstantStudyApi {
 
   Future<Map<String, dynamic>> library({required String learnerId}) {
     return _post({'action': 'material_list', 'learnerId': learnerId, 'limit': 50});
+  }
+
+
+  Future<Map<String, dynamic>> updateMaterial({
+    required String learnerId,
+    required String materialId,
+    required String title,
+    required String summary,
+    required List<String> outline,
+    required List<Map<String, dynamic>> flashcards,
+  }) {
+    return _post({
+      'action': 'material_update',
+      'learnerId': learnerId,
+      'materialId': materialId,
+      'title': title,
+      'summary': summary,
+      'outline': outline,
+      'flashcards': flashcards,
+    });
   }
 
   Future<Map<String, dynamic>> getMaterial({

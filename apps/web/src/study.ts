@@ -300,6 +300,7 @@ export async function prepareStudy(input: {
   title?: string;
   maxQuestions?: number;
   testDurationMinutes?: number;
+  testDifficulty?: "foundation" | "standard" | "advanced";
   testQuestionTypes?: TestQuestionType[];
   concepts?: Array<{ label: string; sourceExcerpt?: string; studyPrompt?: string }>;
 }) {
@@ -313,6 +314,7 @@ export async function prepareStudy(input: {
         mode: input.mode,
         maxQuestions: input.maxQuestions,
         testDurationMinutes: input.testDurationMinutes,
+        testDifficulty: input.testDifficulty,
         testQuestionTypes: input.testQuestionTypes,
         concepts: input.concepts,
       }),
@@ -458,6 +460,20 @@ export async function importLongAudioMaterial(
   };
   onProgress?.(100);
   return result;
+}
+
+/** Persist user edits to existing generated material, scoped to the verified learner. */
+export async function updateStudyMaterial(input: {
+  materialId: string;
+  title: string;
+  summary: string;
+  outline: string[];
+  flashcards: StudyAssets["flashcards"];
+}) {
+  return (await request(identified({
+    action: "material_update",
+    ...input,
+  }))) as { material: StudyMaterial };
 }
 
 export async function listStudyMaterials(query = "") {

@@ -51,6 +51,7 @@ export function generateQuestion(input: {
   alternatives?: ConceptLike[];
   questionIndex?: number;
   difficulty?: number;
+  testDifficulty?: "foundation" | "standard" | "advanced";
 }): GeneratedQuestion {
   const concept = clean(input.concept.label);
   const source = clean(input.concept.sourceExcerpt);
@@ -63,18 +64,18 @@ export function generateQuestion(input: {
       input.alternatives ?? [],
     );
 
-    while (distractors.length < 3) {
-      const fallback = [
-        `The source does not connect ${concept} to the mechanism being studied.`,
-        `${concept} is described as unrelated to the surrounding process.`,
-        `The source states that ${concept} has no role in this topic.`,
-      ][distractors.length];
-      distractors.push(fallback);
+    // No fabricated wrong statements. Fall back to written recall unless
+    // three distinct source-grounded alternative statements are available.
+    if (distractors.length < 3) {
+      return { prompt: authoredPrompt || `Explain ${concept} according to the source.`,
+        answerMode: "text", generatedBy: "deterministic" };
     }
 
     const values = rotate([source, ...distractors.slice(0, 3)], index);
     return {
-      prompt: `Which statement best describes ${concept} according to the study material?`,
+      prompt: input.testDifficulty === "advanced"
+        ? `Which source-supported statement explains ${concept} most accurately in context?`
+        : `Which statement best describes ${concept} according to the study material?`,
       choices: values.map((value, choiceIndex) => ({
         label: String.fromCharCode(65 + choiceIndex),
         value,
@@ -113,7 +114,9 @@ export function generateQuestion(input: {
 
   if (input.type === "free_recall") {
     return {
-      prompt: authoredPrompt || `Without looking back, explain ${concept} in your own words and include the most important detail.`, 
+      prompt: input.testDifficulty === "advanced"
+        ? `Explain ${concept}, identify the source evidence, and relate its mechanism to the broader topic.`
+        : authoredPrompt || `Without looking back, explain ${concept} in your own words and include the most important detail.`, 
       answerMode: "text",
       generatedBy: "deterministic",
     };
