@@ -5,6 +5,13 @@ import type { AIState } from "./components/smoothui/ai-core";
 
 type TutorState = "idle" | "connecting" | "listening" | "thinking" | "speaking" | "error";
 type StartOptions = { title: string; sourceExcerpt: string; locale: "pt-BR" | "en-US" };
+const ALLOWED_MODES = ["learn", "quiz", "test", "orbita", "ask", "create", "library", "guide",
+  "flashcards", "audio", "insights", "game", "friends", "family", "plugin"] as const;
+export type OrbitMode = typeof ALLOWED_MODES[number];
+type VoiceActions = {
+  onOpenMode?: (mode: OrbitMode) => void;
+  getStudyContext?: () => Record<string, string | number | boolean | null>;
+};
 const MAX_VOICE_SESSION_MS = 3 * 60 * 1000;
 
 type SessionResources = {
@@ -25,6 +32,9 @@ type EventPayload = {
   delta?: string;
   transcript?: string;
   error?: { message?: string };
+  response?: { output?: Array<{
+    type?: string; name?: string; call_id?: string; arguments?: string;
+  }> };
 };
 
 /**
@@ -33,7 +43,9 @@ type EventPayload = {
  * All API keys are held by the server. The browser sends only the SDP offer
  * through the paid, authenticated same-origin InstantStudy BFF.
  */
-export function useRealtimeTutor() {
+export function useRealtimeTutor(actions?: VoiceActions) {
+  const actionsRef = useRef(actions);
+  actionsRef.current = actions;
   const [state, setState] = useState<TutorState>("idle");
   const [error, setError] = useState("");
   const [transcript, setTranscript] = useState("");
@@ -132,6 +144,36 @@ export function useRealtimeTutor() {
         setTutorState("listening");
         // No artificial assistant introduction: the learner starts with speech.
       };
+      const respondToTool = (call: { name?: string; call_id?: string; arguments?: string }) => {
+        if (current.current !== resources || !call.call_id || dc.readyState !== "open") return;
+        let output: Record<string, unknown> = { ok: false, error: "unsupported_tool" };
+        try {
+          if (call.name === "open_study_mode") {
+            const payload: unknown = JSON.parse(call.arguments || "{}");
+            const requested = payload && typeof payload === "object" && "mode" in payload
+              ? (payload as { mode?: unknown }).mode : null;
+            if (typeof requested === "string" &&
+                (ALLOWED_MODES as readonly string[]).includes(requested) &&
+                actionsRef.current?.onOpenMode) {
+              actionsRef.current.onOpenMode(requested as OrbitMode);
+              output = { ok: true, mode: requested, result: "Requested tool opened on screen. Do not claim the exercise is complete." };
+            } else {
+              output = { ok: false, error: "unknown_or_unavailable_mode" };
+            }
+          } else if (call.name === "get_study_context") {
+            output = { ok: true, context: actionsRef.current?.getStudyContext?.() ?? {} };
+          }
+        } catch {
+          output = { ok: false, error: "invalid_function_arguments" };
+        }
+        if (current.current !== resources || dc.readyState !== "open") return;
+        dc.send(JSON.stringify({
+          type: "conversation.item.create",
+          item: { type: "function_call_output", call_id: call.call_id, output: JSON.stringify(output) },
+        }));
+        dc.send(JSON.stringify({ type: "response.create" }));
+      };
+
       dc.onmessage = event => {
         if (current.current !== resources) return;
         let parsed: EventPayload;
@@ -152,6 +194,12 @@ export function useRealtimeTutor() {
             if (parsed.delta) setTranscript(prev => (prev + parsed.delta).slice(-800));
             break;
           case "response.done":
+            setTutorState("listening");
+            // Function outputs are processed only once from final response items.
+            for (const item of parsed.response?.output || []) {
+              if (item.type === "function_call") respondToTool(item);
+            }
+            break;
           case "response.output_audio.done":
             setTutorState("listening");
             break;
