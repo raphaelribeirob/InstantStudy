@@ -7,7 +7,7 @@ import {
 
 const alice = { userId: "alice", accessToken: "alice-token" };
 const bob = { userId: "bob", accessToken: "bob-token" };
-const allowed = { enabled: true, authorized: true, plan: "plus" };
+const allowed = { enabled: true, authorized: true, plan: "plus" as const };
 
 test("only the latest verified, paid request may render the study app", () => {
   assert.equal(canGrantPaidStudy(allowed, alice, alice, 2, 2), true);
