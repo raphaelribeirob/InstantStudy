@@ -1,0 +1,89 @@
+/* InstantStudy™ → IStudy™ — launch motion, never a second tutor/orb. */
+.study-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #fdfcfc;
+  color: #000;
+  isolation: isolate;
+  opacity: 1;
+  transition: opacity 230ms ease;
+}
+.study-splash--leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+.study-splash__pill {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(86vw, 650px);
+  height: clamp(95px, 16vw, 146px);
+  max-width: calc(100vw - 32px);
+  border: clamp(3px, .55vw, 6px) solid currentColor;
+  border-radius: 9999px;
+  background: #fdfcfc;
+  animation: study-splash-collapse 1600ms cubic-bezier(.55, 0, .2, 1) both;
+}
+.study-splash__word {
+  position: absolute;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  white-space: nowrap;
+  font-family: Inter, "Helvetica Neue", Arial, system-ui, sans-serif;
+  font-size: clamp(26px, 5vw, 54px);
+  letter-spacing: -.045em;
+  line-height: 1;
+  transform-origin: center;
+  will-change: opacity, transform, filter;
+}
+.study-splash__regular { font-weight: 400; }
+.study-splash__medium { font-weight: 500; }
+.study-splash__word sup {
+  font-size: .31em;
+  font-weight: 500;
+  letter-spacing: 0;
+  transform: translateY(-.85em);
+  margin-left: .16em;
+}
+.study-splash__word--full {
+  animation: study-splash-full 1600ms ease-in-out both;
+}
+.study-splash__word--short {
+  animation: study-splash-short 1600ms ease-in-out both;
+}
+.study-splash__skip {
+  position: absolute;
+  right: 22px;
+  bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: #777169;
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+}
+.study-splash__skip:focus-visible { outline: 2px solid #000; outline-offset: 3px; }
+@keyframes study-splash-collapse {
+  0%, 22% { width: min(86vw, 650px); }
+  80%, 100% { width: min(62vw, 360px); }
+}
+@keyframes study-splash-full {
+  0%, 35% { opacity: 1; transform: scaleX(1); filter: blur(0); }
+  69%, 100% { opacity: 0; transform: scaleX(.69); filter: blur(3px); }
+}
+@keyframes study-splash-short {
+  0%, 54% { opacity: 0; transform: scaleX(.85); filter: blur(3px); }
+  78%, 100% { opacity: 1; transform: scaleX(1); filter: blur(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .study-splash, .study-splash__pill, .study-splash__word { animation: none !important; transition: none !important; }
+  .study-splash__pill { width: min(62vw, 360px); }
+  .study-splash__word--full { display: none; }
+  .study-splash__word--short { opacity: 1; transform: none; filter: none; }
+}
