@@ -184,6 +184,8 @@ export default async function handler(req, res) {
     "room_get",
     "room_progress",
     "realtime_offer",
+    "audio_chunk",
+    "audio_finalize",
   ];
   const action = allowedActions.includes(body.action) ? body.action : "prepare";
 
@@ -290,6 +292,43 @@ export default async function handler(req, res) {
         learnerId,
         limit: Math.max(1, Math.min(Number(body.limit || 20), 100)),
       });
+    } else if (action === "audio_chunk" || action === "audio_finalize") {
+      const learnerId = await verifiedLearner(body);
+      if (!learnerId || ANON_ID.test(learnerId)) {
+        return json(res, 401, { error: "instant_account_required_for_large_audio" });
+      }
+      const plan = await verifiedBillingPlan(body);
+      if (plan === "free") return json(res, 403, { error: "premium_required_for_large_audio" });
+      const origin = String(req.headers.origin || "");
+      const requestHost = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim();
+      if (origin) {
+        try {
+          if (new URL(origin).host !== requestHost) return json(res, 403, { error: "origin_denied" });
+        } catch { return json(res, 403, { error: "origin_denied" }); }
+      }
+      const uploadId = cleanId(body.uploadId, 36);
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uploadId)) {
+        return json(res, 400, { error: "audio_upload_id_invalid" });
+      }
+      if (action === "audio_chunk") {
+        const inlineBase64 = typeof body.inlineBase64 === "string" ? body.inlineBase64 : "";
+        if (inlineBase64.length > 2_350_000 || inlineBase64.length < 8) {
+          return json(res, 413, { error: "audio_upload_chunk_too_large" });
+        }
+        result = await upstream(base, apiKey, "/api/v1/uploads/audio/chunk", {
+          learnerId, uploadId,
+          fileName: typeof body.fileName === "string" ? body.fileName.slice(0, 300) : "lecture.webm",
+          mimeType: typeof body.mimeType === "string" ? body.mimeType.slice(0, 200) : "audio/webm",
+          totalParts: Number(body.totalParts),
+          partIndex: Number(body.partIndex),
+          inlineBase64,
+        });
+      } else {
+        result = await upstream(base, apiKey, "/api/v1/uploads/audio/finalize", {
+          learnerId, uploadId,
+          title: typeof body.title === "string" ? body.title.slice(0, 200) : undefined,
+        });
+      }
     } else if (action === "material_import") {
       const learnerId = await verifiedLearner(body);
       if (!learnerId) return json(res, 401, { error: "learner_identity_required" });
