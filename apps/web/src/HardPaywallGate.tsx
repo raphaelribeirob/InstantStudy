@@ -3,6 +3,7 @@ import { canGrantPaidStudy, matchesCurrentPaywallRequest } from "./paidAccessGua
 import { openInstantStudyCheckout, readInstantAccountSession } from "./instantBilling";
 import { SoftwareApp } from "./SoftwareApp";
 import SiriOrb from "./components/smoothui/SiriOrb";
+import { StudyMotionPanel } from "./StudyMotion";
 import "./hard-paywall.css";
 
 type Access = {
@@ -141,6 +142,7 @@ export function HardPaywallGate() {
         <div className="study-paywall__branding" aria-label="InstantStudy">
           InstantStudy<sup>™</sup>
         </div>
+        <StudyMotionPanel id={stage}>
         {stage === "checking" && (
           <section className="study-paywall__panel" role="status" aria-live="polite">
             <p className="study-paywall__kicker">VERIFICAÇÃO SEGURA</p>
@@ -211,6 +213,7 @@ export function HardPaywallGate() {
             <button type="button" className="study-paywall__primary" onClick={() => void refresh()}>Tentar novamente</button>
           </section>
         )}
+        </StudyMotionPanel>
       </div>
     </main>
   );
