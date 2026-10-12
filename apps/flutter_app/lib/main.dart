@@ -503,6 +503,187 @@ class _StudyHomeState extends State<StudyHome> {
     }
   }
 
+  Future<void> _handleOrbAction(String action) async {
+    if (_busy || !_identityReady) return;
+    if (action == 'import') {
+      setState(() { _nativePanel = 'import'; _error = null; });
+      return;
+    }
+    if (action == 'insights') { await _showInsights(); return; }
+    if (action == 'audio') { await _showPodcast(); return; }
+    if (action == 'game') { await _showGame(); return; }
+    if (action == 'library') { await _loadLibrary(); return; }
+    if (action == 'review') { await _loadDueReviews(); return; }
+    if (action == 'friends') {
+      setState(() { _nativePanel = 'friends'; _error = null; });
+      return;
+    }
+    if (action == 'ask' || action == 'guide' || action == 'flashcards') {
+      if (_material.text.trim().isEmpty) {
+        setState(() { _nativePanel = 'import'; _error = _txt(
+          'Importe um material antes de usar esta ferramenta.',
+          'Import material before using this tool.'); });
+        return;
+      }
+      setState(() { _nativePanel = action; _error = null; });
+      return;
+    }
+    if (const {'learn', 'quiz', 'test'}.contains(action)) {
+      setState(() {
+        _mode = action;
+        _nativePanel = _material.text.trim().isEmpty ? 'import' : 'study';
+        _session = null;
+        _summary = null;
+        _error = null;
+      });
+      if (_nativePanel == 'study') await _start();
+    }
+  }
+
+  Future<void> _loadLibrary() async {
+    setState(() { _busy = true; _error = null; _nativePanel = 'library'; });
+    try {
+      final result = await _api.library(learnerId: _learnerId);
+      final items = result['materials'];
+      if (!mounted) return;
+      setState(() {
+        _savedMaterials = items is List
+            ? items.whereType<Map>().map((item) =>
+              Map<String, dynamic>.from(item)).toList()
+            : [];
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _selectSavedMaterial(Map<String, dynamic> item) async {
+    setState(() { _busy = true; _error = null; });
+    try {
+      final id = item['id']?.toString() ?? '';
+      final result = await _api.getMaterial(
+        learnerId: _learnerId, materialId: id);
+      final material = result['material'];
+      if (material is! Map) throw InstantStudyApiException(
+          _txt('Material indisponível.', 'Material unavailable.'));
+      if (!mounted) return;
+      setState(() {
+        _materialId = material['id']?.toString();
+        _material.text = material['content']?.toString() ?? '';
+        _title.text = material['title']?.toString() ?? '';
+        _assets = material['assets'] is Map
+            ? Map<String, dynamic>.from(material['assets'] as Map)
+            : null;
+        _nativePanel = 'orbit';
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _loadDueReviews() async {
+    setState(() { _busy = true; _nativePanel = 'review'; _error = null; });
+    try {
+      final result = await _api.due(learnerId: _learnerId);
+      final items = result['items'];
+      if (!mounted) return;
+      setState(() {
+        _dueConcepts = items is List
+            ? items.whereType<Map>().map((item) =>
+              Map<String, dynamic>.from(item)).toList()
+            : [];
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _startDueReview(Map<String, dynamic> due) async {
+    final excerpt = due['sourceExcerpt']?.toString() ?? '';
+    final label = due['label']?.toString() ?? '';
+    if (label.isEmpty || excerpt.isEmpty) return;
+    setState(() { _busy = true; _error = null; _mode = 'review'; });
+    try {
+      final session = await _api.prepare(
+        contentText: excerpt,
+        title: due['title']?.toString(),
+        mode: 'review', learnerId: _learnerId,
+        maxQuestions: 4,
+        concepts: [{'label': label, 'sourceExcerpt': excerpt}],
+      );
+      if (!mounted) return;
+      setState(() { _session = session; _summary = null; _nativePanel = 'study'; });
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _askSource() async {
+    if (_askPrompt.text.trim().isEmpty || _material.text.trim().isEmpty) return;
+    setState(() { _busy = true; _askResponse = null; _error = null; });
+    try {
+      final result = await _api.ask(
+        contentText: _material.text, question: _askPrompt.text.trim());
+      if (!mounted) return;
+      setState(() => _askResponse = result['answer']?.toString() ??
+          _txt('Sem resposta fundamentada.', 'No grounded answer available.'));
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _createStudyRoom() async {
+    if (_materialId == null) {
+      setState(() => _roomMessage = _txt(
+        'Importe um material antes de criar uma sala.',
+        'Import material before creating a room.'));
+      return;
+    }
+    setState(() { _busy = true; _roomMessage = null; });
+    try {
+      final response = await _api.createRoom(
+        learnerId: _learnerId,
+        materialId: _materialId!, displayName: _roomName.text.trim());
+      if (!mounted) return;
+      setState(() => _roomMessage = _txt('Código da sala: ', 'Room code: ') +
+          (response['room'] is Map ? response['room']['code'].toString() : '?'));
+    } catch (error) {
+      if (mounted) setState(() => _roomMessage = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _joinStudyRoom() async {
+    if (_roomCode.text.trim().isEmpty) return;
+    setState(() { _busy = true; _roomMessage = null; });
+    try {
+      final response = await _api.joinRoom(
+        learnerId: _learnerId, code: _roomCode.text.trim(),
+        displayName: _roomName.text.trim());
+      if (!mounted) return;
+      final room = response['room'];
+      setState(() => _roomMessage = room is Map
+          ? _txt('Você entrou em: ', 'Joined: ') +
+              (room['title']?.toString() ?? _roomCode.text)
+          : _txt('Sala acessada.', 'Room joined.'));
+    } catch (error) {
+      if (mounted) setState(() => _roomMessage = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Color get _orbPrimary {
     if (_mode == 'test') return InstantStudyApp.paper;
     if (_mode == 'review') return InstantStudyApp.orange;
