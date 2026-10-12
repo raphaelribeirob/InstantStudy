@@ -230,3 +230,26 @@ test("a completed test must have all actual answers and retains material provena
   assert.equal(stored?.materialId, sourceId);
   assert.equal((await engine.finish(session.id)).testResult?.answered, 2);
 });
+
+test("Practice Test question payload never exposes its canonical source excerpt", async () => {
+  const text = "The mitochondrion generates ATP through cellular respiration.";
+  const source = new ContentSessionStore().create({
+    title: "Cell biology", mode: "test", contentText: text,
+  });
+  const engine = new StudyEngine();
+  const session = await engine.start(source, {
+    mode: "test", maxQuestions: 1, testQuestionTypes: ["free_recall"],
+    concepts: [{
+      label: "Mitochondrion",
+      sourceExcerpt: text,
+      studyPrompt: "Explain the main role of mitochondria.",
+    }],
+  });
+  const next = await engine.next(session.id);
+  if (next.done) throw new Error("Expected a test question");
+  assert.equal("sourceExcerpt" in next.concept, false);
+  assert.doesNotMatch(JSON.stringify(next.concept), /generates ATP/);
+  assert.equal(next.question.prompt, "Explain the main role of mitochondria.");
+  const serverState = await engine.get(session.id);
+  assert.equal(serverState?.concepts[0]?.sourceExcerpt, text);
+});
