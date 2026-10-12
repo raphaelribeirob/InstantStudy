@@ -114,6 +114,7 @@ const prepareStudySchema = z
       .describe("Files supplied by the host, including ChatGPT file inputs."),
     title: z.string().min(1).max(200).optional(),
     goal: z.string().min(1).max(500).optional(),
+    materialId: z.string().uuid().optional(),
     learnerId: z
       .string()
       .min(3)
@@ -1096,10 +1097,22 @@ app.post("/api/v1/agent/plan/complete", async (req, res) => {
       const expected = step.capability === "test" ? "test"
         : step.capability === "review" ? "review" : "learn";
       if (!session || session.learnerId !== input.learnerId ||
+        session.materialId !== active.materialId ||
         session.title !== active.materialTitle ||
         session.mode !== expected || session.status !== "completed" ||
         session.attempts.length === 0 ||
         !session.completedAt ||
+        !session.completionReason ||
+        (session.completionReason === "time_expired"
+          ? session.mode !== "test" ||
+            !session.testConfig?.endsAt ||
+            Date.parse(session.testConfig.endsAt) > Date.now()
+          : session.completionReason === "all_questions"
+            ? session.questionIndex < session.maxQuestions
+            : session.completionReason === "mastery_reached"
+              ? session.mode === "test" ||
+                !session.concepts.every(c => c.mastery >= 0.88)
+              : true) ||
         Date.parse(session.createdAt) < Date.parse(active.createdAt) ||
         Date.parse(session.completedAt) < Date.parse(active.createdAt)) {
         res.status(409).json({ error: "agent_study_proof_not_verified" }); return;
@@ -1290,6 +1303,17 @@ app.post("/api/v1/study/prepare", async (req, res) => {
       .join("\n\n")
       .slice(0, 200000);
 
+    if (input.materialId) {
+      const owned = input.learnerId
+        ? await materialStore.get(input.learnerId, input.materialId) : null;
+      if (!owned) { res.status(404).json({ error: "material_not_found" }); return; }
+      const sourceMatches = input.mode === "review"
+        ? combinedText.length > 0 && owned.content.includes(combinedText)
+        : combinedText === owned.content;
+      if (!sourceMatches || input.title !== owned.title) {
+        res.status(409).json({ error: "study_material_source_mismatch" }); return;
+      }
+    }
     const contentSession = contentSessions.create({
       ...input,
       contentText: combinedText || undefined,
@@ -1303,6 +1327,7 @@ app.post("/api/v1/study/prepare", async (req, res) => {
 
     const studySession = await studyEngine.start(contentSession, {
       learnerId: input.learnerId,
+      materialId: input.materialId,
       mode: input.mode,
       targetMinutes: input.targetMinutes,
       maxQuestions: input.maxQuestions,
