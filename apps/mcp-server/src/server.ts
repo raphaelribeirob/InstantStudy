@@ -1428,7 +1428,7 @@ app.post("/api/v1/study/prepare", async (req, res) => {
 app.get("/api/v1/study/sessions/:sessionId", async (req, res) => {
   const session = await studyEngine.get(req.params.sessionId);
   const learnerId = typeof req.query.learnerId === "string" ? req.query.learnerId : undefined;
-  if (!ownsStudySession(session, learnerId, hardPaywallServiceEnabled())) {
+  if (!session || !ownsStudySession(session, learnerId, hardPaywallServiceEnabled())) {
     res.status(404).json({ error: "study_session_not_found" });
     return;
   }
@@ -1510,7 +1510,7 @@ app.post("/api/v1/study/evaluate", async (req, res) => {
       .parse(req.body ?? {});
 
     const session = await studyEngine.get(input.studySessionId);
-    if (!ownsStudySession(session, input.learnerId, hardPaywallServiceEnabled())) {
+    if (!session || !ownsStudySession(session, input.learnerId, hardPaywallServiceEnabled())) {
       res.status(404).json({ error: "study_session_not_found" });
       return;
     }
