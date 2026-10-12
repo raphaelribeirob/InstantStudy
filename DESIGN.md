@@ -195,10 +195,19 @@ Do **not** grant Realtime a tool that directly updates mastery, issues charges, 
 
 ## 12. Sensor Tower / Quizlet pedagogy and recording upgrade
 
-- Content may be converted to structured study cards and source-grounded guides by OpenAI if `INSTANTSTUDY_AI_ASSETS_ENABLED=true`, a verified learner identity, usable OpenAI credentials and a durable Neon per-user daily quota are all available. The server checks every proposed card's literal evidence against learner material and reverts safely to the deterministic version on failure.
+- Study cards and source-grounded guides use the **free-first Groq → OpenRouter → Gemini** LLM router only when the operator enabled it and actual provider keys are present. The result is validated against source evidence and a durable daily Neon quota; invalid/unavailable results fall back to deterministic materials. Paid OpenAI text inference requires a separate explicit opt-in. See `docs/FREE_LLM_PROVIDERS.md`.
 - Normal Learn, Quiz and Test pass the grounded flashcard prompts into the Study Engine. Objective answer choices are checked against a source-backed correct statement, not rewarded for superficial word overlap.
 - New review attempts are scheduled by `ts-fsrs` and serialized with each concept. Legacy dates remain as saved until that concept is next reviewed; no invented prior history.
 - Large recordings of up to 25 MB use authenticated, paid Web/PWA chunking with bounded Neon staging. The native Flutter app still has the smaller legacy limit. Uploads expire after 24 hours and must not be claimed to support arbitrarily long lectures.
 - Existing audio podcasts remain scripted/browser TTS; they are not downloadable audio episodes. Existing game/social mechanics remain limited; no parity assertion should overstate them.
 - The embedded Review hides its duplicate orb to keep only one main voice sphere within the focus layout.
 - These engineering changes do not authorize production activation or claims of human-tested Quizlet equivalence.
+
+
+### Awesome Free LLM APIs provider routing — October 2026
+- The Awesome catalog is a reference, **not** a unified free API or license to redistribute keys.
+- Back-end text calls prioritize configured Groq, OpenRouter `:free` and Gemini provider endpoints; the router accepts only allowlisted hosts and operator-selected model IDs.
+- PDF/text extraction remains local on the API; generated cards, guides, Ask, grading, audio transcription and photo OCR may call configured external free-tier providers. Student content must not be sent before privacy disclosure/consent review.
+- **No automatic billable fallbacks:** OpenAI text, Whisper/audio and image OCR all require separate `INSTANTSTUDY_ALLOW_PAID_*` switches; the existing OpenAI Realtime voice still has separate paid entitlement and configuration.
+- Preview environment enables routing switches only; no Groq/OpenRouter/Gemini keys have been supplied, so calls fall back to deterministic/unsupported states rather than pretending to be connected.
+- See `docs/FREE_LLM_PROVIDERS.md` for setup, provider restrictions, safe limits and end-to-end acceptance.
