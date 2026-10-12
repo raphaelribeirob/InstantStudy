@@ -1322,11 +1322,31 @@ app.post("/api/v1/study/evaluate", async (req, res) => {
       return;
     }
 
-    const grade = await gradeStudyAnswer({
-      conceptLabel: concept.label,
-      sourceExcerpt: concept.sourceExcerpt,
-      userAnswer: input.userAnswer,
-    });
+    // Objective questions are graded against the actual presented correct
+    // answer, never by lexical similarity to a possibly wrong distractor.
+    const active = await studyEngine.next(input.studySessionId);
+    const choiceQuestion = !active.done &&
+      active.concept.id === input.conceptId &&
+      active.question.answerMode === "choice" &&
+      Array.isArray(active.question.choices);
+    const selectedChoice = choiceQuestion &&
+      active.question.choices?.some((choice) => choice.value.trim() === input.userAnswer.trim());
+    const grade = selectedChoice
+      ? {
+          correctness: input.userAnswer.trim() === concept.sourceExcerpt.trim() ? 1 : 0,
+          completeness: input.userAnswer.trim() === concept.sourceExcerpt.trim() ? 1 : 0,
+          confidence: 1,
+          missingConcepts: input.userAnswer.trim() === concept.sourceExcerpt.trim() ? [] : [concept.label],
+          feedback: input.userAnswer.trim() === concept.sourceExcerpt.trim()
+            ? "Correct. This answer is directly supported by the source."
+            : "Not quite. Review the source-backed correct statement.",
+          provider: "deterministic" as const,
+        }
+      : await gradeStudyAnswer({
+          conceptLabel: concept.label,
+          sourceExcerpt: concept.sourceExcerpt,
+          userAnswer: input.userAnswer,
+        });
 
     const submission = await studyEngine.submit(
       input.studySessionId,
