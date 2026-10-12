@@ -150,6 +150,8 @@ export function SoftwareApp() {
   const [askHistory, setAskHistory] = useState<Array<{role: "user" | "assistant"; content: string}>>([]);
   const activeAskSourceRef = useRef<string | null>(null);
   const [askBusy, setAskBusy] = useState(false);
+  const [askSaveBusy, setAskSaveBusy] = useState(false);
+  const [askSaveError, setAskSaveError] = useState("");
   const [search, setSearch] = useState("");
   const [flippedCard, setFlippedCard] = useState<string | null>(null);
   const [dueReviews, setDueReviews] = useState<DueReview[]>([]);
@@ -478,6 +480,39 @@ export function SoftwareApp() {
       }
     } finally {
       if (activeAskSourceRef.current === sourceId) setAskBusy(false);
+    }
+  }
+
+  async function saveAskAsStudySet() {
+    if (!selected || askSaveBusy || !askHistory.some((turn) => turn.role === "user")) return;
+    const sourceId = selected.id;
+    const questions = askHistory.filter((turn) => turn.role === "user")
+      .slice(-10).map((turn, index) => `${index + 1}. ${turn.content.slice(0, 1000)}`);
+    // The original source remains authoritative. Unverified AI replies are NOT
+    // promoted into material facts when generating new flashcards.
+    const contentText = [
+      selected.content.slice(0, 170000),
+      "Learner practice questions (not factual source evidence):",
+      ...questions,
+    ].join("\n\n").slice(0, 195000);
+    setAskSaveBusy(true);
+    setAskSaveError("");
+    try {
+      const { material } = await importStudyMaterial({
+        title: `${selected.title} — Ask review`.slice(0, 200),
+        sourceType: "paste",
+        contentText,
+      });
+      if (activeAskSourceRef.current !== sourceId) return;
+      setLibrary((current) => [material, ...current.filter((row) => row.id !== material.id)]);
+      setSelectedId(material.id);
+      setView("guide");
+    } catch (error) {
+      if (activeAskSourceRef.current === sourceId) {
+        setAskSaveError(error instanceof Error ? error.message : "Could not save this Ask session.");
+      }
+    } finally {
+      setAskSaveBusy(false);
     }
   }
 
@@ -1185,6 +1220,11 @@ export function SoftwareApp() {
                           </div>
                         ))}
                         <button onClick={() => { setView("learn"); void startMode("learn"); }}>{t("software.quizMe")}</button>
+                        <button disabled={askSaveBusy || askBusy} onClick={() => void saveAskAsStudySet()}>
+                          {askSaveBusy ? (i18n.language.startsWith("pt") ? "Salvando…" : "Saving…")
+                            : (i18n.language.startsWith("pt") ? "Salvar perguntas como material" : "Save questions as study set")}
+                        </button>
+                        {askSaveError ? <p role="alert">{askSaveError}</p> : null}
                       </div>
                     ) : askAnswer ? (
                       <div className="software-ask-answer"><span>INSTANTSTUDY</span><p>{askAnswer}</p></div>
