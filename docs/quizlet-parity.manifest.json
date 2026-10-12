@@ -933,7 +933,7 @@
       "platforms": [
         "Backend"
       ],
-      "acceptance": "Migration and readiness in actual production; no firebase and no DB fallback",
+      "acceptance": "Migration and readiness in actual production; no legacy database SDK or in-memory production fallback",
       "codePath": "apps/mcp-server/src/databasePolicy.ts",
       "sourceUrl": "https://quizlet.com/features/ai-study-tools",
       "verifiedEvidence": []
