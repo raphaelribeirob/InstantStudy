@@ -457,6 +457,16 @@ export async function updateStudyMaterial(input: {
   }))) as { material: StudyMaterial };
 }
 
+export type FlashcardStatus = "known" | "learning";
+export async function getFlashcardProgress(materialId: string) {
+  return (await request(identified({ action: "flashcard_progress", materialId }))) as
+    { progress: Array<{ cardId: string; status: FlashcardStatus }> };
+}
+export async function markFlashcardProgress(materialId: string, cardId: string, status: FlashcardStatus) {
+  return (await request(identified({ action: "flashcard_mark", materialId, cardId, status }))) as
+    { cardId: string; status: FlashcardStatus };
+}
+
 /** Duplicate the current user's saved material, not another learner's set. */
 export async function duplicateStudyMaterial(materialId: string) {
   return (await request(identified({ action: "material_duplicate", materialId }))) as { material: StudyMaterial };
