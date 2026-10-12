@@ -8,15 +8,21 @@ import {
 } from "lucide-react";
 import SiriOrb from "./components/smoothui/SiriOrb";
 import { useRealtimeTutor } from "./useRealtimeTutor";
-import { getDueReviews, getRetentionInsights, type DueReview, type RetentionInsights, type StudyMaterial } from "./study";
+import {
+  getDueReviews, getRetentionInsights, getOfferAgentPlan, createOfferAgentPlan,
+  completeOfferAgentStep, type OfferAgentPlanView, type DueReview,
+  type RetentionInsights, type StudyMaterial,
+} from "./study";
+import { readInstantAccountSession } from "./instantBilling";
 import type { AIState } from "./components/smoothui/ai-core";
 import "./orbita-system.css";
+import "./orbital-agent.css";
 
 /** The orbit is a navigation surface. It reuses existing study workspaces and endpoints. */
 export type OrbitalAction =
   | "learn" | "quiz" | "test" | "orbita" | "ask"
   | "create" | "library" | "guide" | "flashcards" | "audio"
-  | "insights" | "game" | "friends" | "family" | "plugin";
+  | "insights" | "game" | "friends" | "family" | "plugin" | "review";
 
 type Module = {
   id: OrbitalAction;
@@ -94,9 +100,10 @@ type Props = {
   onAction: (id: OrbitalAction) => void;
   onSelectMaterial: (material: StudyMaterial) => void;
   focused?: boolean;
+  gradedSession?: { sessionId: string; mode: "learn" | "review" | "test" | "quiz"; title: string };
 };
 
-export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial, focused = false }: Props) {
+export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial, focused = false, gradedSession }: Props) {
   const { i18n } = useTranslation();
   const pt = i18n.language.toLowerCase().startsWith("pt");
   const tr = (ptValue: string, enValue: string) => pt ? ptValue : enValue;
@@ -108,6 +115,12 @@ export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial, 
   const [commandStatus, setCommandStatus] = useState("");
   const [listening, setListening] = useState(false);
   const [highlight, setHighlight] = useState<OrbitalAction>("orbita");
+  const [agentPlan, setAgentPlan] = useState<OfferAgentPlanView | null>(null);
+  const [agentGoal, setAgentGoal] = useState("");
+  const [agentDeadline, setAgentDeadline] = useState("");
+  const [agentBusy, setAgentBusy] = useState(false);
+  const [agentError, setAgentError] = useState("");
+  const [openedStep, setOpenedStep] = useState<string | null>(null);
   const tutor = useRealtimeTutor({
     onOpenMode: (mode) => {
       setHighlight(mode);
@@ -124,6 +137,81 @@ export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial, 
       averageMasteryPercent: insights ? Math.round(insights.averageMastery * 100) : 0,
     }),
   });
+  const hasAccount = Boolean(readInstantAccountSession());
+  const agentNext = agentPlan?.recommendation?.next;
+  const agentCompleted = agentPlan?.plan?.steps.filter(step => step.status === "completed").length || 0;
+  useEffect(() => {
+    let active = true;
+    setOpenedStep(null);
+    setAgentError("");
+    setAgentPlan(null);
+    if (selected && hasAccount) {
+      void getOfferAgentPlan(selected.id)
+        .then(data => { if (active) setAgentPlan(data); })
+        .catch(() => { if (active) setAgentPlan(null); });
+    }
+    return () => { active = false; };
+  }, [selected?.id, hasAccount]);
+
+  async function makeAgentPlan() {
+    if (!selected || agentBusy) return;
+    setAgentError("");
+    setAgentBusy(true);
+    try {
+      const goal = agentGoal.trim() || (pt
+        ? "Compreender e revisar " + selected.title
+        : "Learn, practice and review " + selected.title);
+      const view = await createOfferAgentPlan(selected.id, goal, agentDeadline || undefined);
+      setAgentPlan(view);
+      setOpenedStep(null);
+    } catch (err) {
+      setAgentError(err instanceof Error ? err.message : "agent_plan_failed");
+    } finally {
+      setAgentBusy(false);
+    }
+  }
+
+  function runAgentStep() {
+    if (!agentNext) return;
+    setOpenedStep(agentNext.id);
+    const action: OrbitalAction = agentNext.capability === "review"
+      ? "review" : agentNext.capability;
+    onAction(action);
+  }
+
+  async function acknowledgeAgentStep() {
+    const plan = agentPlan?.plan, step = agentNext;
+    if (!plan || !selected || !step || agentBusy) return;
+    const graded = ["learn", "test", "review"].includes(step.capability);
+    if (graded) {
+      const expectedMode = step.capability === "test" ? "test" : step.capability;
+      if (!gradedSession?.sessionId || gradedSession.mode !== expectedMode ||
+          gradedSession.title !== plan.materialTitle) {
+        setAgentError(tr(
+          "Conclua primeiro uma sessão real de estudo; a IA não pode inventar notas.",
+          "Complete a real graded session first; AI cannot invent a score.",
+        ));
+        return;
+      }
+    } else if (openedStep !== step.id) {
+      setAgentError(tr("Abra a atividade antes de marcá-la como explorada.",
+        "Open the activity before marking it explored."));
+      return;
+    }
+    setAgentBusy(true);
+    setAgentError("");
+    try {
+      const view = await completeOfferAgentStep(selected.id, plan.id, step.id,
+        graded ? gradedSession?.sessionId : undefined);
+      setAgentPlan(view);
+      setOpenedStep(null);
+    } catch (err) {
+      setAgentError(err instanceof Error ? err.message : "agent_step_failed");
+    } finally {
+      setAgentBusy(false);
+    }
+  }
+
   const recognitionRef = useRef<SpeechListener | null>(null);
   const speechWindow = window as SpeechBrowser;
   const canRecognize = Boolean(speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition);
@@ -323,6 +411,74 @@ export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial, 
             <small>{tr(
               "Conta Plus/Unlimited necessária. Uso limitado a 3 minutos por sessão e cota diária. A voz vai para a OpenAI. Conversas não registram notas automaticamente.",
               "Plus/Unlimited account required. 3-minute per-session and daily limits apply. Voice is sent to OpenAI. Conversations do not auto-record grades.",
+            )}</small>
+          </section>
+
+          <section className="orbital-agent-plan" aria-label={tr("Plano agêntico de aprendizagem", "Agentic learning plan")}>
+            <div className="orbital-agent-kicker">{tr("AGENTE DE APRENDIZAGEM", "LEARNING AGENT")}</div>
+            <h3>{tr("Estude com um objetivo.", "Study toward a goal.")}</h3>
+            {!selected ? (
+              <p>{tr("Escolha um material para que a Órbita planeje a prática.",
+                "Choose material so your Orb can plan your learning.")}</p>
+            ) : !hasAccount ? (
+              <p>{tr("Conecte sua conta para salvar um plano no Neon e retomá-lo depois.",
+                "Sign in to save a plan to Neon and resume later.")}</p>
+            ) : agentPlan?.plan ? (
+              <>
+                <p className="orbital-agent-goal">{agentPlan.plan.goal}</p>
+                <div className="orbital-agent-progress">
+                  {tr("Etapas concluídas", "Completed steps")}: {agentCompleted}/{agentPlan.plan.steps.length}
+                </div>
+                <progress value={agentCompleted} max={agentPlan.plan.steps.length} />
+                {agentNext ? (
+                  <div className="orbital-agent-next">
+                    <small>{tr("PRÓXIMA AÇÃO RECOMENDADA", "NEXT RECOMMENDED ACTION")}</small>
+                    <strong>{agentNext.label}</strong>
+                    <p>{agentPlan.recommendation?.reason || agentNext.purpose}</p>
+                    <div className="orbital-agent-buttons">
+                      <button type="button" onClick={runAgentStep} disabled={agentBusy}>
+                        {tr("Abrir atividade", "Open activity")} <ArrowRight size={15} />
+                      </button>
+                      <button className="orbital-agent-confirm" type="button"
+                        onClick={() => void acknowledgeAgentStep()} disabled={agentBusy}>
+                        {["learn", "test", "review"].includes(agentNext.capability)
+                          ? tr("Validar sessão concluída", "Verify completed session")
+                          : tr("Marcar como explorada", "Mark as explored")}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p>{tr("Plano concluído. As próximas revisões FSRS continuam disponíveis.",
+                    "Plan completed. Future FSRS reviews remain available.")}</p>
+                )}
+                <div className="orbital-agent-step-list">
+                  {agentPlan.plan.steps.map(step => (
+                    <div key={step.id}>
+                      <span aria-hidden="true">{step.status === "completed" ? "✓" : "○"}</span>
+                      <span>{step.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <form onSubmit={event => { event.preventDefault(); void makeAgentPlan(); }}>
+                <label htmlFor="orbital-agent-goal">{tr("Sua meta", "Your goal")}</label>
+                <input id="orbital-agent-goal" value={agentGoal}
+                  onChange={e => setAgentGoal(e.target.value)} maxLength={500}
+                  placeholder={tr("Ex.: preparar prova de biologia em 10 dias", "E.g. prepare for a biology test in 10 days")} />
+                <label htmlFor="orbital-agent-deadline">{tr("Prazo (opcional)", "Deadline (optional)")}</label>
+                <input id="orbital-agent-deadline" type="date" value={agentDeadline}
+                  onChange={e => setAgentDeadline(e.target.value)} />
+                <button type="submit" disabled={agentBusy}>
+                  {agentBusy ? tr("Planejando…", "Planning…") : tr("Criar plano", "Create plan")}
+                  <ArrowRight size={16} />
+                </button>
+              </form>
+            )}
+            {agentError && <small role="alert" className="orbital-agent-error">{agentError}</small>}
+            <small className="orbital-agent-fine">{tr(
+              "A Órbita sugere atividades. Apenas sessões realmente avaliadas geram notas ou atualizam a memória.",
+              "The Orb suggests activities. Only truly graded sessions generate scores or update memory.",
             )}</small>
           </section>
 
