@@ -164,6 +164,7 @@ export async function hasActiveFamilyEntitlement(identity) {
     FROM billing_entitlements
     WHERE entitlement_key = 'instant_study.family'
       AND active = TRUE
+      AND (expires_at IS NULL OR expires_at > NOW())
       AND (
         (${identity?.userRef || null}::text IS NOT NULL AND user_ref = ${identity?.userRef || null})
         OR
@@ -273,6 +274,7 @@ export async function familyAccessForIdentity(identity) {
         FROM billing_entitlements be
         WHERE be.entitlement_key = 'instant_study.family'
           AND be.active = TRUE
+          AND (be.expires_at IS NULL OR be.expires_at > NOW())
           AND (
             (fm.owner_user_ref IS NOT NULL AND be.user_ref = fm.owner_user_ref)
             OR
