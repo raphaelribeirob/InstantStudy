@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'i18n.dart';
 import 'instantstudy_api.dart';
 import 'orbital_home.dart';
+import 'study_splash_intro.dart';
 
 void main() {
   runApp(const InstantStudyApp());
@@ -98,8 +99,43 @@ class _InstantStudyAppState extends State<InstantStudyApp> {
         ),
         useMaterial3: true,
       ),
-      home: StudyHome(onLocaleChanged: _setLocale),
+      home: _StartupGate(onLocaleChanged: _setLocale),
     );
+  }
+}
+
+/// Keeps the study/orbital state mounted behind the one-time native splash.
+class _StartupGate extends StatefulWidget {
+  const _StartupGate({required this.onLocaleChanged});
+
+  final ValueChanged<Locale> onLocaleChanged;
+
+  @override
+  State<_StartupGate> createState() => _StartupGateState();
+}
+
+class _StartupGateState extends State<_StartupGate> {
+  bool _opening = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(children: [
+      ExcludeSemantics(
+        excluding: _opening,
+        child: AbsorbPointer(
+          absorbing: _opening,
+          child: StudyHome(onLocaleChanged: widget.onLocaleChanged),
+        ),
+      ),
+      if (_opening)
+        Positioned.fill(
+          child: StudySplashIntro(
+            onComplete: () {
+              if (mounted) setState(() => _opening = false);
+            },
+          ),
+        ),
+    ]);
   }
 }
 
