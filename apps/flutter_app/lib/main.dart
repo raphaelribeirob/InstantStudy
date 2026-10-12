@@ -13,6 +13,7 @@ import 'orbital_home.dart';
 import 'native_hard_paywall.dart';
 import 'native_material_editor.dart';
 import 'study_splash_intro.dart';
+import 'study_motion.dart';
 
 void main() {
   runApp(const InstantStudyApp());
@@ -87,6 +88,14 @@ class _InstantStudyAppState extends State<InstantStudyApp> {
         return const Locale('en');
       },
       theme: ThemeData(
+        pageTransitionsTheme: const PageTransitionsTheme(builders: {
+          TargetPlatform.android: StudyPageTransitionsBuilder(),
+          TargetPlatform.windows: StudyPageTransitionsBuilder(),
+          TargetPlatform.linux: StudyPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: StudyPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        }),
         fontFamily: 'Inter',
         scaffoldBackgroundColor: InstantStudyApp.paper2,
         colorScheme: const ColorScheme.light(
@@ -1199,10 +1208,7 @@ class _StudyHomeState extends State<StudyHome> {
 
   @override
   Widget build(BuildContext context) {
-    final motionDuration =
-        MediaQuery.maybeOf(context)?.disableAnimations == true
-            ? Duration.zero
-            : const Duration(milliseconds: 320);
+    final motionDuration = StudyMotion.duration(context, StudyMotion.standard);
 
     return Scaffold(
       body: Stack(
