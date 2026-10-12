@@ -199,7 +199,7 @@ export function HardPaywallGate() {
               Já assinei — verificar acesso
             </button>
             <p className="study-paywall__legal">
-              Não há cobrança nesta tela. Preço, renovação automática, cancelamento e eventual teste gratuito devem ser confirmados antes de pagar.
+              Não há cobrança nesta tela. Antes de pagar, confira o valor total, a moeda, a periodicidade, a renovação automática, as regras de cancelamento e o reembolso no checkout. Não há acesso gratuito aos recursos de estudo.
             </p>
           </section>
         )}
