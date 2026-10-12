@@ -142,6 +142,7 @@ const prepareStudySchema = z
         z.object({
           label: z.string().min(1).max(200),
           sourceExcerpt: z.string().max(1200).optional(),
+          studyPrompt: z.string().max(260).optional(),
         }),
       )
       .max(30)
