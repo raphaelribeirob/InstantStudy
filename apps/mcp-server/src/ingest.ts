@@ -361,41 +361,50 @@ async function transcribeAudio(
   mime: string,
   fileName = "lecture-audio",
 ) {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) return null;
+  const freeEnabled = process.env.INSTANTSTUDY_FREE_AUDIO_ENABLED === "true";
+  const key = process.env.GROQ_API_KEY?.trim();
+  const allowPaid = process.env.INSTANTSTUDY_ALLOW_PAID_AUDIO_FALLBACK === "true";
+  const openaiKey = process.env.OPENAI_API_KEY?.trim();
+  const providers = [
+    ...(freeEnabled && key ? [{
+      endpoint: "https://api.groq.com/openai/v1/audio/transcriptions",
+      model: "whisper-large-v3-turbo",
+      apiKey: key,
+    }] : []),
+    ...(allowPaid && openaiKey ? [{
+      endpoint: "https://api.openai.com/v1/audio/transcriptions",
+      model: process.env.INSTANTSTUDY_TRANSCRIPTION_MODEL?.trim() || "gpt-4o-mini-transcribe",
+      apiKey: openaiKey,
+    }] : []),
+  ];
 
-  const form = new FormData();
-  const audioBytes = new Uint8Array(bytes.byteLength);
-  audioBytes.set(bytes);
-  form.append(
-    "file",
-    new Blob([audioBytes.buffer], { type: mime || "application/octet-stream" }),
-    fileName,
-  );
-  form.append(
-    "model",
-    process.env.INSTANTSTUDY_TRANSCRIPTION_MODEL?.trim() ||
-      "gpt-4o-mini-transcribe",
-  );
-
-  const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: form,
-    signal: AbortSignal.timeout(120_000),
-  });
-
-  if (!response.ok) {
-    const detail = (await response.text()).slice(0, 500);
-    throw new Error(
-      `Audio transcription failed: HTTP ${response.status} ${detail}`,
-    );
+  for (const provider of providers) {
+    try {
+      const form = new FormData();
+      const audioBytes = new Uint8Array(bytes.byteLength);
+      audioBytes.set(bytes);
+      form.append("file", new Blob([audioBytes.buffer], {
+        type: mime || "application/octet-stream",
+      }), fileName);
+      form.append("model", provider.model);
+      form.append("response_format", "json");
+      const response = await fetch(provider.endpoint, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${provider.apiKey}` },
+        body: form,
+        signal: AbortSignal.timeout(30000),
+      });
+      if (!response.ok) continue;
+      const payload = await response.json() as { text?: unknown };
+      if (typeof payload.text === "string" && payload.text.trim()) {
+        return payload.text.trim().slice(0, MAX_TEXT_CHARS);
+      }
+    } catch {
+      // Never expose learner audio, provider keys or transcript fragments to logs.
+      // Next provider only if explicitly permitted by operator configuration.
+    }
   }
-
-  const payload = (await response.json()) as { text?: string };
-  return payload.text?.trim().slice(0, MAX_TEXT_CHARS) || null;
+  return null;
 }
 
 async function extractPdf(bytes: Uint8Array) {
