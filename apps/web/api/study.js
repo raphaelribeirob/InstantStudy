@@ -299,6 +299,7 @@ export default async function handler(req, res) {
 
       result = await upstream(base, apiKey, "/api/v1/study/evaluate", {
         studySessionId,
+        learnerId: access?.enabled ? cleanId(body.accountUserId) : undefined,
         conceptId,
         userAnswer,
       });
@@ -329,11 +330,17 @@ export default async function handler(req, res) {
     } else if (action === "next") {
       const studySessionId = cleanId(body.studySessionId, 64);
       if (!studySessionId) return json(res, 400, { error: "session_required" });
-      result = await upstream(base, apiKey, "/api/v1/study/next", { studySessionId });
+      result = await upstream(base, apiKey, "/api/v1/study/next", {
+        studySessionId,
+        learnerId: access?.enabled ? cleanId(body.accountUserId) : undefined,
+      });
     } else if (action === "finish") {
       const studySessionId = cleanId(body.studySessionId, 64);
       if (!studySessionId) return json(res, 400, { error: "session_required" });
-      result = await upstream(base, apiKey, "/api/v1/study/finish", { studySessionId });
+      result = await upstream(base, apiKey, "/api/v1/study/finish", {
+        studySessionId,
+        learnerId: access?.enabled ? cleanId(body.accountUserId) : undefined,
+      });
     } else if (action === "due") {
       const learnerId = await verifiedLearner(body);
       if (!learnerId) return json(res, 401, { error: "learner_identity_required" });
