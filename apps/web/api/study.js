@@ -201,6 +201,8 @@ export default async function handler(req, res) {
     "material_get",
     "material_update",
     "material_duplicate",
+    "flashcard_progress",
+    "flashcard_mark",
     "insights",
     "audio_study",
     "study_game",
@@ -443,6 +445,20 @@ export default async function handler(req, res) {
         contentText: contentText || undefined,
         files,
       });
+    } else if (action === "flashcard_progress" || action === "flashcard_mark") {
+      const learnerId = await verifiedLearner(body);
+      if (!learnerId || ANON_ID.test(learnerId)) return json(res, 401, { error: "learner_identity_required" });
+      const materialId = cleanId(body.materialId, 64);
+      if (!/^[a-f0-9-]{36}$/i.test(materialId)) return json(res, 400, { error: "material_id_invalid" });
+      if (action === "flashcard_progress") {
+        result = await upstream(base, apiKey, "/api/v1/flashcards/progress", { learnerId, materialId });
+      } else {
+        const cardId = cleanId(body.cardId, 100);
+        const status = ["known", "learning"].includes(body.status) ? body.status : "";
+        if (!cardId || !status) return json(res, 400, { error: "card_status_invalid" });
+        result = await upstream(base, apiKey, "/api/v1/flashcards/mark",
+          { learnerId, materialId, cardId, status });
+      }
     } else if (action === "material_duplicate") {
       const learnerId = await verifiedLearner(body);
       if (!learnerId || ANON_ID.test(learnerId)) return json(res, 401, { error: "learner_identity_required" });
