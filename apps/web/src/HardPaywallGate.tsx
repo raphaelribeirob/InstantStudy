@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { canGrantPaidStudy, matchesCurrentPaywallRequest } from "./paidAccessGuard";
 import { openInstantStudyCheckout, readInstantAccountSession } from "./instantBilling";
 import { SoftwareApp } from "./SoftwareApp";
 import SiriOrb from "./components/smoothui/SiriOrb";
@@ -35,9 +36,10 @@ export function HardPaywallGate() {
   const [annual, setAnnual] = useState(true);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
-  const [, setActiveAccess] = useState<Access | null>(null);
+  const latestCheckId = useRef(0);
 
   const refresh = useCallback(async () => {
+    const checkId = ++latestCheckId.current;
     setStage("checking");
     const session = readInstantAccountSession();
     try {
@@ -57,9 +59,20 @@ export function HardPaywallGate() {
       if (typeof payload.enabled !== "boolean" || typeof payload.authorized !== "boolean") {
         throw new Error("access_check_invalid");
       }
-      setActiveAccess(payload);
-      if (payload.authorized) {
+      const currentSession = readInstantAccountSession();
+      if (checkId !== latestCheckId.current) return;
+      if (!matchesCurrentPaywallRequest(session, currentSession, checkId, latestCheckId.current)) {
+        setReason("A conta foi alterada durante a verificação. Verifique novamente.");
+        setStage("error");
+        return;
+      }
+      if (canGrantPaidStudy(payload, session, currentSession, checkId, latestCheckId.current)) {
         setStage("granted");
+        return;
+      }
+      if (payload.authorized) {
+        setReason("O acesso não foi validado como assinatura ativa desta conta.");
+        setStage("error");
         return;
       }
       if (payload.reason === "billing_unavailable" ||
@@ -72,13 +85,19 @@ export function HardPaywallGate() {
       }
       setStage("welcome");
     } catch {
-      setReason("Não foi possível validar o acesso. O app permanece protegido.");
+      if (checkId !== latestCheckId.current) return;
+      if (!matchesCurrentPaywallRequest(session, readInstantAccountSession(), checkId, latestCheckId.current)) {
+        setReason("A conta mudou durante a verificação. Verifique novamente.");
+      } else {
+        setReason("Não foi possível validar o acesso. O app permanece protegido.");
+      }
       setStage("error");
     }
   }, []);
 
   useEffect(() => {
     void refresh();
+    return () => { latestCheckId.current++; };
   }, [refresh]);
 
   useEffect(() => {
