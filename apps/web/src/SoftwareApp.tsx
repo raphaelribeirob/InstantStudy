@@ -148,6 +148,7 @@ export function SoftwareApp() {
   const [question, setQuestion] = useState("");
   const [askAnswer, setAskAnswer] = useState("");
   const [askHistory, setAskHistory] = useState<Array<{role: "user" | "assistant"; content: string}>>([]);
+  const activeAskSourceRef = useRef<string | null>(null);
   const [askBusy, setAskBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [flippedCard, setFlippedCard] = useState<string | null>(null);
@@ -195,9 +196,11 @@ export function SoftwareApp() {
   );
   // Context is intentionally scoped to the currently selected source.
   useEffect(() => {
+    activeAskSourceRef.current = selected?.id ?? null;
     setAskHistory([]);
     setAskAnswer("");
     setQuestion("");
+    setAskBusy(false);
   }, [selected?.id]);
 
   function materialFromRoom(value: StudyRoom): StudyMaterial {
@@ -448,6 +451,7 @@ export function SoftwareApp() {
 
   async function askMaterial() {
     if (!selected || !question.trim()) return;
+    const sourceId = selected.id;
     setAskBusy(true);
     setAskAnswer("");
     try {
@@ -458,6 +462,7 @@ export function SoftwareApp() {
         question: asked,
         history,
       });
+      if (activeAskSourceRef.current !== sourceId) return;
       setAskAnswer(result.answer);
       setAskHistory((current) => [
         ...current.slice(-14),
@@ -466,13 +471,13 @@ export function SoftwareApp() {
       ]);
       setQuestion("");
     } catch (error) {
-      setAskAnswer(
-        error instanceof Error
+      if (activeAskSourceRef.current === sourceId) {
+        setAskAnswer(error instanceof Error
           ? error.message
-          : "InstantStudy could not answer from this material.",
-      );
+          : "InstantStudy could not answer from this material.");
+      }
     } finally {
-      setAskBusy(false);
+      if (activeAskSourceRef.current === sourceId) setAskBusy(false);
     }
   }
 
