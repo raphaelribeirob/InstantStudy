@@ -1505,22 +1505,29 @@ app.post("/api/v1/study/evaluate", async (req, res) => {
       return;
     }
 
-    // Objective questions are graded against the actual presented correct
-    // answer, never by lexical similarity to a possibly wrong distractor.
+    // Objective questions are graded only against a presented choice.
+    // Never route an arbitrary answer through a semantic model: doing so would
+    // allow unsupported answers to receive partial/full credit.
     const active = await studyEngine.next(input.studySessionId);
-    const choiceQuestion = !active.done &&
-      active.concept.id === input.conceptId &&
+    if (active.done || active.concept.id !== input.conceptId) {
+      res.status(409).json({ error: "question_not_active" });
+      return;
+    }
+    const choiceQuestion =
       active.question.answerMode === "choice" &&
       Array.isArray(active.question.choices);
+    const normalizedAnswer = input.userAnswer.trim();
     const selectedChoice = choiceQuestion &&
-      active.question.choices?.some((choice) => choice.value.trim() === input.userAnswer.trim());
-    const grade = selectedChoice
+      active.question.choices?.some((choice) => choice.value.trim() === normalizedAnswer);
+    const objectiveCorrect = Boolean(selectedChoice) &&
+      normalizedAnswer === concept.sourceExcerpt.trim();
+    const grade = choiceQuestion
       ? {
-          correctness: input.userAnswer.trim() === concept.sourceExcerpt.trim() ? 1 : 0,
-          completeness: input.userAnswer.trim() === concept.sourceExcerpt.trim() ? 1 : 0,
+          correctness: objectiveCorrect ? 1 : 0,
+          completeness: objectiveCorrect ? 1 : 0,
           confidence: 1,
-          missingConcepts: input.userAnswer.trim() === concept.sourceExcerpt.trim() ? [] : [concept.label],
-          feedback: input.userAnswer.trim() === concept.sourceExcerpt.trim()
+          missingConcepts: objectiveCorrect ? [] : [concept.label],
+          feedback: objectiveCorrect
             ? "Correct. This answer is directly supported by the source."
             : "Not quite. Review the source-backed correct statement.",
           provider: "deterministic" as const,
@@ -1528,7 +1535,7 @@ app.post("/api/v1/study/evaluate", async (req, res) => {
       : await gradeStudyAnswer({
           conceptLabel: concept.label,
           sourceExcerpt: concept.sourceExcerpt,
-          userAnswer: input.userAnswer,
+          userAnswer: normalizedAnswer,
         });
 
     const submission = await studyEngine.submit(
