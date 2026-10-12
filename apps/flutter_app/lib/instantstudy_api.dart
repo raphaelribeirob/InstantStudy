@@ -23,9 +23,12 @@ class InstantStudyApi {
 
       final response = await request.close().timeout(const Duration(seconds: 45));
       final text = await utf8.decoder.bind(response).join();
-      final body = text.isEmpty
-          ? <String, dynamic>{}
-          : (jsonDecode(text) as Map<String, dynamic>);
+      final decoded = text.isEmpty ? <String, dynamic>{} : jsonDecode(text);
+      final body = decoded is Map<String, dynamic>
+          ? decoded
+          : decoded is List
+              ? <String, dynamic>{'items': decoded}
+              : <String, dynamic>{'error': 'invalid_response'};
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw InstantStudyApiException(
@@ -49,6 +52,7 @@ class InstantStudyApi {
     int? maxQuestions,
     int? testDurationMinutes,
     List<String>? testQuestionTypes,
+    List<Map<String, String>>? concepts,
   }) {
     return _post({
       'action': 'prepare',
@@ -59,6 +63,7 @@ class InstantStudyApi {
       'maxQuestions': maxQuestions,
       'testDurationMinutes': testDurationMinutes,
       'testQuestionTypes': testQuestionTypes,
+      'concepts': concepts,
     });
   }
 
@@ -86,6 +91,28 @@ class InstantStudyApi {
       'action': 'insights',
       'learnerId': learnerId,
     });
+  }
+
+  Future<Map<String, dynamic>> library({required String learnerId}) {
+    return _post({'action': 'material_list', 'learnerId': learnerId, 'limit': 50});
+  }
+
+  Future<Map<String, dynamic>> getMaterial({
+    required String learnerId,
+    required String materialId,
+  }) {
+    return _post({'action': 'material_get', 'learnerId': learnerId, 'id': materialId});
+  }
+
+  Future<Map<String, dynamic>> due({required String learnerId, int limit = 30}) async {
+    return _post({'action': 'due', 'learnerId': learnerId, 'limit': limit});
+  }
+
+  Future<Map<String, dynamic>> getRoom({
+    required String learnerId,
+    required String code,
+  }) {
+    return _post({'action': 'room_get', 'learnerId': learnerId, 'code': code});
   }
 
   Future<Map<String, dynamic>> audioStudy({

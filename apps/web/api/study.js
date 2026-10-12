@@ -183,6 +183,12 @@ export default async function handler(req, res) {
     "room_join",
     "room_get",
     "room_progress",
+    "realtime_offer",
+    "audio_chunk",
+    "audio_finalize",
+    "agent_plan_create",
+    "agent_plan_get",
+    "agent_plan_complete",
   ];
   const action = allowedActions.includes(body.action) ? body.action : "prepare";
 
@@ -198,6 +204,10 @@ export default async function handler(req, res) {
         ? body.mode
         : "learn";
       const learnerId = await verifiedLearner(body);
+      const materialId = cleanId(body.materialId, 64) || undefined;
+      if (materialId && (!learnerId || !/^[a-f0-9-]{36}$/i.test(materialId))) {
+        return json(res, 401, { error: "material_owner_required" });
+      }
       const billingPlan = learnerId
         ? await verifiedBillingPlan(body)
         : "free";
@@ -216,6 +226,8 @@ export default async function handler(req, res) {
                 typeof item?.sourceExcerpt === "string"
                   ? item.sourceExcerpt.slice(0, 1200)
                   : undefined,
+              studyPrompt: typeof item?.studyPrompt === "string"
+                ? item.studyPrompt.slice(0, 260) : undefined,
             }))
             .filter((item) => item.label)
         : undefined;
@@ -238,6 +250,7 @@ export default async function handler(req, res) {
         contentText,
         title,
         mode,
+        materialId,
         learnerId: learnerId || undefined,
         billingPlan,
         maxQuestions,
@@ -289,6 +302,77 @@ export default async function handler(req, res) {
         learnerId,
         limit: Math.max(1, Math.min(Number(body.limit || 20), 100)),
       });
+    } else if (action === "agent_plan_create" ||
+               action === "agent_plan_get" ||
+               action === "agent_plan_complete") {
+      // Agent plans are private learner records; anonymous or forged IDs must
+      // never reach the server using our privileged service API bearer.
+      const learnerId = await verifiedLearner(body);
+      if (!learnerId || ANON_ID.test(learnerId)) {
+        return json(res, 401, { error: "instant_account_required_for_agent_plan" });
+      }
+      const materialId = cleanId(body.materialId, 64);
+      if (!/^[a-f0-9-]{36}$/i.test(materialId)) {
+        return json(res, 400, { error: "agent_material_invalid" });
+      }
+      const common = { learnerId, materialId };
+      if (action === "agent_plan_create") {
+        const goal = typeof body.goal === "string" ? body.goal.trim().slice(0, 500) : "";
+        if (goal.length < 8) return json(res, 400, { error: "agent_goal_required" });
+        const deadline = typeof body.deadline === "string" ? body.deadline.slice(0, 10) : undefined;
+        result = await upstream(base, apiKey, "/api/v1/agent/plan/create", {
+          ...common, goal, deadline,
+        });
+      } else if (action === "agent_plan_get") {
+        result = await upstream(base, apiKey, "/api/v1/agent/plan/get", common);
+      } else {
+        const planId = cleanId(body.planId, 64);
+        const stepId = cleanId(body.stepId, 30);
+        const studySessionId = cleanId(body.studySessionId, 64) || undefined;
+        if (!/^[a-f0-9-]{36}$/i.test(planId) || !/^step-\d{1,2}$/.test(stepId)) {
+          return json(res, 400, { error: "agent_step_input_invalid" });
+        }
+        result = await upstream(base, apiKey, "/api/v1/agent/plan/complete", {
+          ...common, planId, stepId, studySessionId,
+        });
+      }
+    } else if (action === "audio_chunk" || action === "audio_finalize") {
+      const learnerId = await verifiedLearner(body);
+      if (!learnerId || ANON_ID.test(learnerId)) {
+        return json(res, 401, { error: "instant_account_required_for_large_audio" });
+      }
+      const plan = await verifiedBillingPlan(body);
+      if (plan === "free") return json(res, 403, { error: "premium_required_for_large_audio" });
+      const origin = String(req.headers.origin || "");
+      const requestHost = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim();
+      if (origin) {
+        try {
+          if (new URL(origin).host !== requestHost) return json(res, 403, { error: "origin_denied" });
+        } catch { return json(res, 403, { error: "origin_denied" }); }
+      }
+      const uploadId = cleanId(body.uploadId, 36);
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uploadId)) {
+        return json(res, 400, { error: "audio_upload_id_invalid" });
+      }
+      if (action === "audio_chunk") {
+        const inlineBase64 = typeof body.inlineBase64 === "string" ? body.inlineBase64 : "";
+        if (inlineBase64.length > 2_350_000 || inlineBase64.length < 8) {
+          return json(res, 413, { error: "audio_upload_chunk_too_large" });
+        }
+        result = await upstream(base, apiKey, "/api/v1/uploads/audio/chunk", {
+          learnerId, uploadId,
+          fileName: typeof body.fileName === "string" ? body.fileName.slice(0, 300) : "lecture.webm",
+          mimeType: typeof body.mimeType === "string" ? body.mimeType.slice(0, 200) : "audio/webm",
+          totalParts: Number(body.totalParts),
+          partIndex: Number(body.partIndex),
+          inlineBase64,
+        });
+      } else {
+        result = await upstream(base, apiKey, "/api/v1/uploads/audio/finalize", {
+          learnerId, uploadId,
+          title: typeof body.title === "string" ? body.title.slice(0, 200) : undefined,
+        });
+      }
     } else if (action === "material_import") {
       const learnerId = await verifiedLearner(body);
       if (!learnerId) return json(res, 401, { error: "learner_identity_required" });
@@ -423,6 +507,43 @@ export default async function handler(req, res) {
             inline_base64: bytes.toString("base64"),
           },
         ],
+      });
+    } else if (action === "realtime_offer") {
+      // Realtime voice is intentionally paid + signed-in only. The anonymous
+      // "web-UUID" identity accepted for free study is NOT a billing identity.
+      const learnerId = cleanId(body.learnerId);
+      const verified = await verifiedLearner(body);
+      if (!learnerId || !verified || learnerId !== verified || ANON_ID.test(learnerId)) {
+        return json(res, 401, { error: "instant_account_required_for_voice" });
+      }
+      const billingPlan = await verifiedBillingPlan(body);
+      if (billingPlan === "free") {
+        return json(res, 403, { error: "paid_plan_required_for_voice" });
+      }
+      // Block credential misuse from third-party origins even when bearer is known.
+      const origin = String(req.headers.origin || "");
+      const requestHost = String(req.headers["x-forwarded-host"] || req.headers.host || "");
+      const normalizedHost = requestHost.split(",")[0].trim();
+      if (origin) {
+        let allowed = false;
+        try { allowed = new URL(origin).host === normalizedHost; } catch { /* invalid origin */ }
+        if (!allowed) return json(res, 403, { error: "origin_denied" });
+      }
+
+      const sdp = typeof body.sdp === "string" ? body.sdp : "";
+      const sourceExcerpt = typeof body.sourceExcerpt === "string"
+        ? body.sourceExcerpt.slice(0, 6000) : "";
+      if (sdp.length < 100 || sdp.length > 40000 || !sdp.startsWith("v=0")) {
+        return json(res, 400, { error: "invalid_realtime_sdp" });
+      }
+
+      result = await upstream(base, apiKey, "/api/v1/realtime/offer", {
+        learnerId: verified,
+        billingPlan,
+        sdp,
+        locale: body.locale === "pt-BR" ? "pt-BR" : "en-US",
+        title: typeof body.title === "string" ? body.title.slice(0, 160) : "Study session",
+        sourceExcerpt,
       });
     } else if (action === "audio_study") {
       const learnerId = await verifiedLearner(body);

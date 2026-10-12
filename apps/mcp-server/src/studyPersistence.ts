@@ -8,6 +8,7 @@ import type { AdaptiveStudySession, ConceptState } from "./studyEngine.js";
 
 export type DueReview = {
   sessionId: string;
+  materialId?: string;
   title: string;
   conceptId: string;
   label: string;
@@ -86,6 +87,7 @@ class MemoryStudyPersistence implements StudyPersistence {
 
         due.push({
           sessionId: session.id,
+          materialId: session.materialId,
           title: session.title,
           conceptId: concept.id,
           label: concept.label,
@@ -238,6 +240,7 @@ class NeonStudyPersistence implements StudyPersistence {
 
         due.push({
           sessionId: session.id,
+          materialId: session.materialId,
           title: session.title,
           conceptId: concept.id,
           label: concept.label,

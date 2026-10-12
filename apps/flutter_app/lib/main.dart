@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'i18n.dart';
 import 'instantstudy_api.dart';
+import 'orbital_home.dart';
 
 void main() {
   runApp(const InstantStudyApp());
@@ -17,13 +18,13 @@ void main() {
 class InstantStudyApp extends StatefulWidget {
   const InstantStudyApp({super.key});
 
-  static const ink = Color(0xFF11110F);
-  static const paper = Color(0xFFF2F0EA);
-  static const paper2 = Color(0xFFE9E7E1);
-  static const paper3 = Color(0xFFDEDBD3);
-  static const orange = Color(0xFFE36232);
-  static const orangeSoft = Color(0xFFF1A06F);
-  static const electric = Color(0xFF5B6CFF);
+  static const ink = Color(0xFF000000);
+  static const paper = Color(0xFFFDFCFC);
+  static const paper2 = Color(0xFFF5F3F1);
+  static const paper3 = Color(0xFFEBE8E4);
+  static const orange = Color(0xFFFF4704);
+  static const orangeSoft = Color(0xFFF7BAA4);
+  static const electric = Color(0xFF0447FF);
   static const green = Color(0xFF98BD9D);
   static const muted = Color(0xFF6E6B64);
 
@@ -120,7 +121,19 @@ class _StudyHomeState extends State<StudyHome> {
   final _answer = TextEditingController();
   final _title = TextEditingController();
   final _tts = FlutterTts();
-  late final String _learnerId;
+  late String _learnerId;
+  bool _identityReady = false;
+  String _nativePanel = 'orbit';
+  Map<String, dynamic>? _assets;
+  final _askPrompt = TextEditingController();
+  final _roomCode = TextEditingController();
+  final _roomName = TextEditingController(text: 'Learner');
+  String? _askResponse;
+  String? _roomMessage;
+  List<Map<String, dynamic>> _savedMaterials = [];
+  List<Map<String, dynamic>> _dueConcepts = [];
+  bool _cardFlipped = false;
+  int _cardIndex = 0;
 
   String _mode = 'learn';
   bool _busy = false;
@@ -139,18 +152,39 @@ class _StudyHomeState extends State<StudyHome> {
     super.initState();
     _learnerId = 'flutter-' +
         DateTime.now().microsecondsSinceEpoch.toString() +
-        '-' +
-        Random.secure().nextInt(1 << 32).toString();
+        '-' + Random.secure().nextInt(1 << 32).toString();
+    _loadLearnerId();
   }
 
   @override
   void dispose() {
+    _askPrompt.dispose();
+    _roomCode.dispose();
+    _roomName.dispose();
     _material.dispose();
     _answer.dispose();
     _title.dispose();
     _tts.stop();
     super.dispose();
   }
+
+  Future<void> _loadLearnerId() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final stored = preferences.getString('instantstudy.learner_id.v1');
+      if (stored != null && stored.startsWith('flutter-')) {
+        _learnerId = stored;
+      } else {
+        await preferences.setString('instantstudy.learner_id.v1', _learnerId);
+      }
+    } catch (_) {
+      // No persistence available. Remain explicit about local-only continuity.
+    }
+    if (mounted) setState(() => _identityReady = true);
+  }
+
+  bool get _isPt => Localizations.localeOf(context).languageCode == 'pt';
+  String _txt(String pt, String en) => _isPt ? pt : en;
 
   Map<String, dynamic>? get _next =>
       _session?['next'] is Map<String, dynamic>
@@ -235,6 +269,9 @@ class _StudyHomeState extends State<StudyHome> {
         _title.text = material['title']?.toString() ?? file.name;
         _materialId = material['id']?.toString();
         _sourceLabel = file.name;
+        _assets = material['assets'] is Map
+            ? Map<String, dynamic>.from(material['assets'] as Map)
+            : null;
       });
     } catch (error) {
       if (!mounted) return;
@@ -251,6 +288,7 @@ class _StudyHomeState extends State<StudyHome> {
       _error = null;
       _feedback = null;
       _summary = null;
+      _nativePanel = 'study';
     });
     try {
       if (_materialId == null) {
@@ -263,6 +301,9 @@ class _StudyHomeState extends State<StudyHome> {
         final material = imported['material'];
         if (material is Map) {
           _materialId = material['id']?.toString();
+          _assets = material['assets'] is Map
+              ? Map<String, dynamic>.from(material['assets'] as Map)
+              : null;
         }
       }
 
@@ -280,6 +321,18 @@ class _StudyHomeState extends State<StudyHome> {
                 'short_answer',
                 'free_recall',
               ]
+            : null,
+        concepts: _assets?['flashcards'] is List
+            ? (_assets!['flashcards'] as List)
+                .whereType<Map>()
+                .map((card) => <String, String>{
+                  'label': card['concept']?.toString() ?? '',
+                  'sourceExcerpt': (card['sourceExcerpt'] ?? card['back'] ?? '').toString(),
+                  'studyPrompt': card['front']?.toString() ?? '',
+                })
+                .where((card) => card['label']!.isNotEmpty)
+                .take(12)
+                .toList()
             : null,
       );
       if (!mounted) return;
@@ -463,6 +516,187 @@ class _StudyHomeState extends State<StudyHome> {
     }
   }
 
+  Future<void> _handleOrbAction(String action) async {
+    if (_busy || !_identityReady) return;
+    if (action == 'import') {
+      setState(() { _nativePanel = 'import'; _error = null; });
+      return;
+    }
+    if (action == 'insights') { await _showInsights(); return; }
+    if (action == 'audio') { await _showPodcast(); return; }
+    if (action == 'game') { await _showGame(); return; }
+    if (action == 'library') { await _loadLibrary(); return; }
+    if (action == 'review') { await _loadDueReviews(); return; }
+    if (action == 'friends') {
+      setState(() { _nativePanel = 'friends'; _error = null; });
+      return;
+    }
+    if (action == 'ask' || action == 'guide' || action == 'flashcards') {
+      if (_material.text.trim().isEmpty) {
+        setState(() { _nativePanel = 'import'; _error = _txt(
+          'Importe um material antes de usar esta ferramenta.',
+          'Import material before using this tool.'); });
+        return;
+      }
+      setState(() { _nativePanel = action; _error = null; });
+      return;
+    }
+    if (const {'learn', 'quiz', 'test'}.contains(action)) {
+      setState(() {
+        _mode = action;
+        _nativePanel = _material.text.trim().isEmpty ? 'import' : 'study';
+        _session = null;
+        _summary = null;
+        _error = null;
+      });
+      if (_nativePanel == 'study') await _start();
+    }
+  }
+
+  Future<void> _loadLibrary() async {
+    setState(() { _busy = true; _error = null; _nativePanel = 'library'; });
+    try {
+      final result = await _api.library(learnerId: _learnerId);
+      final items = result['materials'];
+      if (!mounted) return;
+      setState(() {
+        _savedMaterials = items is List
+            ? items.whereType<Map>().map((item) =>
+              Map<String, dynamic>.from(item)).toList()
+            : [];
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _selectSavedMaterial(Map<String, dynamic> item) async {
+    setState(() { _busy = true; _error = null; });
+    try {
+      final id = item['id']?.toString() ?? '';
+      final result = await _api.getMaterial(
+        learnerId: _learnerId, materialId: id);
+      final material = result['material'];
+      if (material is! Map) throw InstantStudyApiException(
+          _txt('Material indisponível.', 'Material unavailable.'));
+      if (!mounted) return;
+      setState(() {
+        _materialId = material['id']?.toString();
+        _material.text = material['content']?.toString() ?? '';
+        _title.text = material['title']?.toString() ?? '';
+        _assets = material['assets'] is Map
+            ? Map<String, dynamic>.from(material['assets'] as Map)
+            : null;
+        _nativePanel = 'orbit';
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _loadDueReviews() async {
+    setState(() { _busy = true; _nativePanel = 'review'; _error = null; });
+    try {
+      final result = await _api.due(learnerId: _learnerId);
+      final items = result['items'];
+      if (!mounted) return;
+      setState(() {
+        _dueConcepts = items is List
+            ? items.whereType<Map>().map((item) =>
+              Map<String, dynamic>.from(item)).toList()
+            : [];
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _startDueReview(Map<String, dynamic> due) async {
+    final excerpt = due['sourceExcerpt']?.toString() ?? '';
+    final label = due['label']?.toString() ?? '';
+    if (label.isEmpty || excerpt.isEmpty) return;
+    setState(() { _busy = true; _error = null; _mode = 'review'; });
+    try {
+      final session = await _api.prepare(
+        contentText: excerpt,
+        title: due['title']?.toString(),
+        mode: 'review', learnerId: _learnerId,
+        maxQuestions: 4,
+        concepts: [{'label': label, 'sourceExcerpt': excerpt}],
+      );
+      if (!mounted) return;
+      setState(() { _session = session; _summary = null; _nativePanel = 'study'; });
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _askSource() async {
+    if (_askPrompt.text.trim().isEmpty || _material.text.trim().isEmpty) return;
+    setState(() { _busy = true; _askResponse = null; _error = null; });
+    try {
+      final result = await _api.ask(
+        contentText: _material.text, question: _askPrompt.text.trim());
+      if (!mounted) return;
+      setState(() => _askResponse = result['answer']?.toString() ??
+          _txt('Sem resposta fundamentada.', 'No grounded answer available.'));
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _createStudyRoom() async {
+    if (_materialId == null) {
+      setState(() => _roomMessage = _txt(
+        'Importe um material antes de criar uma sala.',
+        'Import material before creating a room.'));
+      return;
+    }
+    setState(() { _busy = true; _roomMessage = null; });
+    try {
+      final response = await _api.createRoom(
+        learnerId: _learnerId,
+        materialId: _materialId!, displayName: _roomName.text.trim());
+      if (!mounted) return;
+      setState(() => _roomMessage = _txt('Código da sala: ', 'Room code: ') +
+          (response['room'] is Map ? response['room']['code'].toString() : '?'));
+    } catch (error) {
+      if (mounted) setState(() => _roomMessage = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _joinStudyRoom() async {
+    if (_roomCode.text.trim().isEmpty) return;
+    setState(() { _busy = true; _roomMessage = null; });
+    try {
+      final response = await _api.joinRoom(
+        learnerId: _learnerId, code: _roomCode.text.trim(),
+        displayName: _roomName.text.trim());
+      if (!mounted) return;
+      final room = response['room'];
+      setState(() => _roomMessage = room is Map
+          ? _txt('Você entrou em: ', 'Joined: ') +
+              (room['title']?.toString() ?? _roomCode.text)
+          : _txt('Sala acessada.', 'Room joined.'));
+    } catch (error) {
+      if (mounted) setState(() => _roomMessage = error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Color get _orbPrimary {
     if (_mode == 'test') return InstantStudyApp.paper;
     if (_mode == 'review') return InstantStudyApp.orange;
@@ -525,6 +759,191 @@ class _StudyHomeState extends State<StudyHome> {
               ],
             ),
     );
+  }
+
+
+  Widget _nativeHeading(String title, String caption) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('INSTANTSTUDY / ÓRBITA',style: TextStyle(
+        color: InstantStudyApp.muted,fontSize:10,letterSpacing:1.6)),
+      const SizedBox(height:14),
+      Text(title,style: const TextStyle(color: InstantStudyApp.ink,
+        fontSize:35,fontWeight:FontWeight.w300,height:1.12,letterSpacing:-.7)),
+      const SizedBox(height:12),
+      Text(caption,style: const TextStyle(
+        color: InstantStudyApp.muted,fontSize:14,height:1.5)),
+      const SizedBox(height:22),
+    ]);
+
+  Widget _nativeLibrary() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,children:[
+      _nativeHeading(_txt('Biblioteca','Library'),
+        _txt('Escolha o material para sua Órbita.','Select material for your orbit.')),
+      if(_busy) const Center(child:CircularProgressIndicator()),
+      if(!_busy && _savedMaterials.isEmpty)
+        Text(_txt('Nenhum material salvo.','No saved materials.')),
+      ..._savedMaterials.map((item)=>Padding(
+        padding:const EdgeInsets.only(bottom:9),
+        child:Material(color:OrbitalHome.taupe,borderRadius:BorderRadius.circular(20),
+          child:ListTile(
+            shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20)),
+            title:Text(item['title']?.toString()??'Untitled'),
+            subtitle:Text(item['sourceType']?.toString()??''),
+            trailing:const Icon(Icons.arrow_forward_rounded),
+            onTap:_busy?null:()=>_selectSavedMaterial(item),
+          )))),
+    ]);
+
+  Widget _nativeGuide(){
+    final assets=_assets;
+    final outline=assets?['outline'] is List
+      ? (assets!['outline'] as List).map((item)=>item.toString()).toList()
+      : <String>[];
+    final terms=assets?['keyConcepts'] is List
+      ? (assets!['keyConcepts'] as List).map((item)=>item.toString()).toList()
+      : <String>[];
+    return Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      _nativeHeading(_txt('Guia de estudo','Study guide'),
+        _txt('Resumo e conceitos extraídos do seu material.','Summary and concepts extracted from your material.')),
+      if(assets==null) Text(_txt('Importe um material para criar o guia.','Import material to create a guide.')),
+      if(assets!=null)...[
+        Container(width:double.infinity,padding:const EdgeInsets.all(22),
+          decoration:BoxDecoration(color:OrbitalHome.taupe,borderRadius:BorderRadius.circular(20)),
+          child:Text(assets['summary']?.toString()??'',style:const TextStyle(fontSize:15,height:1.6))),
+        const SizedBox(height:20),
+        ...outline.asMap().entries.map((part)=>Padding(
+          padding:const EdgeInsets.only(bottom:12),
+          child:Text((part.key+1).toString()+'. '+part.value,
+            style:const TextStyle(fontSize:14,height:1.5)))),
+        Wrap(spacing:6,runSpacing:6,children:terms.map((term)=>
+          Chip(label:Text(term),backgroundColor:OrbitalHome.taupe,
+            shape:const StadiumBorder(side:BorderSide(color:OrbitalHome.stone)))).toList()),
+        const SizedBox(height:14),
+        Text(_txt('Resumo extrativo: confira o texto original.','Extractive summary: verify against the source.'),
+          style:const TextStyle(fontSize:11,color:OrbitalHome.smoke)),
+      ]
+    ]);
+  }
+
+  Widget _nativeFlashcards(){
+    final raw=_assets?['flashcards'];
+    final cards=raw is List?raw.whereType<Map>().map((item)=>Map<String,dynamic>.from(item)).toList():<Map<String,dynamic>>[];
+    final index=cards.isEmpty?0:_cardIndex%cards.length;
+    final card=cards.isEmpty?null:cards[index];
+    return Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+      _nativeHeading('Flashcards',_txt(
+        'Recorde e revele. Use Learn ou Review para registrar domínio.',
+        'Recall and reveal. Use Learn or Review to record mastery.')),
+      if(card==null) Text(_txt('Nenhum cartão disponível.','No flashcards available.')),
+      if(card!=null)...[
+        Text((index+1).toString()+' / '+cards.length.toString(),
+          style:const TextStyle(color:OrbitalHome.smoke)),
+        const SizedBox(height:12),
+        Material(color:OrbitalHome.taupe,borderRadius:BorderRadius.circular(24),
+          child:InkWell(
+            borderRadius:BorderRadius.circular(24),
+            onTap:()=>setState(()=>_cardFlipped=!_cardFlipped),
+            child:Container(constraints:const BoxConstraints(minHeight:290),
+              alignment:Alignment.center,padding:const EdgeInsets.all(25),
+              child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
+                Text(_cardFlipped?'ANSWER':'QUESTION',
+                  style:const TextStyle(color:OrbitalHome.smoke,fontSize:10,letterSpacing:1.5)),
+                const SizedBox(height:22),
+                Text(card[_cardFlipped?'back':'front']?.toString()??'',
+                  textAlign:TextAlign.center,style:const TextStyle(
+                    color:OrbitalHome.ink,fontSize:21,fontWeight:FontWeight.w300,height:1.4)),
+                const SizedBox(height:22),
+                const Icon(Icons.sync_rounded,color:OrbitalHome.graphite),
+              ]),
+            ))),
+        const SizedBox(height:15),
+        _SignalButton(label:_cardFlipped?_txt('Próximo cartão','Next card')
+          :_txt('Revelar resposta','Reveal answer'),
+          onPressed:()=>setState((){
+            if(_cardFlipped)_cardIndex=(index+1)%cards.length;
+            _cardFlipped=!_cardFlipped;
+          })),
+      ],
+    ]);
+  }
+
+  Widget _nativeAsk()=>Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+    _nativeHeading(_txt('Pergunte à Órbita','Ask your Orb'),
+      _txt('Respostas fundamentadas no material selecionado.','Answers grounded in the selected material.')),
+    _LineField(controller:_askPrompt,
+      hint:_txt('O que deseja compreender?','What would you like to understand?'),
+      minLines:3,maxLines:7),
+    const SizedBox(height:12),
+    _SignalButton(label:_busy?_txt('Respondendo...','Answering...')
+      :_txt('Perguntar','Ask'),onPressed:_busy?null:_askSource),
+    if(_askResponse!=null)...[
+      const SizedBox(height:20),
+      Container(padding:const EdgeInsets.all(22),
+        decoration:BoxDecoration(color:OrbitalHome.taupe,borderRadius:BorderRadius.circular(20)),
+        child:SelectableText(_askResponse!,style:const TextStyle(fontSize:15,height:1.6))),
+    ],
+  ]);
+
+  Widget _nativeReview()=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    _nativeHeading(_txt('Sua memória','Your memory'),
+      _txt('Conceitos disponíveis para revisão espaçada.','Concepts due for spaced review.')),
+    if(_busy) const Center(child:CircularProgressIndicator()),
+    if(!_busy && _dueConcepts.isEmpty)
+      Text(_txt('Nenhuma revisão pendente.','No reviews currently due.')),
+    ..._dueConcepts.map((due)=>Padding(
+      padding:const EdgeInsets.only(bottom:9),
+      child:Material(color:OrbitalHome.taupe,borderRadius:BorderRadius.circular(20),
+        child:ListTile(
+          title:Text(due['label']?.toString()??''),
+          subtitle:Text(due['title']?.toString()??''),
+          trailing:const Icon(Icons.arrow_forward_rounded),
+          onTap:_busy?null:()=>_startDueReview(due))))),
+    const SizedBox(height:18),
+    _SignalButton(label:_txt('Atualizar','Refresh'),outlined:true,
+      onPressed:_busy?null:_loadDueReviews),
+  ]);
+
+  Widget _nativeFriends()=>Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+    _nativeHeading(_txt('Estudar com amigos','Study with friends'),
+      _txt('Crie uma sala para um material ou entre por código.','Create a material room or join by code.')),
+    _LineField(controller:_roomName,hint:_txt('Nome','Display name'),minLines:1,maxLines:1),
+    const SizedBox(height:12),
+    _SignalButton(label:_txt('Criar sala','Create room'),
+      onPressed:_busy?null:_createStudyRoom),
+    const SizedBox(height:20),
+    _LineField(controller:_roomCode,hint:_txt('Código da sala','Room code'),minLines:1,maxLines:1),
+    const SizedBox(height:12),
+    _SignalButton(label:_txt('Entrar','Join room'),outlined:true,
+      onPressed:_busy?null:_joinStudyRoom),
+    if(_roomMessage!=null)...[
+      const SizedBox(height:18),
+      SelectableText(_roomMessage!,style:const TextStyle(fontSize:14,color:OrbitalHome.graphite)),
+    ],
+  ]);
+
+  Widget _buildOrbitalPanel(){
+    if(!_identityReady) return const Center(child:Padding(
+      padding:EdgeInsets.all(48),child:CircularProgressIndicator()));
+    switch(_nativePanel){
+      case 'orbit':
+        return OrbitalHome(materialTitle:_title.text.trim().isEmpty?null:_title.text.trim(),
+          hasMaterial:_material.text.trim().isNotEmpty,
+          onAction:(action){_handleOrbAction(action);});
+      case 'library':return _nativeLibrary();
+      case 'guide':return _nativeGuide();
+      case 'flashcards':return _nativeFlashcards();
+      case 'ask':return _nativeAsk();
+      case 'review':return _nativeReview();
+      case 'friends':return _nativeFriends();
+      case 'import':return _buildEntry();
+      case 'study':
+        if(_summary!=null)return _buildSummary();
+        if(_session==null)return _busy
+          ? const Center(child:Padding(padding:EdgeInsets.all(40),child:CircularProgressIndicator()))
+          : _buildEntry();
+        return _concept!=null?_buildQuestion():_buildSummary();
+      default:return _buildEntry();
+    }
   }
 
   Widget _buildEntry() {
@@ -658,6 +1077,8 @@ class _StudyHomeState extends State<StudyHome> {
               _session = null;
               _summary = null;
               _feedback = null;
+              _session = null;
+              _nativePanel = 'orbit';
             }),
           ),
         ],
@@ -704,31 +1125,40 @@ class _StudyHomeState extends State<StudyHome> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(18, 32, 18, 54),
                     children: [
+                      if (_nativePanel != 'orbit') ...[
+                        Row(children: [
+                          const OrbitalSphere(size: 54),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text(_txt(
+                            'Estudando com sua Órbita', 'Learning in your orbit'),
+                            style: const TextStyle(fontSize: 13,
+                              color: InstantStudyApp.muted))),
+                          TextButton.icon(
+                            onPressed: _busy ? null : () => setState(() {
+                              _nativePanel = 'orbit';
+                              _session = null;
+                              _summary = null;
+                              _feedback = null;
+                            }),
+                            icon: const Icon(Icons.arrow_back_rounded, size: 17),
+                            label: Text(_txt('Órbita','Orbit')),
+                            style: TextButton.styleFrom(
+                              foregroundColor: InstantStudyApp.ink,
+                              shape: const StadiumBorder(side: BorderSide(
+                                color: InstantStudyApp.paper3))),
+                          ),
+                        ]),
+                        const SizedBox(height: 24),
+                      ],
                       AnimatedSwitcher(
                         duration: motionDuration,
                         switchInCurve: Curves.easeOutCubic,
                         switchOutCurve: Curves.easeInCubic,
-                        child: _session == null && _summary == null
-                            ? KeyedSubtree(
-                                key: const ValueKey('entry'),
-                                child: _buildEntry(),
-                              )
-                            : _summary != null
-                                ? KeyedSubtree(
-                                    key: const ValueKey('summary'),
-                                    child: _buildSummary(),
-                                  )
-                                : _concept != null
-                                    ? KeyedSubtree(
-                                        key: ValueKey(
-                                          _next?['questionIndex'] ?? 'question',
-                                        ),
-                                        child: _buildQuestion(),
-                                      )
-                                    : KeyedSubtree(
-                                        key: const ValueKey('complete'),
-                                        child: _buildSummary(),
-                                      ),
+                        child: KeyedSubtree(
+                          key: ValueKey(_nativePanel + '-' +
+                            (_next?['questionIndex']?.toString() ?? '')),
+                          child: _buildOrbitalPanel(),
+                        ),
                       ),
                       if (_error != null) ...[
                         const SizedBox(height: 18),

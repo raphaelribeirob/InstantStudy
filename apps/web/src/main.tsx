@@ -4,6 +4,8 @@ import { App } from "./App";
 import { SoftwareApp } from "./SoftwareApp";
 import "./i18n";
 import "./styles.css";
+import "./refero-theme.css";
+import "./orbital-focus.css";
 
 const isSoftware = window.location.pathname === "/app" || window.location.pathname.startsWith("/app/");
 

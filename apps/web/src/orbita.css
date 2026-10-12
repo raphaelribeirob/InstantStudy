@@ -1,0 +1,78 @@
+
+.orbita-page{max-width:1420px;margin:0 auto;padding:36px clamp(18px,3vw,48px) 90px;min-width:0;color:#11110f}
+.orbita-heading{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:32px}
+.orbita-heading p{color:#e36232;font-size:11px;letter-spacing:.18em;font-weight:750;margin:0 0 18px}
+.orbita-heading h1{font-size:clamp(62px,9vw,132px);line-height:.82;font-weight:500;letter-spacing:-.085em;margin:0 0 20px}
+.orbita-heading-dot{color:#5b6cff}
+.orbita-heading>div:first-child>span{display:block;max-width:630px;color:#696861;line-height:1.5;font-size:clamp(15px,1.5vw,18px)}
+.orbita-count{border-left:1px solid #d8d5ce;padding:2px 0 4px 22px;display:flex;flex-direction:column;min-width:155px}
+.orbita-count strong{font-size:58px;font-weight:500;letter-spacing:-.07em;line-height:1}
+.orbita-count span{font-size:12px;color:#77726d;margin-top:8px}
+.orbita-layout{display:grid;grid-template-columns:minmax(330px,1.05fr) minmax(330px,.95fr);gap:18px;align-items:start}
+.orbita-stage{background:#11110f;color:#f2f0ea;min-height:710px;position:sticky;top:85px;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:28px 24px}
+.orbita-stage:after{content:"";position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.25' filter='url(%23n)'/%3E%3C/svg%3E");opacity:.12;mix-blend-mode:overlay;pointer-events:none}
+.orbita-siri-wrap{position:relative;z-index:2;display:grid;place-items:center;pointer-events:none}
+.orbita-galaxy{position:relative;width:min(100%,480px);aspect-ratio:1;display:grid;place-items:center;isolation:isolate}
+.orbita-ring{border:1px solid rgba(242,240,234,.17);border-radius:50%;position:absolute;inset:50%;transform:translate(-50%,-50%);pointer-events:none}
+.orbita-ring-inner{width:41%;height:41%;border-color:rgba(91,108,255,.25)}
+.orbita-ring-middle{width:68%;height:68%;border-style:dashed;border-color:rgba(242,240,234,.13)}
+.orbita-ring-outer{width:94%;height:94%;border-color:rgba(242,240,234,.11)}
+.orbita-satellite{position:absolute;z-index:3;top:50%;left:50%;width:25px;height:25px;border-radius:50%;border:1px solid rgba(255,255,255,.56);background:#e36232;transform:translate(-50%,-50%) rotate(var(--angle)) translateX(clamp(94px,14vw,157px));display:grid;place-items:center;cursor:pointer;transition:background .2s,box-shadow .2s}
+.orbita-satellite span{width:6px;height:6px;border-radius:50%;background:#fff4e7}
+.orbita-satellite-active,.orbita-satellite:hover{background:#5b6cff;box-shadow:0 0 0 8px rgba(91,108,255,.13),0 0 18px rgba(91,108,255,.5)}
+.orbita-satellite:focus-visible{outline:3px solid white;outline-offset:5px}
+.orbita-satellite:disabled{opacity:.6;cursor:wait}
+.orbita-status{position:relative;z-index:1;margin-top:8px;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:650;letter-spacing:.02em}
+.orbita-status-indicator{background:#5b6cff;width:7px;height:7px;border-radius:50%;box-shadow:0 0 12px #5b6cff}
+.orbita-state-repair .orbita-status-indicator{background:#e36232;box-shadow:0 0 12px #e36232}
+.orbita-state-success .orbita-status-indicator{background:#98bd9d;box-shadow:0 0 12px #98bd9d}
+.orbita-stage-note{position:relative;z-index:1;max-width:250px;font-size:12px;text-align:center;color:#a09e98;line-height:1.6;margin:10px auto 18px}
+.orbita-legend{position:absolute;bottom:24px;z-index:1;display:flex;gap:15px;flex-wrap:wrap;justify-content:center;font-size:11px;color:#bab9b2}
+.orbita-legend span{display:flex;align-items:center;gap:7px}
+.orbita-legend i{height:7px;width:7px;border-radius:50%;display:block}
+.orbita-key-due{background:#e36232}.orbita-key-focus{background:#5b6cff}.orbita-key-strong{background:#98bd9d}
+.orbita-content{display:flex;flex-direction:column;gap:14px;min-width:0}
+.orbita-card{background:#fdfcf9;border:1px solid #dedbd3;padding:clamp(22px,3vw,42px);min-height:390px;display:flex;align-items:flex-start;flex-direction:column;justify-content:center}
+.orbita-eyebrow{display:block;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#e36232;font-weight:750;line-height:1.5;margin-bottom:16px}
+.orbita-card h2{font-size:clamp(30px,3vw,48px);font-weight:500;letter-spacing:-.055em;line-height:1.08;margin:0 0 18px;overflow-wrap:anywhere}
+.orbita-card p{font-size:15px;line-height:1.72;color:#6b6861;margin:0 0 26px}
+.orbita-primary{border:0;background:#11110f;color:#fff;display:inline-flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;font-size:14px;font-weight:650;text-align:left}
+.orbita-primary:hover{background:#35342f}.orbita-primary:disabled{opacity:.42;cursor:not-allowed}
+.orbita-secondary{background:transparent;border:1px solid #c9c6c0;color:#11110f;display:inline-flex;align-items:center;gap:7px;padding:11px 12px;font-size:12px;cursor:pointer}
+.orbita-secondary[aria-pressed=true]{border-color:#5b6cff;color:#293fbd;background:#eff0ff}
+.orbita-secondary:disabled{opacity:.45;cursor:not-allowed}
+.orbita-features{display:flex;flex-wrap:wrap;gap:14px;margin-top:32px;font-size:11px;color:#6b6861}
+.orbita-features span{display:inline-flex;gap:5px;align-items:center}.orbita-features svg{color:#548964}
+.orbita-card .orbita-note{font-size:12px;margin:17px 0 0;color:#9a6c54}
+.orbita-topic{font-size:12px;font-weight:600;color:#5b6cff;letter-spacing:.03em;margin:0 0 10px}
+.orbita-question-card{justify-content:flex-start;min-height:430px}
+.orbita-question-card h2{font-size:clamp(25px,2.4vw,38px);margin-bottom:22px}
+.orbita-answer-label{width:100%;font-size:12px;color:#66645f;display:flex;flex-direction:column;gap:10px}
+.orbita-answer-label textarea{width:100%;padding:14px 16px;resize:vertical;min-height:132px;background:#f5f3ee;border:1px solid #d8d5ce;color:#11110f;font:inherit;font-size:15px;line-height:1.55}
+.orbita-answer-label textarea:focus{outline:2px solid #5b6cff;outline-offset:2px}
+.orbita-options{width:100%;display:grid;gap:9px}
+.orbita-options button{border:1px solid #d8d5ce;background:#f5f3ee;color:#11110f;padding:13px 15px;cursor:pointer;text-align:left;line-height:1.5}
+.orbita-options button:hover{border-color:#5b6cff}.orbita-options button:disabled{opacity:.5;cursor:wait}
+.orbita-controls{margin-top:18px;display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+.orbita-privacy{font-size:11px!important;display:flex;gap:8px;align-items:flex-start;color:#85827e!important;margin:18px 0 0!important}
+.orbita-feedback{width:100%;border-left:3px solid #98bd9d;padding:11px 13px;background:#eef3ec;color:#30553a;line-height:1.55;font-size:13px;margin-bottom:15px}
+.orbita-error{background:#fff0e8;color:#843514;border-left:3px solid #e36232;padding:16px;font-size:13px;line-height:1.6}
+.orbita-score{display:flex;align-items:baseline;gap:12px;margin-bottom:25px}
+.orbita-score strong{font-size:50px;font-weight:500;letter-spacing:-.06em}
+.orbita-score span{font-size:12px;color:#77726d}
+.orbita-due{background:#e9e7e1;border:1px solid #dedbd3;padding:22px 24px}
+.orbita-due-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
+.orbita-due-title strong{font-size:18px;font-weight:650;letter-spacing:-.02em}
+.orbita-due-title button{font-size:11px;background:transparent;border:0;display:flex;gap:6px;align-items:center;cursor:pointer;color:#555}
+.orbita-due>p{margin:0;color:#77726d;font-size:13px}
+.orbita-due-item{width:100%;display:grid;grid-template-columns:9px minmax(0,1fr) auto;gap:12px;align-items:center;background:transparent;border:0;border-top:1px solid #d4d0c8;padding:14px 0;cursor:pointer;text-align:left}
+.orbita-due-item:hover strong{text-decoration:underline}
+.orbita-due-item:disabled{opacity:.5;cursor:wait}
+.orbita-due-dot{height:8px;width:8px;border-radius:50%;background:#e36232}
+.orbita-due-item strong,.orbita-due-item small{display:block;overflow-wrap:anywhere}
+.orbita-due-item strong{font-size:13px;font-weight:600}
+.orbita-due-item small{font-size:11px;color:#8d8a83;margin-top:4px}
+.orbita-due-item em{font-size:12px;font-style:normal;color:#5b6cff}
+@media(max-width:1120px){.orbita-layout{grid-template-columns:1fr}.orbita-stage{position:relative;top:auto;min-height:540px}.orbita-galaxy{width:min(100%,440px)}}
+@media(max-width:620px){.orbita-siri-wrap{transform:scale(.75)}.orbita-page{padding:22px 16px 95px}.orbita-heading{align-items:start}.orbita-heading h1{font-size:68px}.orbita-heading>div:first-child>span{font-size:13px}.orbita-count{padding-left:12px;min-width:74px}.orbita-count strong{font-size:40px}.orbita-count span{font-size:10px}.orbita-stage{min-height:400px;padding:12px 12px 55px}.orbita-galaxy{width:min(100%,340px)}.orbita-satellite{transform:translate(-50%,-50%) rotate(var(--angle)) translateX(clamp(90px,28vw,118px));width:19px;height:19px}.orbita-card{min-height:300px}.orbita-legend{bottom:12px}.orbita-controls{align-items:stretch}.orbita-controls button{justify-content:center}.orbita-due{padding:18px}}
+@media(prefers-reduced-motion:reduce){.orbita-satellite{transition:none!important}}

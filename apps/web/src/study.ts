@@ -102,6 +102,7 @@ export type StudyAssets = {
     front: string;
     back: string;
     concept: string;
+    sourceExcerpt?: string;
   }>;
   generatedBy: string;
 };
@@ -179,8 +180,57 @@ export type StudyRoom = {
   }>;
 };
 
+/** Offer-aligned agentic study plan persisted in Neon, not browser storage. */
+export type OfferStepCapability =
+  | "guide" | "flashcards" | "ask" | "learn" | "test"
+  | "review" | "audio" | "game" | "friends";
+export type OfferAgentPlan = {
+  id: string;
+  learnerId: string;
+  materialId: string;
+  materialTitle: string;
+  goal: string;
+  deadline?: string;
+  status: "active" | "completed";
+  steps: Array<{
+    id: string;
+    capability: OfferStepCapability;
+    label: string;
+    purpose: string;
+    status: "pending" | "completed";
+    completion?: { kind: "acknowledgement" | "graded-session"; at: string; studySessionId?: string };
+  }>;
+  createdAt: string;
+  updatedAt: string;
+};
+export type OfferAgentPlanView = {
+  plan: OfferAgentPlan | null;
+  recommendation: {
+    next: OfferAgentPlan["steps"][number] | null;
+    reason: string;
+  } | null;
+};
+export async function createOfferAgentPlan(materialId: string, goal: string, deadline?: string) {
+  return await request(identified({
+    action: "agent_plan_create", materialId, goal, deadline,
+  })) as OfferAgentPlanView;
+}
+export async function getOfferAgentPlan(materialId: string) {
+  return await request(identified({
+    action: "agent_plan_get", materialId,
+  })) as OfferAgentPlanView;
+}
+export async function completeOfferAgentStep(
+  materialId: string, planId: string, stepId: string, studySessionId?: string,
+) {
+  return await request(identified({
+    action: "agent_plan_complete", materialId, planId, stepId, studySessionId,
+  })) as OfferAgentPlanView;
+}
+
 export type DueReview = {
   sessionId: string;
+  materialId?: string;
   title: string;
   conceptId: string;
   label: string;
@@ -246,17 +296,19 @@ function identified(payload: Record<string, unknown>) {
 export async function prepareStudy(input: {
   contentText: string;
   mode: StudyMode;
+  materialId?: string;
   title?: string;
   maxQuestions?: number;
   testDurationMinutes?: number;
   testQuestionTypes?: TestQuestionType[];
-  concepts?: Array<{ label: string; sourceExcerpt?: string }>;
+  concepts?: Array<{ label: string; sourceExcerpt?: string; studyPrompt?: string }>;
 }) {
   try {
     return (await request(
       identified({
         action: "prepare",
         contentText: input.contentText,
+        materialId: input.materialId,
         title: input.title,
         mode: input.mode,
         maxQuestions: input.maxQuestions,
@@ -355,6 +407,57 @@ export async function importStudyMaterial(input: {
       error?: string;
     }>;
   };
+}
+
+/**
+ * Upload a standalone recorded/uploaded audio file as resumable bounded chunks
+ * through the authenticated Web BFF. Does not load the entire file in memory.
+ * Transcription/finalization can take longer than an ordinary import.
+ */
+export async function importLongAudioMaterial(
+  file: File,
+  title?: string,
+  onProgress?: (progress: number) => void,
+) {
+  const identity = learnerContext();
+  if (!identity.accountUserId || !identity.accountAccessToken) {
+    throw new Error("A signed-in Plus/Unlimited account is required for long recordings.");
+  }
+  const MAX_FILE_BYTES = 25_000_000;
+  const PART_BYTES = 1_750_000;
+  if (!file.size || file.size > MAX_FILE_BYTES) {
+    throw new Error("Recorded audio files must be smaller than 25 MB.");
+  }
+  const totalParts = Math.ceil(file.size / PART_BYTES);
+  if (totalParts > 16) throw new Error("Too many audio upload parts.");
+  const uploadId = crypto.randomUUID();
+  for (let partIndex = 0; partIndex < totalParts; partIndex++) {
+    const buffer = await file.slice(
+      partIndex * PART_BYTES,
+      Math.min((partIndex + 1) * PART_BYTES, file.size),
+    ).arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    const pieces: string[] = [];
+    for (let index = 0; index < bytes.length; index += 32_768) {
+      pieces.push(String.fromCharCode(...bytes.subarray(index, index + 32_768)));
+    }
+    await request(identified({
+      action: "audio_chunk",
+      uploadId, fileName: file.name,
+      mimeType: file.type || "audio/webm",
+      totalParts, partIndex,
+      inlineBase64: btoa(pieces.join("")),
+    }));
+    onProgress?.(Math.round((partIndex + 1) / totalParts * 90));
+  }
+  const result = await request(identified({
+    action: "audio_finalize", uploadId, title,
+  })) as {
+    material: StudyMaterial;
+    ingestion?: Array<{ fileId?: string; fileName?: string; status?: string; error?: string }>;
+  };
+  onProgress?.(100);
+  return result;
 }
 
 export async function listStudyMaterials(query = "") {

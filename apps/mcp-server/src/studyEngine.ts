@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createEmptyCard, fsrs, Rating, type Card } from "ts-fsrs";
 import type { ContentSession, StudyMode } from "./contentSessions.js";
 import {
   createStudyPersistence,
@@ -28,6 +29,8 @@ export type ConceptState = {
   id: string;
   label: string;
   sourceExcerpt: string;
+  /** Source-grounded question authored when material assets were generated. */
+  studyPrompt?: string;
   mastery: number;
   attempts: number;
   correct: number;
@@ -38,6 +41,8 @@ export type ConceptState = {
   lastPerformance?: number;
   stabilityDays: number;
   nextReviewAt?: string;
+  /** Serialized FSRS card; old sessions without this field remain readable. */
+  fsrsCard?: Omit<Card, "due" | "last_review"> & { due: string; last_review?: string | null };
   missingConcepts: string[];
 };
 
@@ -65,6 +70,8 @@ export type TestConfig = {
 export type AdaptiveStudySession = {
   id: string;
   contentSessionId: string;
+  /** Exact source material owned by the authenticated learner, when present. */
+  materialId?: string;
   learnerId?: string;
   title: string;
   mode: StudyMode;
@@ -72,6 +79,7 @@ export type AdaptiveStudySession = {
   createdAt: string;
   completedAt?: string;
   status: "active" | "completed";
+  completionReason?: "all_questions" | "mastery_reached" | "time_expired";
   questionIndex: number;
   maxQuestions: number;
   targetMinutes?: number;
@@ -130,11 +138,12 @@ function labelFromExcerpt(excerpt: string) {
   return `${cleaned.slice(0, 69).trim()}…`;
 }
 
-function blankConcept(label: string, sourceExcerpt: string): ConceptState {
+function blankConcept(label: string, sourceExcerpt: string, studyPrompt?: string): ConceptState {
   return {
     id: randomUUID(),
     label,
     sourceExcerpt,
+    studyPrompt,
     mastery: 0.15,
     attempts: 0,
     correct: 0,
@@ -230,28 +239,31 @@ function chooseConcept(session: AdaptiveStudySession) {
   return ordered[0];
 }
 
-function reviewSchedule(
-  performance: number,
-  previousStabilityDays: number,
-  now = Date.now(),
-) {
-  let stabilityDays: number;
+const reviewScheduler = fsrs();
 
-  if (performance < 0.45) {
-    stabilityDays = 0.25;
-  } else if (performance < 0.65) {
-    stabilityDays = 1;
-  } else if (performance < 0.85) {
-    stabilityDays = Math.max(2, previousStabilityDays * 1.8);
-  } else {
-    stabilityDays = Math.max(3, previousStabilityDays * 2.4);
-  }
+function spacedReview(concept: ConceptState, performance: number, now = new Date()) {
+  const rating = performance < 0.45 ? Rating.Again
+    : performance < 0.65 ? Rating.Hard
+    : performance < 0.85 ? Rating.Good : Rating.Easy;
+  // Respect legacy due dates until the learner submits a new answer.
+  // Migration starts a fresh FSRS card; historic review data is not invented.
+  const previous = concept.fsrsCard;
+  const card: Card = previous ? {
+    ...createEmptyCard(now),
+    ...previous,
+    due: new Date(previous.due),
+    last_review: previous.last_review ? new Date(previous.last_review) : undefined,
+  } : createEmptyCard(now);
 
-  stabilityDays = Math.min(stabilityDays, 120);
-
+  const next = reviewScheduler.next(card, now, rating).card;
   return {
-    stabilityDays: Number(stabilityDays.toFixed(2)),
-    nextReviewAt: new Date(now + stabilityDays * DAY_MS).toISOString(),
+    stabilityDays: Number(Math.max(0.01, next.stability).toFixed(2)),
+    nextReviewAt: next.due.toISOString(),
+    fsrsCard: {
+      ...next,
+      due: next.due.toISOString(),
+      last_review: next.last_review?.toISOString() ?? null,
+    },
   };
 }
 
@@ -263,6 +275,7 @@ function decayedPrior(prior: ConceptState) {
     mastery: clamp(prior.mastery - decay),
     difficulty: prior.difficulty,
     stabilityDays: Math.max(0.25, prior.stabilityDays || 0.25),
+    fsrsCard: prior.fsrsCard,
     nextReviewAt: prior.nextReviewAt,
     lastSeenAt: prior.lastSeenAt,
     lastPerformance: prior.lastPerformance,
@@ -281,12 +294,13 @@ export class StudyEngine {
     content: ContentSession,
     options?: {
       learnerId?: string;
+      materialId?: string;
       mode?: StudyMode;
       targetMinutes?: number;
       maxQuestions?: number;
       testDurationMinutes?: number;
       testQuestionTypes?: TestQuestionType[];
-      concepts?: Array<{ label: string; sourceExcerpt?: string }>;
+      concepts?: Array<{ label: string; sourceExcerpt?: string; studyPrompt?: string }>;
     },
   ) {
     const rawText = content.contentText?.trim() ?? "";
@@ -295,6 +309,7 @@ export class StudyEngine {
           blankConcept(
             concept.label.trim(),
             (concept.sourceExcerpt ?? concept.label).trim().slice(0, 600),
+            concept.studyPrompt?.trim().slice(0, 260),
           ),
         )
       : deriveConcepts(rawText, 12);
@@ -326,6 +341,7 @@ export class StudyEngine {
     const session: AdaptiveStudySession = {
       id: randomUUID(),
       contentSessionId: content.id,
+      materialId: options?.materialId,
       learnerId: options?.learnerId,
       title: content.title,
       mode,
@@ -395,6 +411,7 @@ export class StudyEngine {
       concept: {
         label: concept.label,
         sourceExcerpt: concept.sourceExcerpt,
+        studyPrompt: concept.studyPrompt,
       },
       alternatives: session.concepts
         .filter((item) => item.id !== concept.id)
@@ -463,9 +480,18 @@ export class StudyEngine {
     evaluation: StudyEvaluation,
   ) {
     const session = await this.requireActive(sessionId);
+    // Grade only the concept actually presented by next(). A caller cannot
+    // submit an arbitrary concept or alter mastery by skipping questions.
+    const presented = await this.next(sessionId);
+    if (presented.done || presented.concept.id !== conceptId) {
+      throw new Error("Study answer is not for the active question.");
+    }
     const concept = session.concepts.find((item) => item.id === conceptId);
-
     if (!concept) throw new Error("Concept not found in this study session.");
+    if (session.testConfig?.endsAt &&
+        Date.now() >= new Date(session.testConfig.endsAt).getTime()) {
+      throw new Error("The timed test has expired; finish it to see the result.");
+    }
 
     const correctness = clamp(evaluation.correctness);
     const completeness = clamp(evaluation.completeness);
@@ -495,12 +521,10 @@ export class StudyEngine {
       concept.difficulty = Math.max(1, concept.difficulty - 1);
     }
 
-    const schedule = reviewSchedule(
-      performance,
-      concept.stabilityDays || 0.25,
-    );
+    const schedule = spacedReview(concept, performance);
     concept.stabilityDays = schedule.stabilityDays;
     concept.nextReviewAt = schedule.nextReviewAt;
+    concept.fsrsCard = schedule.fsrsCard;
 
     const attempt: StudyAttempt = {
       id: randomUUID(),
@@ -528,6 +552,12 @@ export class StudyEngine {
       (session.mode !== "test" &&
         session.concepts.every((item) => item.mastery >= 0.88));
 
+    if (done) {
+      session.status = "completed";
+      session.completedAt = new Date().toISOString();
+      session.completionReason = testExpired ? "time_expired"
+        : session.questionIndex >= session.maxQuestions ? "all_questions" : "mastery_reached";
+    }
     await this.persistence.save(session);
 
     return {
@@ -576,8 +606,18 @@ export class StudyEngine {
   async finish(sessionId: string) {
     const session = await this.get(sessionId);
     if (!session) throw new Error("Study session not found.");
+    if (session.status === "completed") return this.summary(session);
 
+    // A /finish request is not evidence that the learner answered the exam.
+    // Timed tests are the sole exception: the real clock must have expired,
+    // and the learner must have answered at least one presented question.
+    const expired = session.mode === "test" && session.testConfig?.endsAt &&
+      Date.now() >= new Date(session.testConfig.endsAt).getTime();
+    if (!expired || session.attempts.length === 0) {
+      throw new Error("study_session_incomplete");
+    }
     session.status = "completed";
+    session.completionReason = "time_expired";
     session.completedAt = new Date().toISOString();
     await this.persistence.save(session);
     return this.summary(session);
@@ -624,13 +664,14 @@ export class StudyEngine {
         missingConcepts: concept.missingConcepts,
       }));
 
+    // Missing questions receive 0, not a free pass for answering one easy item.
     const testPerformance =
       session.mode === "test" && attempts
         ? session.attempts.reduce(
             (sum, attempt) =>
               sum + attempt.correctness * 0.65 + attempt.completeness * 0.35,
             0,
-          ) / attempts
+          ) / Math.max(1, session.maxQuestions)
         : undefined;
 
     const durationSeconds = Math.max(
@@ -651,9 +692,8 @@ export class StudyEngine {
       conceptsStudied: session.concepts.filter((concept) => concept.attempts > 0)
         .length,
       weakConcepts,
-      completed:
-        session.status === "completed" ||
-        session.questionIndex >= session.maxQuestions,
+      completed: session.status === "completed",
+      completionReason: session.completionReason,
       nextReviewAt: session.concepts
         .map((concept) => concept.nextReviewAt)
         .filter((value): value is string => Boolean(value))
