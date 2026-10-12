@@ -1,4 +1,4 @@
-import { hardPaywallEnabled, resolveHardPaywallAccess } from "./_hardPaywall.js";
+import { hardPaywallEnabled, resolveHardPaywallAccess, signedUpstreamHeaders } from "./_hardPaywall.js";
 
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const MAX_INLINE_BASE64 = 3_500_000;
@@ -47,13 +47,15 @@ function cleanFiles(value) {
 }
 
 async function upstream(base, apiKey, path, payload) {
+  const bodyText = JSON.stringify(payload);
   const response = await fetch(`${base}${path}`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${apiKey}`,
       "content-type": "application/json",
+      ...signedUpstreamHeaders("POST", path, bodyText),
     },
-    body: JSON.stringify(payload),
+    body: bodyText,
     signal: AbortSignal.timeout(30_000),
   });
   const data = await response.json().catch(() => ({}));
@@ -72,6 +74,7 @@ async function upstreamGet(base, apiKey, path, params) {
     headers: {
       authorization: `Bearer ${apiKey}`,
       accept: "application/json",
+      ...signedUpstreamHeaders("GET", url.pathname + url.search),
     },
     signal: AbortSignal.timeout(20_000),
   });
