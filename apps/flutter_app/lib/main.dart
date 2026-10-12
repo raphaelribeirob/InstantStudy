@@ -288,6 +288,7 @@ class _StudyHomeState extends State<StudyHome> {
       _error = null;
       _feedback = null;
       _summary = null;
+      _nativePanel = 'study';
     });
     try {
       if (_materialId == null) {
@@ -1064,6 +1065,8 @@ class _StudyHomeState extends State<StudyHome> {
               _session = null;
               _summary = null;
               _feedback = null;
+              _session = null;
+              _nativePanel = 'orbit';
             }),
           ),
         ],
@@ -1110,31 +1113,40 @@ class _StudyHomeState extends State<StudyHome> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(18, 32, 18, 54),
                     children: [
+                      if (_nativePanel != 'orbit') ...[
+                        Row(children: [
+                          const OrbitalSphere(size: 54),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text(_txt(
+                            'Estudando com sua Órbita', 'Learning in your orbit'),
+                            style: const TextStyle(fontSize: 13,
+                              color: InstantStudyApp.muted))),
+                          TextButton.icon(
+                            onPressed: _busy ? null : () => setState(() {
+                              _nativePanel = 'orbit';
+                              _session = null;
+                              _summary = null;
+                              _feedback = null;
+                            }),
+                            icon: const Icon(Icons.arrow_back_rounded, size: 17),
+                            label: Text(_txt('Órbita','Orbit')),
+                            style: TextButton.styleFrom(
+                              foregroundColor: InstantStudyApp.ink,
+                              shape: const StadiumBorder(side: BorderSide(
+                                color: InstantStudyApp.paper3))),
+                          ),
+                        ]),
+                        const SizedBox(height: 24),
+                      ],
                       AnimatedSwitcher(
                         duration: motionDuration,
                         switchInCurve: Curves.easeOutCubic,
                         switchOutCurve: Curves.easeInCubic,
-                        child: _session == null && _summary == null
-                            ? KeyedSubtree(
-                                key: const ValueKey('entry'),
-                                child: _buildEntry(),
-                              )
-                            : _summary != null
-                                ? KeyedSubtree(
-                                    key: const ValueKey('summary'),
-                                    child: _buildSummary(),
-                                  )
-                                : _concept != null
-                                    ? KeyedSubtree(
-                                        key: ValueKey(
-                                          _next?['questionIndex'] ?? 'question',
-                                        ),
-                                        child: _buildQuestion(),
-                                      )
-                                    : KeyedSubtree(
-                                        key: const ValueKey('complete'),
-                                        child: _buildSummary(),
-                                      ),
+                        child: KeyedSubtree(
+                          key: ValueKey(_nativePanel + '-' +
+                            (_next?['questionIndex']?.toString() ?? '')),
+                          child: _buildOrbitalPanel(),
+                        ),
                       ),
                       if (_error != null) ...[
                         const SizedBox(height: 18),
