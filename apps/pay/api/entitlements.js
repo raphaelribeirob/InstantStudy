@@ -30,14 +30,20 @@ async function identityFromBearer(req) {
   return { userRef: userRef || null, email: email || null };
 }
 
-function expanded(rows, familyAccess = null) {
-  const output = rows.map((row) => ({
-    key: row.entitlement_key,
-    active: Boolean(row.active),
-    provider: "paddle",
-    expires_at: row.expires_at || null,
-    status: row.status,
-  }));
+export function expanded(rows, familyAccess = null, now = Date.now()) {
+  const output = rows.map((row) => {
+    const expiry = row.expires_at ? Date.parse(String(row.expires_at)) : null;
+    const current = expiry === null || (Number.isFinite(expiry) && expiry > now);
+    const revoked = ["canceled", "cancelled", "paused", "past_due", "expired", "deleted"]
+      .includes(String(row.status || "").toLowerCase());
+    return {
+      key: row.entitlement_key,
+      active: Boolean(row.active) && current && !revoked,
+      provider: "paddle",
+      expires_at: row.expires_at || null,
+      status: row.status,
+    };
+  });
 
   if (output.some((item) => item.key === "instant_study.family" && item.active)) {
     output.push({
@@ -98,7 +104,7 @@ export default async function handler(req, res) {
     if (!identity) return json(res, 401, { error: "unauthorized" });
 
     const requestedUser = String(req.query?.user_id || "").trim();
-    if (requestedUser && identity.userRef && requestedUser !== identity.userRef) {
+    if (requestedUser && (!identity.userRef || requestedUser !== identity.userRef)) {
       return json(res, 403, { error: "identity_mismatch" });
     }
 
