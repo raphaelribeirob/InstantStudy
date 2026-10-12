@@ -31,6 +31,9 @@ import {
   askStudyMaterial,
   fileToStudyInput,
   getAudioStudy,
+  getFlashcardProgress,
+  markFlashcardProgress,
+  type FlashcardStatus,
   getDueReviews,
   getRetentionInsights,
   getStudyRoom,
@@ -142,6 +145,10 @@ export function SoftwareApp() {
   const [askSaveError, setAskSaveError] = useState("");
   const [search, setSearch] = useState("");
   const [flippedCard, setFlippedCard] = useState<string | null>(null);
+  const [flashcardProgress, setFlashcardProgress] = useState<Record<string, FlashcardStatus>>({});
+  const [flashcardBusy, setFlashcardBusy] = useState<string | null>(null);
+  const [flashcardError, setFlashcardError] = useState("");
+  const [shuffledCardIds, setShuffledCardIds] = useState<string[] | null>(null);
   const [dueReviews, setDueReviews] = useState<DueReview[]>([]);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [testQuestions, setTestQuestions] = useState(20);
@@ -245,6 +252,26 @@ export function SoftwareApp() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [view]);
+
+  useEffect(() => {
+    setShuffledCardIds(null);
+    setFlippedCard(null);
+    setFlashcardProgress({});
+    setFlashcardError("");
+    if (view !== "flashcards" || !selected?.id || !/^[a-f0-9-]{36}$/i.test(selected.id)) return;
+    const materialId = selected.id;
+    let active = true;
+    void getFlashcardProgress(materialId)
+      .then(({ progress }) => {
+        if (active) setFlashcardProgress(Object.fromEntries(
+          progress.map(row => [row.cardId, row.status]),
+        ));
+      })
+      .catch(error => {
+        if (active) setFlashcardError(error instanceof Error ? error.message : "Progress could not be loaded.");
+      });
+    return () => { active = false; };
+  }, [view, selected?.id]);
 
   useEffect(() => {
     if (view !== "review") return;
@@ -777,6 +804,29 @@ export function SoftwareApp() {
   }
 
   const cards = selected?.assets.flashcards ?? [];
+  const orderedCards = shuffledCardIds
+    ? [...cards].sort((a, b) => shuffledCardIds.indexOf(a.id) - shuffledCardIds.indexOf(b.id))
+    : cards;
+  const knownCount = cards.filter(card => flashcardProgress[card.id] === "known").length;
+  async function markCard(cardId: string, status: FlashcardStatus) {
+    if (!selected || flashcardBusy) return;
+    setFlashcardBusy(cardId); setFlashcardError("");
+    try {
+      await markFlashcardProgress(selected.id, cardId, status);
+      setFlashcardProgress(current => ({ ...current, [cardId]: status }));
+    } catch (error) {
+      setFlashcardError(error instanceof Error ? error.message : "Could not save card progress.");
+    } finally { setFlashcardBusy(null); }
+  }
+  function shuffleFlashcards() {
+    const ids = cards.map(card => card.id);
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+    setShuffledCardIds(ids);
+    setFlippedCard(null);
+  }
   const hasCreateInput =
     sourceType === "paste"
       ? Boolean(draft.trim())
@@ -1056,22 +1106,48 @@ export function SoftwareApp() {
                 )}
 
                 {view === "flashcards" && (
-                  <div className="software-flashcards">
-                    {cards.map((card) => (
-                      <article
-                        key={card.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => setFlippedCard(flippedCard === card.id ? null : card.id)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") setFlippedCard(flippedCard === card.id ? null : card.id);
-                        }}
-                      >
-                        <span>{flippedCard === card.id ? card.concept : card.front}</span>
-                        <p>{flippedCard === card.id ? card.back : t("software.clickReveal")}</p>
-                      </article>
-                    ))}
-                  </div>
+                  <>
+                    <div className="software-flashcard-controls">
+                      <span>{i18n.language.startsWith("pt")
+                        ? `${knownCount} de ${cards.length} cartões conhecidos`
+                        : `${knownCount} of ${cards.length} cards known`}</span>
+                      <button type="button" onClick={shuffleFlashcards} disabled={cards.length < 2}>
+                        {i18n.language.startsWith("pt") ? "Embaralhar" : "Shuffle"}
+                      </button>
+                      {shuffledCardIds && <button type="button" onClick={() => setShuffledCardIds(null)}>
+                        {i18n.language.startsWith("pt") ? "Ordem original" : "Original order"}
+                      </button>}
+                    </div>
+                    {flashcardError && <p role="alert">{flashcardError}</p>}
+                    <div className="software-flashcards">
+                      {orderedCards.map(card => (
+                        <div key={card.id} className="software-flashcard-item">
+                          <article role="button" tabIndex={0}
+                            aria-label={i18n.language.startsWith("pt") ? "Virar cartão" : "Flip card"}
+                            onClick={() => setFlippedCard(flippedCard === card.id ? null : card.id)}
+                            onKeyDown={event => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                setFlippedCard(flippedCard === card.id ? null : card.id);
+                              }
+                            }}>
+                            <span>{flippedCard === card.id ? card.concept : card.front}</span>
+                            <p>{flippedCard === card.id ? card.back : t("software.clickReveal")}</p>
+                          </article>
+                          <div className="software-flashcard-status">
+                            <button type="button" aria-pressed={flashcardProgress[card.id] === "known"}
+                              disabled={Boolean(flashcardBusy)} onClick={() => void markCard(card.id, "known")}>
+                              {i18n.language.startsWith("pt") ? "Já sei" : "Know"}
+                            </button>
+                            <button type="button" aria-pressed={flashcardProgress[card.id] === "learning"}
+                              disabled={Boolean(flashcardBusy)} onClick={() => void markCard(card.id, "learning")}>
+                              {i18n.language.startsWith("pt") ? "Ainda aprendendo" : "Still learning"}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
 
                 {view === "test" && !session && !busy && !summary && (
