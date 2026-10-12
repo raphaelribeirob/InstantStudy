@@ -96,3 +96,27 @@ test("Test mode records answers without immediate correctness feedback", async (
     suppressImmediateFeedback: true,
   });
 });
+
+test("source-grounded flashcard prompt is presented in Quiz instead of generic text", async () => {
+  const store = new ContentSessionStore();
+  const content = store.create({
+    title: "Fotossíntese",
+    mode: "quiz",
+    contentText: "A fotossíntese converte energia luminosa em energia química nos cloroplastos.",
+  });
+  const engine = new StudyEngine();
+  const prompt = "Qual energia a fotossíntese transforma e onde?";
+  const session = await engine.start(content, {
+    mode: "quiz",
+    maxQuestions: 1,
+    concepts: [{
+      label: "Fotossíntese",
+      sourceExcerpt: "A fotossíntese converte energia luminosa em energia química nos cloroplastos.",
+      studyPrompt: prompt,
+    }],
+  });
+  const next = await engine.next(session.id);
+  assert.equal(next.done, false);
+  if (next.done) throw new Error("expected active quiz");
+  assert.equal(next.question.prompt, prompt);
+});
