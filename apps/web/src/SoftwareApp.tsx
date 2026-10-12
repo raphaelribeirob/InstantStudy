@@ -38,6 +38,7 @@ import {
   googleDriveStudyInput,
   importPrivateDriveMaterial,
   importStudyMaterial,
+  importLongAudioMaterial,
   joinStudyRoom,
   listStudyMaterials,
   prepareStudy,
@@ -138,6 +139,7 @@ export function SoftwareApp() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [audioImportProgress, setAudioImportProgress] = useState<number | null>(null);
   const [session, setSession] = useState<Awaited<ReturnType<typeof prepareStudy>> | null>(null);
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -316,21 +318,27 @@ export function SoftwareApp() {
   async function createMaterial() {
     setBusy(true);
     setCreateError("");
+    setAudioImportProgress(null);
 
     try {
+      const largeAudio = sourceType === "audio" && selectedFiles.length === 1
+        && selectedFiles[0].size > 2_500_000;
       const files =
-        sourceType === "upload" || sourceType === "audio" || sourceType === "scan"
+        sourceType === "upload" || (sourceType === "audio" && !largeAudio) || sourceType === "scan"
           ? await Promise.all(selectedFiles.map(fileToStudyInput))
           : sourceType === "drive"
             ? [googleDriveStudyInput(driveUrl)]
             : [];
 
-      const result = await importStudyMaterial({
-        title: title.trim() || undefined,
-        sourceType: sourceType === "scan" ? "upload" : sourceType,
-        contentText: sourceType === "paste" ? draft.trim() : undefined,
-        files,
-      });
+      const result = largeAudio
+        ? await importLongAudioMaterial(selectedFiles[0], title.trim() || undefined,
+            (value) => setAudioImportProgress(value))
+        : await importStudyMaterial({
+            title: title.trim() || undefined,
+            sourceType: sourceType === "scan" ? "upload" : sourceType,
+            contentText: sourceType === "paste" ? draft.trim() : undefined,
+            files,
+          });
 
       const item = result.material;
       setLibrary((current) => [item, ...current.filter((row) => row.id !== item.id)]);
@@ -339,6 +347,7 @@ export function SoftwareApp() {
       setTitle("");
       setDriveUrl("");
       setSelectedFiles([]);
+      setAudioImportProgress(null);
       setView("learn");
       await startMode("learn", item);
     } catch (error) {
@@ -916,6 +925,15 @@ export function SoftwareApp() {
                 </div>
               )}
 
+              {audioImportProgress !== null && (
+                <div role="status" aria-live="polite">
+                  {i18n.language.startsWith("pt") ? "Enviando aula gravada: " : "Uploading recorded lecture: "}{audioImportProgress}%
+                  <progress value={audioImportProgress} max={100} style={{ width: "100%" }} />
+                  {audioImportProgress >= 90 && (i18n.language.startsWith("pt")
+                    ? " Transcrevendo e preparando o estudo…"
+                    : " Transcribing and preparing your study…")}
+                </div>
+              )}
               {createError ? <div className="software-feedback">{createError}</div> : null}
               <div>
                 <span>
