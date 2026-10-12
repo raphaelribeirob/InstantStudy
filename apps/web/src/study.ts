@@ -370,14 +370,18 @@ export async function finishStudySession(studySessionId: string) {
   })) as StudySummary;
 }
 
+export type AskTurn = { role: "user" | "assistant"; content: string };
+
 export async function askStudyMaterial(input: {
   contentText: string;
   question: string;
+  history?: AskTurn[];
 }) {
   return (await request({
     action: "ask",
     contentText: input.contentText,
     question: input.question,
+    history: input.history?.slice(-8),
   })) as {
     answer: string;
     sourceHighlights?: string[];
