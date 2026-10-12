@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { StudyReveal } from "./StudyMotion";
 import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
@@ -589,11 +590,14 @@ export function App() {
         <HeroProduct />
       </section>
 
+      <StudyReveal className="study-motion-reveal">
       <section className="trust-strip future-strip">
         <span>{t("landing.oneSystem")}</span>
         <strong>ChatGPT</strong><strong>Claude</strong><strong>Cursor</strong><strong>Codex</strong><strong>Study Rooms</strong><strong>Any MCP agent</strong>
       </section>
+      </StudyReveal>
 
+      <StudyReveal className="study-motion-reveal">
       <section className="feature-band learn-band" id="learn">
         <div className="feature-copy">
           <p className="eyebrow">Adaptive Learn</p>
@@ -613,7 +617,9 @@ export function App() {
         </div>
         <AdaptiveLearnPreview />
       </section>
+      </StudyReveal>
 
+      <StudyReveal className="study-motion-reveal">
       <section className="section tools-section" id="tools">
         <div className="section-heading wide-heading">
           <p className="eyebrow">A new learning architecture</p>
@@ -636,7 +642,9 @@ export function App() {
           ))}
         </div>
       </section>
+      </StudyReveal>
 
+      <StudyReveal className="study-motion-reveal">
       <section className="feature-band test-band" id="test">
         <div className="feature-copy">
           <p className="eyebrow light">Future-ready testing</p>
@@ -657,7 +665,9 @@ export function App() {
         </div>
         <TestPreview />
       </section>
+      </StudyReveal>
 
+      <StudyReveal className="study-motion-reveal">
       <section className="feature-band review-band" id="review">
         <RetentionPreview />
         <div className="feature-copy dark-copy">
@@ -674,7 +684,9 @@ export function App() {
           </div>
         </div>
       </section>
+      </StudyReveal>
 
+      <StudyReveal className="study-motion-reveal">
       <section className="section continuity-section">
         <div className="continuity-copy">
           <p className="eyebrow">A living knowledge state</p>
@@ -693,6 +705,7 @@ export function App() {
           </div>
         </div>
       </section>
+      </StudyReveal>
 
       <ConnectAgent />
       <Pricing />
