@@ -29,6 +29,8 @@ export type ConceptState = {
   id: string;
   label: string;
   sourceExcerpt: string;
+  /** Source-grounded question authored when material assets were generated. */
+  studyPrompt?: string;
   mastery: number;
   attempts: number;
   correct: number;
@@ -133,11 +135,12 @@ function labelFromExcerpt(excerpt: string) {
   return `${cleaned.slice(0, 69).trim()}…`;
 }
 
-function blankConcept(label: string, sourceExcerpt: string): ConceptState {
+function blankConcept(label: string, sourceExcerpt: string, studyPrompt?: string): ConceptState {
   return {
     id: randomUUID(),
     label,
     sourceExcerpt,
+    studyPrompt,
     mastery: 0.15,
     attempts: 0,
     correct: 0,
@@ -293,7 +296,7 @@ export class StudyEngine {
       maxQuestions?: number;
       testDurationMinutes?: number;
       testQuestionTypes?: TestQuestionType[];
-      concepts?: Array<{ label: string; sourceExcerpt?: string }>;
+      concepts?: Array<{ label: string; sourceExcerpt?: string; studyPrompt?: string }>;
     },
   ) {
     const rawText = content.contentText?.trim() ?? "";
@@ -302,6 +305,7 @@ export class StudyEngine {
           blankConcept(
             concept.label.trim(),
             (concept.sourceExcerpt ?? concept.label).trim().slice(0, 600),
+            concept.studyPrompt?.trim().slice(0, 260),
           ),
         )
       : deriveConcepts(rawText, 12);
@@ -402,6 +406,7 @@ export class StudyEngine {
       concept: {
         label: concept.label,
         sourceExcerpt: concept.sourceExcerpt,
+        studyPrompt: concept.studyPrompt,
       },
       alternatives: session.concepts
         .filter((item) => item.id !== concept.id)
