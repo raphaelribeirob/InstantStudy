@@ -358,6 +358,57 @@ export async function importStudyMaterial(input: {
   };
 }
 
+/**
+ * Upload a standalone recorded/uploaded audio file as resumable bounded chunks
+ * through the authenticated Web BFF. Does not load the entire file in memory.
+ * Transcription/finalization can take longer than an ordinary import.
+ */
+export async function importLongAudioMaterial(
+  file: File,
+  title?: string,
+  onProgress?: (progress: number) => void,
+) {
+  const identity = learnerContext();
+  if (!identity.accountUserId || !identity.accountAccessToken) {
+    throw new Error("A signed-in Plus/Unlimited account is required for long recordings.");
+  }
+  const MAX_FILE_BYTES = 25_000_000;
+  const PART_BYTES = 1_750_000;
+  if (!file.size || file.size > MAX_FILE_BYTES) {
+    throw new Error("Recorded audio files must be smaller than 25 MB.");
+  }
+  const totalParts = Math.ceil(file.size / PART_BYTES);
+  if (totalParts > 16) throw new Error("Too many audio upload parts.");
+  const uploadId = crypto.randomUUID();
+  for (let partIndex = 0; partIndex < totalParts; partIndex++) {
+    const buffer = await file.slice(
+      partIndex * PART_BYTES,
+      Math.min((partIndex + 1) * PART_BYTES, file.size),
+    ).arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    const pieces: string[] = [];
+    for (let index = 0; index < bytes.length; index += 32_768) {
+      pieces.push(String.fromCharCode(...bytes.subarray(index, index + 32_768)));
+    }
+    await request(identified({
+      action: "audio_chunk",
+      uploadId, fileName: file.name,
+      mimeType: file.type || "audio/webm",
+      totalParts, partIndex,
+      inlineBase64: btoa(pieces.join("")),
+    }));
+    onProgress?.(Math.round((partIndex + 1) / totalParts * 90));
+  }
+  const result = await request(identified({
+    action: "audio_finalize", uploadId, title,
+  })) as {
+    material: StudyMaterial;
+    ingestion?: Array<{ fileId?: string; fileName?: string; status?: string; error?: string }>;
+  };
+  onProgress?.(100);
+  return result;
+}
+
 export async function listStudyMaterials(query = "") {
   return (await request(
     identified({
