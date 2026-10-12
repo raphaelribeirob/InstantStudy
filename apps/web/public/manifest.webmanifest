@@ -1,12 +1,12 @@
 {
-  "name": "InstantStudy",
+  "name": "InstantStudy Órbita",
   "short_name": "InstantStudy",
-  "description": "Adaptive study software and AI learning plugin.",
+  "description": "Seu conhecimento em órbita: aprenda, pratique, revise e acompanhe a memória.",
   "start_url": "/app",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f4f2ee",
-  "theme_color": "#0b0b0b",
+  "background_color": "#fdfcfc",
+  "theme_color": "#fdfcfc",
   "icons": [
     {
       "src": "/instantstudy-icon.svg",
