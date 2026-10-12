@@ -229,3 +229,15 @@ The Orb's **agentic goal console** appears inside the existing Refero/ElevenLabs
 - No fabricated accuracy, retention probability, background push alerts or autonomously recorded voice scores.
 
 See `docs/AGENTIC_OFFER.md` for precise offer mappings, server ownership rules, and future acceptance criteria. This implementation is a **bounded agentic workflow**, not yet a general-purpose multi-agent autonomous tutor, and must not be marketed as equivalent to Quizlet in depth without real-user QA.
+
+
+## Launch logo motion — InstantStudy™ → IStudy™
+
+- This **one-shot opening transition** applies to the installed Web/PWA app route `/app` and the native Flutter launch, not to the marketing site or in-study scene switches.
+- Start with the **InstantStudy™** black-on-eggshell outlined horizontal capsule. After a short hold, compress the pill horizontally while the full wordmark resolves into **IStudy™**; keep the trademark in superscript. The endpoint capsule is visibly shorter.
+- Approximate total screen occupancy: 1.6–1.83 seconds including fade in the Web; about 1.6 seconds native. The user may skip at any time. On reduced-motion devices, show the final mark briefly without the animated morph.
+- Use in-app text/vector effects rather than rendering the storyboard or GIF as a fixed image. Wordmark: `Instant` regular 400, `Study` medium 500; for the compact mark, `I` regular 400 plus `Study` medium 500.
+- The splash must **not mount a second Orb**, alter the existing Siri Orb code, reset a learning session, access user data, change billing or inject any third-party dependencies. Underlying study app stays mounted and cannot receive taps until the animation finishes or is skipped.
+- The product brand remains **InstantStudy™** throughout menus, metadata, accessibility naming and billing; `IStudy™` is only the compact finishing signature, not a product rename.
+- Implementation: `apps/web/src/StudySplashIntro.tsx`, `apps/web/src/study-splash.css`, `apps/flutter_app/lib/study_splash_intro.dart`; wrapper activation in each app's `main` file. See `docs/SPLASH_MOTION_ACCEPTANCE.md`.
+
