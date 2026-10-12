@@ -61,7 +61,7 @@ class _StudySplashIntroState extends State<StudySplashIntro>
 
   static double _curve(double value, double start, double end) {
     return Curves.easeInOutCubic.transform(
-      ((value - start) / (end - start)).clamp(0.0, 1.0),
+      ((value - start) / (end - start)).clamp(0.0, 1.0).toDouble(),
     );
   }
 
