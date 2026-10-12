@@ -237,7 +237,14 @@ function chooseConcept(session: AdaptiveStudySession) {
   });
 
   if (session.mode === "test") {
-    return ordered[session.questionIndex % ordered.length];
+    // Fair exam coverage: never revisit a concept until all other concepts
+    // have appeared equally often in this specific session. Ranking can
+    // change after grading, but cannot cause repeated early questions.
+    const counts = new Map<string, number>();
+    for (const attempt of session.attempts)
+      counts.set(attempt.conceptId, (counts.get(attempt.conceptId) ?? 0) + 1);
+    const minCount = Math.min(...ordered.map(concept => counts.get(concept.id) ?? 0));
+    return ordered.find(concept => (counts.get(concept.id) ?? 0) === minCount)!;
   }
 
   return ordered[0];
