@@ -372,6 +372,11 @@ export function SoftwareApp() {
         maxQuestions: mode === "test" ? testQuestions : 12,
         testDurationMinutes: mode === "test" ? testDuration : undefined,
         testQuestionTypes: mode === "test" ? testTypes : undefined,
+        concepts: material.assets.flashcards.slice(0, 12).map(card => ({
+          label: card.concept,
+          sourceExcerpt: card.sourceExcerpt || card.back,
+          studyPrompt: card.front,
+        })),
       }));
     } finally {
       setBusy(false);
