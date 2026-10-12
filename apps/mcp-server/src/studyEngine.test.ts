@@ -120,3 +120,32 @@ test("source-grounded flashcard prompt is presented in Quiz instead of generic t
   if (next.done) throw new Error("expected active quiz");
   assert.equal(next.question.prompt, prompt);
 });
+
+test("a real final answer persists completed status and completion time for agent plan proof", async () => {
+  const source = new ContentSessionStore().create({
+    title: "Biology", mode: "test",
+    contentText: "Chloroplasts convert light energy into chemical energy.",
+  });
+  const engine = new StudyEngine();
+  const session = await engine.start(source, {
+    learnerId: "verified-learner", mode: "test", maxQuestions: 1,
+    concepts: [{ label: "Chloroplasts", sourceExcerpt:
+      "Chloroplasts convert light energy into chemical energy." }],
+  });
+  const next = await engine.next(session.id);
+  if (next.done) throw new Error("expected a question");
+  const result = await engine.submit(session.id, next.concept.id, {
+    correctness: 0.7, completeness: 0.7, userAnswer: "Energy changes form",
+  });
+  assert.equal(result.done, true);
+  const stored = await engine.get(session.id);
+  assert.equal(stored?.status, "completed");
+  assert.ok(stored?.completedAt);
+  assert.equal(stored?.learnerId, "verified-learner");
+  await assert.rejects(
+    () => engine.submit(session.id, next.concept.id, {
+      correctness: 1, completeness: 1, userAnswer: "duplicate",
+    }),
+    /completed/,
+  );
+});
