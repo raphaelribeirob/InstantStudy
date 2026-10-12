@@ -1,0 +1,51 @@
+/* Offer-first agentic planning. Keeps the existing Refero editorial shell and
+   a single Siri Orb; unlike an agent avatar carousel, this is a real task flow. */
+.orbital-agent-plan{
+  display:flex;flex-direction:column;gap:10px;
+  min-width:0;padding:17px;border-radius:20px;
+  background:#f5f3f1;color:#000;border:1px solid #ebe8e4;
+}
+.orbital-agent-kicker{font-size:10px;font-weight:600;letter-spacing:.12em;color:#777169}
+.orbital-agent-plan h3{font-size:22px;letter-spacing:-.04em;font-weight:350;line-height:1.12;margin:0}
+.orbital-agent-plan p,.orbital-agent-plan small{
+  margin:0;line-height:1.5;color:#777169;font-size:12px;overflow-wrap:anywhere;
+}
+.orbital-agent-plan .orbital-agent-goal{color:#44403b;font-size:13px;font-weight:500}
+.orbital-agent-plan form{display:flex;flex-direction:column;gap:10px}
+.orbital-agent-plan label{font-size:11px;font-weight:500;color:#44403b}
+.orbital-agent-plan input{
+  width:100%;min-width:0;min-height:42px;
+  border:1px solid #dcd7d1;border-radius:12px;
+  padding:9px 12px;background:#fdfcfc;color:#000;font:inherit;font-size:13px;
+}
+.orbital-agent-plan input:focus-visible,.orbital-agent-plan button:focus-visible{
+  outline:2px solid #0447ff;outline-offset:3px;
+}
+.orbital-agent-plan button{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  min-height:42px;padding:9px 14px;border:1px solid #000;border-radius:999px;
+  font-size:12px;font-weight:600;line-height:1.35;
+  background:#000;color:#fdfcfc;cursor:pointer;text-align:center;
+}
+.orbital-agent-plan button:disabled{opacity:.45;cursor:not-allowed}
+.orbital-agent-progress{font-size:11px;color:#44403b}
+.orbital-agent-plan progress{width:100%;height:8px;border:0;border-radius:12px;accent-color:#0447ff}
+.orbital-agent-next{display:flex;flex-direction:column;gap:8px}
+.orbital-agent-next strong{font-size:17px;letter-spacing:-.025em}
+.orbital-agent-next small{font-size:9px;font-weight:600;letter-spacing:.08em}
+.orbital-agent-buttons{display:flex;flex-wrap:wrap;gap:8px}
+.orbital-agent-plan button.orbital-agent-confirm{background:transparent;color:#000}
+.orbital-agent-step-list{display:grid;gap:6px;max-height:180px;overflow-y:auto}
+.orbital-agent-step-list>div{display:flex;align-items:center;gap:9px;font-size:11px;color:#44403b}
+.orbital-agent-step-list>div>span:first-child{font-size:15px;color:#0447ff}
+.orbital-agent-plan .orbital-agent-error{color:#b3261e;font-weight:500}
+.orbital-agent-plan .orbital-agent-fine{font-size:10px;color:#777169}
+.orbital-system-focused .orbital-agent-plan{padding:12px;gap:8px}
+.orbital-system-focused .orbital-agent-plan h3{font-size:18px}
+@media(max-width:550px){
+  .orbital-agent-buttons{flex-direction:column}
+  .orbital-agent-buttons>button{width:100%}
+}
+@media(prefers-reduced-motion:reduce){
+  .orbital-agent-plan button{transition:none}
+}
