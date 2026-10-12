@@ -31,6 +31,9 @@ import {
   askStudyMaterial,
   fileToStudyInput,
   getAudioStudy,
+  getFlashcardProgress,
+  markFlashcardProgress,
+  type FlashcardStatus,
   getDueReviews,
   getRetentionInsights,
   getStudyRoom,
@@ -94,20 +97,9 @@ type View =
 
 type SourceType = "paste" | "upload" | "drive" | "audio" | "scan";
 
-const STORAGE_KEY = "instantstudy.library.v2";
-
-function readCachedLibrary(): StudyMaterial[] {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function cacheLibrary(items: StudyMaterial[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items.slice(0, 50)));
-}
+// Legacy versions cached entire private documents in a browser-wide key.
+// Always load study materials from authenticated Neon instead.
+const LEGACY_LIBRARY_STORAGE_KEY = "instantstudy.library.v2";
 
 function navItem(view: View, active: View, icon: ReactNode, label: string, setView: (view: View) => void) {
   return (
@@ -128,11 +120,10 @@ function dueLabel(value: string, t: TFunction) {
 
 export function SoftwareApp() {
   const { t, i18n } = useTranslation();
-  const cached = readCachedLibrary();
   const [view, setView] = useState<View>("home");
   const [showTools, setShowTools] = useState(false);
-  const [library, setLibrary] = useState<StudyMaterial[]>(cached);
-  const [selectedId, setSelectedId] = useState<string | null>(cached[0]?.id ?? null);
+  const [library, setLibrary] = useState<StudyMaterial[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sourceType, setSourceType] = useState<SourceType>("paste");
   const [draft, setDraft] = useState("");
   const [title, setTitle] = useState("");
@@ -150,8 +141,14 @@ export function SoftwareApp() {
   const [askHistory, setAskHistory] = useState<Array<{role: "user" | "assistant"; content: string}>>([]);
   const activeAskSourceRef = useRef<string | null>(null);
   const [askBusy, setAskBusy] = useState(false);
+  const [askSaveBusy, setAskSaveBusy] = useState(false);
+  const [askSaveError, setAskSaveError] = useState("");
   const [search, setSearch] = useState("");
   const [flippedCard, setFlippedCard] = useState<string | null>(null);
+  const [flashcardProgress, setFlashcardProgress] = useState<Record<string, FlashcardStatus>>({});
+  const [flashcardBusy, setFlashcardBusy] = useState<string | null>(null);
+  const [flashcardError, setFlashcardError] = useState("");
+  const [shuffledCardIds, setShuffledCardIds] = useState<string[] | null>(null);
   const [dueReviews, setDueReviews] = useState<DueReview[]>([]);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [testQuestions, setTestQuestions] = useState(20);
@@ -170,6 +167,7 @@ export function SoftwareApp() {
   const [insightsBusy, setInsightsBusy] = useState(false);
   const [audioStudy, setAudioStudy] = useState<AudioStudy | null>(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
+  const [podcastRate, setPodcastRate] = useState(1);
   const [room, setRoom] = useState<StudyRoom | null>(null);
   const [roomCode, setRoomCode] = useState("");
   const [displayName, setDisplayName] = useState(
@@ -238,22 +236,43 @@ export function SoftwareApp() {
   }, [library, search]);
 
   useEffect(() => {
+    localStorage.removeItem(LEGACY_LIBRARY_STORAGE_KEY);
+    let active = true;
     void listStudyMaterials()
       .then(({ materials }) => {
+        if (!active) return;
         setLibrary(materials);
-        cacheLibrary(materials);
-        if (!selectedId && materials[0]) setSelectedId(materials[0].id);
+        setSelectedId(materials[0]?.id ?? null);
       })
       .catch(() => {
-        // Cached library remains available offline.
+        if (active) { setLibrary([]); setSelectedId(null); }
       });
+    return () => { active = false; };
   }, []);
-
-  useEffect(() => cacheLibrary(library), [library]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [view]);
+
+  useEffect(() => {
+    setShuffledCardIds(null);
+    setFlippedCard(null);
+    setFlashcardProgress({});
+    setFlashcardError("");
+    if (view !== "flashcards" || !selected?.id || !/^[a-f0-9-]{36}$/i.test(selected.id)) return;
+    const materialId = selected.id;
+    let active = true;
+    void getFlashcardProgress(materialId)
+      .then(({ progress }) => {
+        if (active) setFlashcardProgress(Object.fromEntries(
+          progress.map(row => [row.cardId, row.status]),
+        ));
+      })
+      .catch(error => {
+        if (active) setFlashcardError(error instanceof Error ? error.message : "Progress could not be loaded.");
+      });
+    return () => { active = false; };
+  }, [view, selected?.id]);
 
   useEffect(() => {
     if (view !== "review") return;
@@ -275,10 +294,20 @@ export function SoftwareApp() {
 
   useEffect(() => {
     if (view !== "audio" || !selected) return;
+    const materialId = selected.id;
+    let active = true;
+    podcastStopRef.current = true;
+    window.speechSynthesis?.cancel();
+    setAudioPlaying(false);
     setAudioStudy(null);
-    void getAudioStudy(selected.id)
-      .then(setAudioStudy)
-      .catch(() => setAudioStudy(null));
+    void getAudioStudy(materialId)
+      .then(data => { if (active) setAudioStudy(data); })
+      .catch(() => { if (active) setAudioStudy(null); });
+    return () => {
+      active = false;
+      podcastStopRef.current = true;
+      window.speechSynthesis?.cancel();
+    };
   }, [view, selectedId]);
 
   useEffect(() => {
@@ -392,6 +421,8 @@ export function SoftwareApp() {
           studyPrompt: card.front,
         })),
       }));
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Secure study service unavailable.");
     } finally {
       setBusy(false);
     }
@@ -481,11 +512,44 @@ export function SoftwareApp() {
     }
   }
 
+  async function saveAskAsStudySet() {
+    if (!selected || askSaveBusy || !askHistory.some((turn) => turn.role === "user")) return;
+    const sourceId = selected.id;
+    const questions = askHistory.filter((turn) => turn.role === "user")
+      .slice(-10).map((turn, index) => `${index + 1}. ${turn.content.slice(0, 1000)}`);
+    // The original source remains authoritative. Unverified AI replies are NOT
+    // promoted into material facts when generating new flashcards.
+    const contentText = [
+      selected.content.slice(0, 170000),
+      "Learner practice questions (not factual source evidence):",
+      ...questions,
+    ].join("\n\n").slice(0, 195000);
+    setAskSaveBusy(true);
+    setAskSaveError("");
+    try {
+      const { material } = await importStudyMaterial({
+        title: `${selected.title} — Ask review`.slice(0, 200),
+        sourceType: "paste",
+        contentText,
+      });
+      if (activeAskSourceRef.current !== sourceId) return;
+      setLibrary((current) => [material, ...current.filter((row) => row.id !== material.id)]);
+      setSelectedId(material.id);
+      setView("guide");
+    } catch (error) {
+      if (activeAskSourceRef.current === sourceId) {
+        setAskSaveError(error instanceof Error ? error.message : "Could not save this Ask session.");
+      }
+    } finally {
+      setAskSaveBusy(false);
+    }
+  }
+
   async function searchLibrary() {
     try {
       const { materials } = await listStudyMaterials(search);
       setLibrary(materials);
-      cacheLibrary(materials);
+      // Authenticated Neon library is never cached across browser accounts.
     } catch {
       // Local filtering still works.
     }
@@ -566,12 +630,11 @@ export function SoftwareApp() {
     podcastStopRef.current = false;
     setAudioPlaying(true);
     const voices = window.speechSynthesis.getVoices();
-    const english = voices.filter((voice) => /^en(-|_)/i.test(voice.lang));
-    const hostVoice = english[0] ?? voices[0];
-    const coachVoice =
-      english.find((voice) => voice.name !== hostVoice?.name) ??
-      voices.find((voice) => voice.name !== hostVoice?.name) ??
-      hostVoice;
+    const locale = i18n.language || "en-US";
+    const voiceLanguage = locale.split("-")[0].toLowerCase();
+    const localized = voices.filter(voice => voice.lang.toLowerCase().split(/[-_]/)[0] === voiceLanguage);
+    const hostVoice = localized[0] ?? null;
+    const coachVoice = localized.find(voice => voice.name !== hostVoice?.name) ?? hostVoice;
 
     const speakAt = (index: number) => {
       if (podcastStopRef.current || !audioStudy.segments[index]) {
@@ -580,7 +643,8 @@ export function SoftwareApp() {
       }
       const segment = audioStudy.segments[index];
       const utterance = new SpeechSynthesisUtterance(segment.text);
-      utterance.rate = segment.speaker === "Host" ? 0.98 : 0.94;
+      utterance.lang = locale;
+      utterance.rate = Math.max(0.5, Math.min(2, podcastRate * (segment.speaker === "Host" ? 1 : 0.94)));
       utterance.pitch = segment.speaker === "Host" ? 1.02 : 0.94;
       utterance.voice = segment.speaker === "Host" ? hostVoice ?? null : coachVoice ?? null;
       utterance.onend = () => speakAt(index + 1);
@@ -751,6 +815,29 @@ export function SoftwareApp() {
   }
 
   const cards = selected?.assets.flashcards ?? [];
+  const orderedCards = shuffledCardIds
+    ? [...cards].sort((a, b) => shuffledCardIds.indexOf(a.id) - shuffledCardIds.indexOf(b.id))
+    : cards;
+  const knownCount = cards.filter(card => flashcardProgress[card.id] === "known").length;
+  async function markCard(cardId: string, status: FlashcardStatus) {
+    if (!selected || flashcardBusy) return;
+    setFlashcardBusy(cardId); setFlashcardError("");
+    try {
+      await markFlashcardProgress(selected.id, cardId, status);
+      setFlashcardProgress(current => ({ ...current, [cardId]: status }));
+    } catch (error) {
+      setFlashcardError(error instanceof Error ? error.message : "Could not save card progress.");
+    } finally { setFlashcardBusy(null); }
+  }
+  function shuffleFlashcards() {
+    const ids = cards.map(card => card.id);
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+    setShuffledCardIds(ids);
+    setFlippedCard(null);
+  }
   const hasCreateInput =
     sourceType === "paste"
       ? Boolean(draft.trim())
@@ -791,8 +878,8 @@ export function SoftwareApp() {
         </nav>
 
         <div className="software-plan">
-          <span>{t("software.freePlan")}</span>
-          <small>{t("software.upgradeLimits")}</small>
+          <span>{i18n.language.startsWith("pt") ? "Acesso por assinatura" : "Subscription-only access"}</span>
+          <small>{i18n.language.startsWith("pt") ? "Estude com assinatura verificada" : "Study with a verified subscription"}</small>
           <a href="/#pricing">{t("software.viewPlans")}</a>
         </div>
       </aside>
@@ -1009,7 +1096,7 @@ export function SoftwareApp() {
                   </div>
                 </div>
 
-                {(view === "guide" || view === "flashcards") && <MaterialEditor key={selected.id} material={selected} onSaved={material => { setLibrary(current => { const next=current.map(row=>row.id===material.id?material:row); cacheLibrary(next); return next; }); setSession(null); setSummary(null); setFlippedCard(null); }} />}
+                {(view === "guide" || view === "flashcards") && <MaterialEditor key={selected.id} material={selected} onSaved={material => { setLibrary(current => current.map(row=>row.id===material.id?material:row)); setSession(null); setSummary(null); setFlippedCard(null); }} onDuplicated={material => { setLibrary(current => [material, ...current]); setSelectedId(material.id); setSession(null); setSummary(null); setFlippedCard(null); }} />}
 
                 {view === "guide" && (
                   <div className="software-guide">
@@ -1030,27 +1117,54 @@ export function SoftwareApp() {
                 )}
 
                 {view === "flashcards" && (
-                  <div className="software-flashcards">
-                    {cards.map((card) => (
-                      <article
-                        key={card.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => setFlippedCard(flippedCard === card.id ? null : card.id)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") setFlippedCard(flippedCard === card.id ? null : card.id);
-                        }}
-                      >
-                        <span>{flippedCard === card.id ? card.concept : card.front}</span>
-                        <p>{flippedCard === card.id ? card.back : t("software.clickReveal")}</p>
-                      </article>
-                    ))}
-                  </div>
+                  <>
+                    <div className="software-flashcard-controls">
+                      <span>{i18n.language.startsWith("pt")
+                        ? `${knownCount} de ${cards.length} cartões conhecidos`
+                        : `${knownCount} of ${cards.length} cards known`}</span>
+                      <button type="button" onClick={shuffleFlashcards} disabled={cards.length < 2}>
+                        {i18n.language.startsWith("pt") ? "Embaralhar" : "Shuffle"}
+                      </button>
+                      {shuffledCardIds && <button type="button" onClick={() => setShuffledCardIds(null)}>
+                        {i18n.language.startsWith("pt") ? "Ordem original" : "Original order"}
+                      </button>}
+                    </div>
+                    {flashcardError && <p role="alert">{flashcardError}</p>}
+                    <div className="software-flashcards">
+                      {orderedCards.map(card => (
+                        <div key={card.id} className="software-flashcard-item">
+                          <article role="button" tabIndex={0}
+                            aria-label={i18n.language.startsWith("pt") ? "Virar cartão" : "Flip card"}
+                            onClick={() => setFlippedCard(flippedCard === card.id ? null : card.id)}
+                            onKeyDown={event => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                setFlippedCard(flippedCard === card.id ? null : card.id);
+                              }
+                            }}>
+                            <span>{flippedCard === card.id ? card.concept : card.front}</span>
+                            <p>{flippedCard === card.id ? card.back : t("software.clickReveal")}</p>
+                          </article>
+                          <div className="software-flashcard-status">
+                            <button type="button" aria-pressed={flashcardProgress[card.id] === "known"}
+                              disabled={Boolean(flashcardBusy)} onClick={() => void markCard(card.id, "known")}>
+                              {i18n.language.startsWith("pt") ? "Já sei" : "Know"}
+                            </button>
+                            <button type="button" aria-pressed={flashcardProgress[card.id] === "learning"}
+                              disabled={Boolean(flashcardBusy)} onClick={() => void markCard(card.id, "learning")}>
+                              {i18n.language.startsWith("pt") ? "Ainda aprendendo" : "Still learning"}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
 
                 {view === "test" && !session && !busy && !summary && (
                   <div className="software-test-builder">
                     <h2>{t("software.buildTest")}</h2>
+                    {feedback ? <p role="alert">{feedback}</p> : null}
                     <label>
                       {t("software.questions")}
                       <select value={testQuestions} onChange={(event) => setTestQuestions(Number(event.target.value))}>
@@ -1167,7 +1281,7 @@ export function SoftwareApp() {
                 {view === "learn" && !session && !busy && !summary && (
                   <div className="software-study-stage">
                     <aside><span>{t("software.studyGuide")}</span><p>{selected.assets.summary}</p></aside>
-                    <article><h2>{t("software.readyStudy")}</h2><p>{t("software.readyStudyBody")}</p><button onClick={() => void startMode("learn")}>{t("software.startLearn")}</button></article>
+                    <article><h2>{t("software.readyStudy")}</h2><p>{t("software.readyStudyBody")}</p>{feedback ? <p role="alert">{feedback}</p> : null}<button onClick={() => void startMode("learn")}>{t("software.startLearn")}</button></article>
                   </div>
                 )}
 
@@ -1185,6 +1299,11 @@ export function SoftwareApp() {
                           </div>
                         ))}
                         <button onClick={() => { setView("learn"); void startMode("learn"); }}>{t("software.quizMe")}</button>
+                        <button disabled={askSaveBusy || askBusy} onClick={() => void saveAskAsStudySet()}>
+                          {askSaveBusy ? (i18n.language.startsWith("pt") ? "Salvando…" : "Saving…")
+                            : (i18n.language.startsWith("pt") ? "Salvar perguntas como material" : "Save questions as study set")}
+                        </button>
+                        {askSaveError ? <p role="alert">{askSaveError}</p> : null}
                       </div>
                     ) : askAnswer ? (
                       <div className="software-ask-answer"><span>INSTANTSTUDY</span><p>{askAnswer}</p></div>
@@ -1317,7 +1436,16 @@ export function SoftwareApp() {
                   <Headphones size={28}/>
                   <strong>{audioStudy.title}</strong>
                   <span>~{audioStudy.estimatedMinutes} min · {t("software.podcastBody")}</span>
-                  <button onClick={toggleAudioStudy}>{audioPlaying ? t("software.stopPodcast") : t("software.playPodcast")}</button>
+                  <label>
+                    {i18n.language.startsWith("pt") ? "Velocidade" : "Playback speed"}
+                    <select value={podcastRate} disabled={audioPlaying}
+                      onChange={e => setPodcastRate(Number(e.target.value))}>
+                      {[0.75, 1, 1.25, 1.5].map(rate => <option key={rate} value={rate}>{rate}×</option>)}
+                    </select>
+                  </label>
+                  <button type="button" onClick={toggleAudioStudy} aria-pressed={audioPlaying}>
+                    {audioPlaying ? t("software.stopPodcast") : t("software.playPodcast")}
+                  </button>
                 </aside>
                 <article>
                   {audioStudy.segments.map((segment, index) => (

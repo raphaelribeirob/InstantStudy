@@ -383,12 +383,9 @@ function Pricing() {
     void loadOffer(i18n.language || navigator.language || "en").then(setOffer);
   }, [i18n.language]);
 
-  const unlimitedAnnual = offer?.annualPrice ?? "$44.99 / year";
-  const unlimitedMonthly = offer?.monthlyPrice ?? "$6.99 / month";
-  const plusAnnual = "$35.99 / year";
-  const plusMonthly = "$4.99 / month";
-  const annualUnlimitedEquivalent = "$3.75 / month";
-  const annualPlusEquivalent = "$2.99 / month";
+  // Amounts are verified by the merchant at checkout, not static in-app
+  // USD guesses that might misrepresent a learner's currency, taxes or deal.
+  const amountNotice = "Review the final amount, currency and renewal at checkout";
 
   return (
     <section className="section pricing-section" id="pricing">
@@ -414,8 +411,8 @@ function Pricing() {
         <article className="pricing-card plus-card">
           <div>
             <span className="plan-name">{t("landing.plus")}</span>
-            <h3>{annual ? annualPlusEquivalent : plusMonthly}</h3>
-            <p>{annual ? `Billed at ${plusAnnual}.` : "Cancel anytime."}</p>
+            <h3>{annual ? "Annual subscription" : "Monthly subscription"}</h3>
+            <p>{amountNotice}</p>
           </div>
           <ul>
             <li><Check size={16} /> 20 Learn rounds per month</li>
@@ -444,8 +441,8 @@ function Pricing() {
           <div className="most-popular">{t("landing.mostPopular")}</div>
           <div>
             <span className="plan-name">{t("landing.unlimited")}</span>
-            <h3>{annual ? annualUnlimitedEquivalent : unlimitedMonthly}</h3>
-            <p>{annual ? `Billed at ${unlimitedAnnual}${offer?.trial ? ` · ${offer.trial}` : ""}.` : "Cancel anytime."}</p>
+            <h3>{annual ? "Annual subscription" : "Monthly subscription"}</h3>
+            <p>{amountNotice}</p>
           </div>
           <ul>
             <li><Check size={16} /> Unlimited Learn rounds</li>
@@ -479,8 +476,8 @@ function Pricing() {
         <article className="pricing-card family-card">
           <div>
             <span className="plan-name">Family</span>
-            <h3>$7.00 / month</h3>
-            <p>Billed at $83.99 / year · up to 5 independent accounts.</p>
+            <h3>Annual family subscription</h3>
+            <p>{amountNotice} · up to 5 independent accounts.</p>
           </div>
           <ul>
             <li><Check size={16} /> Unlimited for the owner + 4 invited members</li>
@@ -505,8 +502,11 @@ function Pricing() {
       </div>
 
       <p className="pricing-disclosure">
-        Study features require an active, server-verified entitlement. Subscription
-        availability, trial terms and billing are determined by the checkout provider.
+        Study features require a verified active subscription. Before paying,
+        review the final total, currency, billing period, automatic renewal,
+        cancellation and refund terms presented by the checkout provider.
+        Advertised limits are plan limits, not a free study tier.
+        {offer?.trial ? " Any trial applies only when explicitly confirmed in checkout." : ""}
       </p>
     </section>
   );

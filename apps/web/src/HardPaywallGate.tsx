@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { canGrantPaidStudy, matchesCurrentPaywallRequest } from "./paidAccessGuard";
 import { openInstantStudyCheckout, readInstantAccountSession } from "./instantBilling";
 import { SoftwareApp } from "./SoftwareApp";
 import SiriOrb from "./components/smoothui/SiriOrb";
@@ -35,10 +36,11 @@ export function HardPaywallGate() {
   const [annual, setAnnual] = useState(true);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
-  const [activeAccess, setActiveAccess] = useState<Access | null>(null);
+  const latestCheckId = useRef(0);
 
   const refresh = useCallback(async () => {
-    setStage((current) => current === "granted" ? current : "checking");
+    const checkId = ++latestCheckId.current;
+    setStage("checking");
     const session = readInstantAccountSession();
     try {
       const response = await fetch("/api/study", {
@@ -57,9 +59,20 @@ export function HardPaywallGate() {
       if (typeof payload.enabled !== "boolean" || typeof payload.authorized !== "boolean") {
         throw new Error("access_check_invalid");
       }
-      setActiveAccess(payload);
-      if (payload.authorized) {
+      const currentSession = readInstantAccountSession();
+      if (checkId !== latestCheckId.current) return;
+      if (!matchesCurrentPaywallRequest(session, currentSession, checkId, latestCheckId.current)) {
+        setReason("A conta foi alterada durante a verificação. Verifique novamente.");
+        setStage("error");
+        return;
+      }
+      if (canGrantPaidStudy(payload, session, currentSession, checkId, latestCheckId.current)) {
         setStage("granted");
+        return;
+      }
+      if (payload.authorized) {
+        setReason("O acesso não foi validado como assinatura ativa desta conta.");
+        setStage("error");
         return;
       }
       if (payload.reason === "billing_unavailable" ||
@@ -72,24 +85,42 @@ export function HardPaywallGate() {
       }
       setStage("welcome");
     } catch {
-      setReason("Não foi possível validar o acesso. O app permanece protegido.");
+      if (checkId !== latestCheckId.current) return;
+      if (!matchesCurrentPaywallRequest(session, readInstantAccountSession(), checkId, latestCheckId.current)) {
+        setReason("A conta mudou durante a verificação. Verifique novamente.");
+      } else {
+        setReason("Não foi possível validar o acesso. O app permanece protegido.");
+      }
       setStage("error");
     }
   }, []);
 
   useEffect(() => {
     void refresh();
+    return () => { latestCheckId.current++; };
   }, [refresh]);
 
   useEffect(() => {
+    if (stage !== "granted") return;
     const revalidate = () => {
-      if (document.visibilityState === "visible" && stage === "granted" && activeAccess?.enabled) {
-        void refresh();
-      }
+      if (document.visibilityState === "visible") void refresh();
+    };
+    const sessionChanged = (event: StorageEvent) => {
+      if (event.key === "instant.account.session" || event.key === null) void refresh();
     };
     document.addEventListener("visibilitychange", revalidate);
-    return () => document.removeEventListener("visibilitychange", revalidate);
-  }, [stage, activeAccess?.enabled, refresh]);
+    window.addEventListener("focus", revalidate);
+    window.addEventListener("storage", sessionChanged);
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, 5 * 60 * 1000);
+    return () => {
+      document.removeEventListener("visibilitychange", revalidate);
+      window.removeEventListener("focus", revalidate);
+      window.removeEventListener("storage", sessionChanged);
+      window.clearInterval(interval);
+    };
+  }, [stage, refresh]);
 
   const beginCheckout = async () => {
     if (checkoutBusy) return;
@@ -168,7 +199,7 @@ export function HardPaywallGate() {
               Já assinei — verificar acesso
             </button>
             <p className="study-paywall__legal">
-              Não há cobrança nesta tela. Preço, renovação automática, cancelamento e eventual teste gratuito devem ser confirmados antes de pagar.
+              Não há cobrança nesta tela. Antes de pagar, confira o valor total, a moeda, a periodicidade, a renovação automática, as regras de cancelamento e o reembolso no checkout. Não há acesso gratuito aos recursos de estudo.
             </p>
           </section>
         )}

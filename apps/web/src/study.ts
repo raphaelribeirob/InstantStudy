@@ -304,7 +304,6 @@ export async function prepareStudy(input: {
   testQuestionTypes?: TestQuestionType[];
   concepts?: Array<{ label: string; sourceExcerpt?: string; studyPrompt?: string }>;
 }) {
-  try {
     return (await request(
       identified({
         action: "prepare",
@@ -319,28 +318,6 @@ export async function prepareStudy(input: {
         concepts: input.concepts,
       }),
     )) as PreparedStudy;
-  } catch {
-    return {
-      title: input.title || "Study session",
-      mode: input.mode,
-      localFallback: true,
-      next: {
-        concept: {
-          label: "Adaptive engine unavailable",
-          sourceExcerpt: input.contentText.slice(0, 280),
-        },
-        question: {
-          prompt: "The secure adaptive engine is currently unavailable.",
-          answerMode: "text",
-          generatedBy: "local-fallback",
-        },
-        questionPolicy: {
-          type: input.mode === "test" ? "free_recall" : "adaptive",
-          instruction: "Reconnect to continue this study session.",
-        },
-      },
-    } satisfies PreparedStudy;
-  }
 }
 
 export async function submitStudyAnswer(input: {
@@ -348,26 +325,26 @@ export async function submitStudyAnswer(input: {
   conceptId: string;
   userAnswer: string;
 }) {
-  return (await request({
+  return (await request(identified({
     action: "answer",
     studySessionId: input.studySessionId,
     conceptId: input.conceptId,
     userAnswer: input.userAnswer,
-  })) as AnswerResult;
+  }))) as AnswerResult;
 }
 
 export async function nextStudyQuestion(studySessionId: string) {
-  return (await request({
+  return (await request(identified({
     action: "next",
     studySessionId,
-  })) as StudyQuestion;
+  }))) as StudyQuestion;
 }
 
 export async function finishStudySession(studySessionId: string) {
-  return (await request({
+  return (await request(identified({
     action: "finish",
     studySessionId,
-  })) as StudySummary;
+  }))) as StudySummary;
 }
 
 export type AskTurn = { role: "user" | "assistant"; content: string };
@@ -377,12 +354,12 @@ export async function askStudyMaterial(input: {
   question: string;
   history?: AskTurn[];
 }) {
-  return (await request({
+  return (await request(identified({
     action: "ask",
     contentText: input.contentText,
     question: input.question,
     history: input.history?.slice(-8),
-  })) as {
+  }))) as {
     answer: string;
     sourceHighlights?: string[];
     provider?: string;
@@ -478,6 +455,21 @@ export async function updateStudyMaterial(input: {
     action: "material_update",
     ...input,
   }))) as { material: StudyMaterial };
+}
+
+export type FlashcardStatus = "known" | "learning";
+export async function getFlashcardProgress(materialId: string) {
+  return (await request(identified({ action: "flashcard_progress", materialId }))) as
+    { progress: Array<{ cardId: string; status: FlashcardStatus }> };
+}
+export async function markFlashcardProgress(materialId: string, cardId: string, status: FlashcardStatus) {
+  return (await request(identified({ action: "flashcard_mark", materialId, cardId, status }))) as
+    { cardId: string; status: FlashcardStatus };
+}
+
+/** Duplicate the current user's saved material, not another learner's set. */
+export async function duplicateStudyMaterial(materialId: string) {
+  return (await request(identified({ action: "material_duplicate", materialId }))) as { material: StudyMaterial };
 }
 
 export async function listStudyMaterials(query = "") {

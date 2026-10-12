@@ -18,6 +18,8 @@
     "build": "npm run build:web && npm run build:pay",
     "test": "npm --workspace apps/mcp-server run test && npm --workspace apps/web run test && npm --workspace apps/pay run test",
     "audit:database": "node scripts/assert-neon-only.mjs",
-    "audit:parity": "node scripts/check-quizlet-parity.mjs"
+    "audit:parity": "node scripts/check-quizlet-parity.mjs",
+    "audit:neon-live": "node scripts/verify-neon-schema.mjs",
+    "audit:release": "node scripts/require-100-certification.mjs"
   }
 }

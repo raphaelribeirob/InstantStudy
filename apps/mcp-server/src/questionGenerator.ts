@@ -24,19 +24,32 @@ function distinctAlternativeStatements(
   current: ConceptLike,
   alternatives: ConceptLike[],
 ) {
-  const seen = new Set([clean(current.sourceExcerpt).toLocaleLowerCase()]);
-  const values: string[] = [];
+  const canonical = (value: string) => clean(value).toLocaleLowerCase()
+    .normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9 ]/g, "");
+  const seen = new Set([canonical(current.sourceExcerpt)]);
+  const currentLabel = canonical(current.label);
+  const values: Array<{text: string; overlap: number; position: number}> = [];
+  const normalizeTerm = (word: string) => word.length >= 6 && word.endsWith("s")
+    ? word.slice(0, -1) : word;
+  const topicWords = new Set(canonical(current.sourceExcerpt).split(" ")
+    .filter(word => word.length >= 5 && !["which","there","their","other","these","those"].includes(word))
+    .map(normalizeTerm));
 
   for (const item of alternatives) {
     const value = clean(item.sourceExcerpt);
-    const key = value.toLocaleLowerCase();
-    if (!value || seen.has(key)) continue;
+    const key = canonical(value);
+    if (!value || seen.has(key) || canonical(item.label) === currentLabel) continue;
     seen.add(key);
-    values.push(value);
-    if (values.length >= 3) break;
+    const alternativeWords = new Set(canonical(value).split(" ").filter(Boolean).map(normalizeTerm));
+    const overlap = [...topicWords].filter(word => alternativeWords.has(word)).length;
+    values.push({text:value,overlap,position:values.length});
   }
 
-  return values;
+  // Prefer alternatives from the same topic before clearly unrelated ones.
+  // When too few safe candidates exist, the question generator falls back
+  // to written recall rather than inventing unsupported false claims.
+  return values.sort((a,b) => b.overlap - a.overlap || a.position - b.position)
+    .slice(0,3).map(row => row.text);
 }
 
 function rotate<T>(items: T[], shift: number) {

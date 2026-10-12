@@ -105,3 +105,30 @@ test("without a source-grounded alternative, false claims fall back to text", ()
     type: "true_false", concept, alternatives: [], questionIndex: 1,
   }), null);
 });
+
+test("multiple choice prioritizes topic-adjacent distractors and rejects duplicate concepts", () => {
+  const alternativesMixed = [
+    {label:"History",sourceExcerpt:"Roman emperors ruled the ancient Mediterranean world."},
+    {label:"Chloroplast anatomy",sourceExcerpt:"Chloroplast membranes contain pigments that capture light energy."},
+    {label:"Chlorophyll",sourceExcerpt:"Chlorophyll molecules absorb photons within chloroplast structures."},
+    {label:"Photosynthesis",sourceExcerpt:"Photosynthesis converts light energy into chemical energy in chloroplasts using chlorophyll."},
+    {label:"Cell biology",sourceExcerpt:"Cells contain organelles that store chemical energy."},
+  ];
+  const question = generateQuestion({type:"multiple_choice",concept,alternatives:alternativesMixed});
+  assert.equal(question.answerMode,"choice");
+  assert.equal(question.choices?.length,4);
+  const options = question.choices?.map(x=>x.value) || [];
+  assert.ok(options.some(x=>x.includes("Chloroplast membranes")));
+  assert.ok(options.some(x=>x.includes("Chlorophyll molecules")));
+  assert.equal(options.some(x=>x.includes("Roman emperors")),false);
+});
+
+test("multiple choice falls back to written recall when all alternatives reuse the same concept", () => {
+  const question = generateQuestion({type:"multiple_choice",concept,
+    alternatives:[
+      {label:"Photosynthesis",sourceExcerpt:"Photosynthesis happens in chloroplasts."},
+      {label:"Photosynthesis",sourceExcerpt:"Plants use photosynthesis."},
+      {label:"Photosynthesis",sourceExcerpt:"Photosynthesis captures sunlight."},
+    ]});
+  assert.equal(question.answerMode,"text");
+});

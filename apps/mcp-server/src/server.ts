@@ -17,10 +17,12 @@ import { ingestFiles } from "./ingest.js";
 import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
 import { gradeObjectiveChoice } from "./objectiveGrading.js";
+import { ownsStudySession } from "./studySessionOwnership.js";
 import { generateStudyAssets } from "./studyAssets.js";
 import { generatePedagogicalStudyAssets } from "./studyAssetIntelligence.js";
 import { textProviderOrder } from "./freeLlmRouter.js";
 import { materialStore } from "./materialStore.js";
+import { flashcardProgressStore } from "./flashcardProgress.js";
 import { createOfferPlanStore, offerPlanStatus, GRADED_CAPABILITIES } from "./offerAgent.js";
 import { consumeRealtimeVoiceStart } from "./realtimeQuota.js";
 import { storeAudioChunk, loadAudioUpload, discardAudioUpload } from "./largeAudioUpload.js";
@@ -1030,6 +1032,63 @@ app.post("/api/v1/materials/get", async (req, res) => {
 });
 
 
+/** Learner-owned flashcard progress is persisted in Neon and never shared between accounts. */
+app.post("/api/v1/flashcards/progress", async (req, res) => {
+  try {
+    const input = z.object({
+      learnerId: z.string().min(3).max(200),
+      materialId: z.string().uuid(),
+    }).strict().parse(req.body ?? {});
+    const owned = await materialStore.get(input.learnerId, input.materialId);
+    if (!owned) { res.status(404).json({ error: "material_not_found" }); return; }
+    const saved = await flashcardProgressStore.list(input.learnerId, input.materialId);
+    const ids = new Set(owned.assets.flashcards.map(card => card.id));
+    res.json({ progress: saved.filter(row => ids.has(row.cardId)) });
+  } catch (error) { sendApiError(res, error); }
+});
+app.post("/api/v1/flashcards/mark", async (req, res) => {
+  try {
+    const input = z.object({
+      learnerId: z.string().min(3).max(200),
+      materialId: z.string().uuid(),
+      cardId: z.string().min(1).max(100),
+      status: z.enum(["known", "learning"]),
+    }).strict().parse(req.body ?? {});
+    const owned = await materialStore.get(input.learnerId, input.materialId);
+    if (!owned || !owned.assets.flashcards.some(card => card.id === input.cardId)) {
+      res.status(404).json({ error: "flashcard_not_found" }); return;
+    }
+    await flashcardProgressStore.mark(input.learnerId, input.materialId, input.cardId, input.status);
+    res.json({ cardId: input.cardId, status: input.status });
+  } catch (error) { sendApiError(res, error); }
+});
+
+/** Clone only the authenticated learner's saved set; preserve the exact authored cards. */
+app.post("/api/v1/materials/duplicate", async (req, res) => {
+  try {
+    const input = z.object({
+      learnerId: z.string().min(3).max(200),
+      id: z.string().uuid(),
+    }).strict().parse(req.body ?? {});
+    const original = await materialStore.get(input.learnerId, input.id);
+    if (!original) {
+      res.status(404).json({ error: "material_not_found" });
+      return;
+    }
+    const material = await materialStore.save({
+      learnerId: input.learnerId,
+      title: (original.title.slice(0, 188) + " (copy)").slice(0, 200),
+      content: original.content,
+      sourceType: original.sourceType,
+      sourceNames: [...original.sourceNames],
+      assets: structuredClone(original.assets),
+    });
+    res.json({ material });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
 /** Editable, durable user-owned study assets. Never accept arbitrary source or owner changes. */
 app.post("/api/v1/materials/update", async (req, res) => {
   try {
@@ -1354,6 +1413,14 @@ app.post("/api/v1/rooms/progress", async (req, res) => {
   }
 });
 
+async function authorizeOwnedSession(res: express.Response, sessionId: string, learnerId?: string) {
+  if (!hardPaywallServiceEnabled()) return true;
+  const session = await studyEngine.get(sessionId);
+  if (ownsStudySession(session, learnerId, true)) return true;
+  res.status(404).json({ error: "study_session_not_found" });
+  return false;
+}
+
 app.post("/api/v1/study/prepare", async (req, res) => {
   try {
     const input = prepareStudySchema.parse(req.body ?? {});
@@ -1418,7 +1485,8 @@ app.post("/api/v1/study/prepare", async (req, res) => {
 
 app.get("/api/v1/study/sessions/:sessionId", async (req, res) => {
   const session = await studyEngine.get(req.params.sessionId);
-  if (!session) {
+  const learnerId = typeof req.query.learnerId === "string" ? req.query.learnerId : undefined;
+  if (!session || !ownsStudySession(session, learnerId, hardPaywallServiceEnabled())) {
     res.status(404).json({ error: "study_session_not_found" });
     return;
   }
@@ -1446,8 +1514,9 @@ app.get("/api/v1/study/sessions/:sessionId", async (req, res) => {
 app.post("/api/v1/study/next", async (req, res) => {
   try {
     const input = z
-      .object({ studySessionId: z.string().uuid() })
+      .object({ studySessionId: z.string().uuid(), learnerId: z.string().min(3).max(200).optional() })
       .parse(req.body ?? {});
+    if (!await authorizeOwnedSession(res, input.studySessionId, input.learnerId)) return;
     res.json(await studyEngine.next(input.studySessionId));
   } catch (error) {
     sendApiError(res, error);
@@ -1459,6 +1528,7 @@ app.post("/api/v1/study/answer", async (req, res) => {
     const input = z
       .object({
         studySessionId: z.string().uuid(),
+        learnerId: z.string().min(3).max(200).optional(),
         conceptId: z.string().uuid(),
         correctness: z.number().min(0).max(1),
         completeness: z.number().min(0).max(1),
@@ -1469,6 +1539,7 @@ app.post("/api/v1/study/answer", async (req, res) => {
       })
       .parse(req.body);
 
+    if (!await authorizeOwnedSession(res, input.studySessionId, input.learnerId)) return;
     res.json(
       await studyEngine.submit(input.studySessionId, input.conceptId, {
         correctness: input.correctness,
@@ -1489,6 +1560,7 @@ app.post("/api/v1/study/evaluate", async (req, res) => {
     const input = z
       .object({
         studySessionId: z.string().uuid(),
+        learnerId: z.string().min(3).max(200).optional(),
         conceptId: z.string().uuid(),
         userAnswer: z.string().min(1).max(20000),
         confidence: z.number().min(0).max(1).optional(),
@@ -1496,7 +1568,7 @@ app.post("/api/v1/study/evaluate", async (req, res) => {
       .parse(req.body ?? {});
 
     const session = await studyEngine.get(input.studySessionId);
-    if (!session) {
+    if (!session || !ownsStudySession(session, input.learnerId, hardPaywallServiceEnabled())) {
       res.status(404).json({ error: "study_session_not_found" });
       return;
     }
@@ -1729,8 +1801,9 @@ app.post("/api/v1/ask", async (req, res) => {
 app.post("/api/v1/study/finish", async (req, res) => {
   try {
     const input = z
-      .object({ studySessionId: z.string().uuid() })
+      .object({ studySessionId: z.string().uuid(), learnerId: z.string().min(3).max(200).optional() })
       .parse(req.body ?? {});
+    if (!await authorizeOwnedSession(res, input.studySessionId, input.learnerId)) return;
     res.json(await studyEngine.finish(input.studySessionId));
   } catch (error) {
     sendApiError(res, error);
