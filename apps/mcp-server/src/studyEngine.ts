@@ -538,6 +538,10 @@ export class StudyEngine {
       (session.mode !== "test" &&
         session.concepts.every((item) => item.mastery >= 0.88));
 
+    if (done) {
+      session.status = "completed";
+      session.completedAt = new Date().toISOString();
+    }
     await this.persistence.save(session);
 
     return {
