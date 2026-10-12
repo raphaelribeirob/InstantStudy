@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { generateQuestion } from "./questionGenerator.js";
+import { generateQuestion, correctChoiceForQuestion } from "./questionGenerator.js";
 
 const concept = {
   label: "Photosynthesis",
@@ -74,4 +74,34 @@ test("cannot fabricate ungrounded multiple-choice distractors", () => {
 test("advanced recall explicitly requires evidence and reasoning", () => {
   const question = generateQuestion({type:"free_recall",concept,testDifficulty:"advanced"});
   assert.match(question.prompt,/evidence|mechanism/i);
+});
+
+test("True/False is a real binary choice with a private source-backed answer key", () => {
+  const yes = generateQuestion({
+    type: "true_false", concept, alternatives, questionIndex: 0,
+  });
+  const no = generateQuestion({
+    type: "true_false", concept, alternatives, questionIndex: 1,
+  });
+  assert.deepEqual(yes.choices?.map(x => x.value), ["True", "False"]);
+  assert.deepEqual(no.choices?.map(x => x.value), ["True", "False"]);
+  assert.equal(correctChoiceForQuestion({
+    type: "true_false", concept, alternatives, questionIndex: 0,
+  }), "True");
+  assert.equal(correctChoiceForQuestion({
+    type: "true_false", concept, alternatives, questionIndex: 1,
+  }), "False");
+  assert.notEqual(yes.prompt, no.prompt);
+  assert.equal(JSON.stringify(no).includes("correctAnswer"), false);
+});
+
+test("without a source-grounded alternative, false claims fall back to text", () => {
+  const q = generateQuestion({
+    type: "true_false", concept, alternatives: [], questionIndex: 1,
+  });
+  assert.equal(q.answerMode, "text");
+  assert.equal(q.choices, undefined);
+  assert.equal(correctChoiceForQuestion({
+    type: "true_false", concept, alternatives: [], questionIndex: 1,
+  }), null);
 });
