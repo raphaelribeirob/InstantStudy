@@ -253,3 +253,33 @@ test("Practice Test question payload never exposes its canonical source excerpt"
   const serverState = await engine.get(session.id);
   assert.equal(serverState?.concepts[0]?.sourceExcerpt, text);
 });
+
+test("practice test covers all concepts before repeating one", async () => {
+  const content = new ContentSessionStore().create({
+    title:"History of science", mode:"test",
+    contentText:"Physics explores motion. Chemistry studies matter. Biology examines life.",
+  });
+  const engine = new StudyEngine();
+  const session = await engine.start(content, {
+    mode:"test", maxQuestions:6, testQuestionTypes:["short_answer"],
+    concepts:[
+      {label:"Physics",sourceExcerpt:"Physics explores motion and the laws governing forces."},
+      {label:"Chemistry",sourceExcerpt:"Chemistry studies matter, bonds, and chemical reactions."},
+      {label:"Biology",sourceExcerpt:"Biology examines living organisms and cellular processes."},
+    ],
+  });
+  const seen: string[] = [];
+  for (let i=0;i<6;i++) {
+    const current = await engine.next(session.id);
+    if (current.done) throw new Error("Expected all planned questions");
+    seen.push(current.concept.id);
+    const result = await engine.submit(session.id,current.concept.id,{
+      correctness:0.98,completeness:0.95,userAnswer:"Evidence-based answer",
+    });
+    assert.equal(result.done,i===5);
+  }
+  assert.equal(new Set(seen.slice(0,3)).size,3,"All topics must appear before a repeat");
+  assert.equal(new Set(seen.slice(3,6)).size,3,"Balanced second pass across topics");
+  const counts = new Map(seen.map(id=>[id,seen.filter(value=>value===id).length]));
+  assert.deepEqual([...counts.values()].sort(),[2,2,2]);
+});
