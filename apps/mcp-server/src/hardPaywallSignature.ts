@@ -1,7 +1,9 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+/** Enforce paid-only access on every hosted API build even if flags are missing. */
 export function hardPaywallServiceEnabled() {
-  return process.env.INSTANTSTUDY_HARD_PAYWALL_ENABLED === "true";
+  const hosted = Boolean(process.env.VERCEL || process.env.NODE_ENV === "production");
+  return hosted || process.env.INSTANTSTUDY_HARD_PAYWALL_ENABLED === "true";
 }
 
 /**
