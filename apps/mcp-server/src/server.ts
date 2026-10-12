@@ -17,6 +17,7 @@ import { ingestFiles } from "./ingest.js";
 import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
 import { gradeObjectiveChoice } from "./objectiveGrading.js";
+import { ownsStudySession } from "./studySessionOwnership.js";
 import { generateStudyAssets } from "./studyAssets.js";
 import { generatePedagogicalStudyAssets } from "./studyAssetIntelligence.js";
 import { textProviderOrder } from "./freeLlmRouter.js";
@@ -1354,6 +1355,14 @@ app.post("/api/v1/rooms/progress", async (req, res) => {
   }
 });
 
+async function authorizeOwnedSession(res: express.Response, sessionId: string, learnerId?: string) {
+  if (!hardPaywallServiceEnabled()) return true;
+  const session = await studyEngine.get(sessionId);
+  if (ownsStudySession(session, learnerId, true)) return true;
+  res.status(404).json({ error: "study_session_not_found" });
+  return false;
+}
+
 app.post("/api/v1/study/prepare", async (req, res) => {
   try {
     const input = prepareStudySchema.parse(req.body ?? {});
@@ -1418,7 +1427,8 @@ app.post("/api/v1/study/prepare", async (req, res) => {
 
 app.get("/api/v1/study/sessions/:sessionId", async (req, res) => {
   const session = await studyEngine.get(req.params.sessionId);
-  if (!session) {
+  const learnerId = typeof req.query.learnerId === "string" ? req.query.learnerId : undefined;
+  if (!ownsStudySession(session, learnerId, hardPaywallServiceEnabled())) {
     res.status(404).json({ error: "study_session_not_found" });
     return;
   }
@@ -1446,8 +1456,9 @@ app.get("/api/v1/study/sessions/:sessionId", async (req, res) => {
 app.post("/api/v1/study/next", async (req, res) => {
   try {
     const input = z
-      .object({ studySessionId: z.string().uuid() })
+      .object({ studySessionId: z.string().uuid(), learnerId: z.string().min(3).max(200).optional() })
       .parse(req.body ?? {});
+    if (!await authorizeOwnedSession(res, input.studySessionId, input.learnerId)) return;
     res.json(await studyEngine.next(input.studySessionId));
   } catch (error) {
     sendApiError(res, error);
@@ -1459,6 +1470,7 @@ app.post("/api/v1/study/answer", async (req, res) => {
     const input = z
       .object({
         studySessionId: z.string().uuid(),
+        learnerId: z.string().min(3).max(200).optional(),
         conceptId: z.string().uuid(),
         correctness: z.number().min(0).max(1),
         completeness: z.number().min(0).max(1),
@@ -1469,6 +1481,7 @@ app.post("/api/v1/study/answer", async (req, res) => {
       })
       .parse(req.body);
 
+    if (!await authorizeOwnedSession(res, input.studySessionId, input.learnerId)) return;
     res.json(
       await studyEngine.submit(input.studySessionId, input.conceptId, {
         correctness: input.correctness,
@@ -1489,6 +1502,7 @@ app.post("/api/v1/study/evaluate", async (req, res) => {
     const input = z
       .object({
         studySessionId: z.string().uuid(),
+        learnerId: z.string().min(3).max(200).optional(),
         conceptId: z.string().uuid(),
         userAnswer: z.string().min(1).max(20000),
         confidence: z.number().min(0).max(1).optional(),
@@ -1496,7 +1510,7 @@ app.post("/api/v1/study/evaluate", async (req, res) => {
       .parse(req.body ?? {});
 
     const session = await studyEngine.get(input.studySessionId);
-    if (!session) {
+    if (!ownsStudySession(session, input.learnerId, hardPaywallServiceEnabled())) {
       res.status(404).json({ error: "study_session_not_found" });
       return;
     }
@@ -1729,8 +1743,9 @@ app.post("/api/v1/ask", async (req, res) => {
 app.post("/api/v1/study/finish", async (req, res) => {
   try {
     const input = z
-      .object({ studySessionId: z.string().uuid() })
+      .object({ studySessionId: z.string().uuid(), learnerId: z.string().min(3).max(200).optional() })
       .parse(req.body ?? {});
+    if (!await authorizeOwnedSession(res, input.studySessionId, input.learnerId)) return;
     res.json(await studyEngine.finish(input.studySessionId));
   } catch (error) {
     sendApiError(res, error);
