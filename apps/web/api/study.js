@@ -222,6 +222,8 @@ export default async function handler(req, res) {
                 typeof item?.sourceExcerpt === "string"
                   ? item.sourceExcerpt.slice(0, 1200)
                   : undefined,
+              studyPrompt: typeof item?.studyPrompt === "string"
+                ? item.studyPrompt.slice(0, 260) : undefined,
             }))
             .filter((item) => item.label)
         : undefined;
