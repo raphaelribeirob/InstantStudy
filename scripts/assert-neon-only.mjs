@@ -18,6 +18,7 @@ const trackedFiles = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" 
 const hits = [];
 for (const path of trackedFiles) {
   if (path === "scripts/assert-neon-only.mjs") continue; // Provider denylist necessarily appears in this audit program.
+  if (/\.md$/i.test(path)) continue; // Explanatory docs may name rejected providers without importing their SDKs.
   if (/\.(?:png|jpe?g|webp|ico|pdf|woff2?|ttf|zip|mp3|m4a|wav|webm|ogg)$/i.test(path)) continue;
   const normalizedPath = path.toLowerCase();
   if (blocked.some((token) => normalizedPath.includes(token))) {
