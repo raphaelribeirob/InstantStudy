@@ -7,7 +7,7 @@ Reference: the user-supplied InstantSpeak™ → ISpeak™ animated GIF. Instant
 1. Opening the **Web/PWA app** at `/app` (including deep links `/app/*`) displays a white/eggshell full-screen capsule splash above the existing app. The marketing page is unaffected.
 2. Native Flutter app displays its own matching capsule opening before allowing user interaction with the Orbital home. `StudyHome` is not remounted or recreated after the intro.
 3. The initial capsule reads **InstantStudy™**. It narrows as the long wordmark fades/compresses into **IStudy™**, which stays sharp and centered before the app appears.
-4. Initial `Instant` is weight 400, `Study` is weight 500, final `I` weight 400; preserve a small superscript trademark and the black outline on eggshell.
+4. Typography is **League Spartan 400 Regular** for all characters of `InstantStudy™`, `IStudy™`, and the small superscript trademark. The font must load from bundled local source (official `google/fonts` League Spartan variable face, SIL OFL 1.1): Web `/fonts/LeagueSpartan-Variable.ttf`, Flutter `assets/fonts/LeagueSpartan-Variable.ttf`. No runtime Google Fonts dependency. Preserve the black outline on eggshell.
 5. Approximate duration: Web 1.60s morph + 0.23s overlay fade, Flutter 1.60s. Manual **Skip** dismisses immediately without changing route.
 6. The UI underneath the splash cannot be clicked or navigated by accessibility focus. On Web this uses `inert`; on Flutter the gate absorbs pointers and excludes the learning app from accessibility semantics while open.
 7. `prefers-reduced-motion: reduce` on Web disables morph and exits quickly. Flutter's `MediaQuery.disableAnimations` causes immediate dismissal.
