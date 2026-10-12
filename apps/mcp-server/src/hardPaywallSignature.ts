@@ -18,14 +18,14 @@ export function isSignedBffRequest(input: {
   const secret = process.env.INSTANTSTUDY_BFF_SIGNING_SECRET ?? "";
   if (secret.length < 32) return false;
   const stamp = input.timestamp ?? "";
-  if (!/^\\d{13}$/.test(stamp)) return false;
+  if (!/^\d{13}$/.test(stamp)) return false;
   const issuedAt = Number(stamp);
   if (!Number.isFinite(issuedAt) || Math.abs(now - issuedAt) > 30_000) return false;
   const supplied = input.signature ?? "";
   if (!/^[a-f0-9]{64}$/.test(supplied)) return false;
   const bodyText = input.method.toUpperCase() === "GET" ? "" : JSON.stringify(input.body ?? {});
   const mac = createHmac("sha256", secret)
-    .update(`${stamp}\\n${input.method.toUpperCase()}\\n${input.path}\\n${bodyText}`)
+    .update(`${stamp}\n${input.method.toUpperCase()}\n${input.path}\n${bodyText}`)
     .digest("hex");
   return timingSafeEqual(Buffer.from(supplied, "hex"), Buffer.from(mac, "hex"));
 }
