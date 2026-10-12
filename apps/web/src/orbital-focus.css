@@ -99,3 +99,7 @@
 @media(prefers-reduced-motion:reduce){
   .orbital-system-focused .orbital-system-core{transition:none}
 }
+
+/* Active recall uses the persistent Orb on the left, not a second animated sphere. */
+.orbita-layout.orbita-layout-compact{display:block;grid-template-columns:none;width:100%}
+.orbita-layout-compact .orbita-content{width:100%;max-width:none}
