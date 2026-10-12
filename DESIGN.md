@@ -211,3 +211,21 @@ Do **not** grant Realtime a tool that directly updates mastery, issues charges, 
 - **No automatic billable fallbacks:** OpenAI text, Whisper/audio and image OCR all require separate `INSTANTSTUDY_ALLOW_PAID_*` switches; the existing OpenAI Realtime voice still has separate paid entitlement and configuration.
 - Preview environment enables routing switches only; no Groq/OpenRouter/Gemini keys have been supplied, so calls fall back to deterministic/unsupported states rather than pretending to be connected.
 - See `docs/FREE_LLM_PROVIDERS.md` for setup, provider restrictions, safe limits and end-to-end acceptance.
+
+## 13. Oferta agêntica — uma Órbita, ferramentas reais do Quizlet
+
+Use the audited Quizlet/Sensor Tower advertised learning capabilities as the complete *product taxonomy* rather than designing arbitrary agent personalities. One persistent Siri Orb coordinates nine bounded actions (guide, flashcards, Ask, Learn, Test, Review, Podcast, Game and Friends). Audio Recording enters through the existing Import flow and automatically creates the study materials.
+
+The Orb's **agentic goal console** appears inside the existing Refero/ElevenLabs-inspired editorial sidecar. It accepts a learner-owned goal, optional deadline and selected source material; displays the current recommendation and real stored plan progress; and opens the actual learning module on demand.
+
+**Visual rules:**
+- A single gradient Orb stays central and microphone-reactive only while a real voice session is active.
+- Agent specializations do not need separate avatars, faces, mouths, new brand colors or different Orb meshes.
+- A planned action is not a recorded learning accomplishment. A click to explore a guide/audio/game may be acknowledged, but can NEVER increase mastery.
+- Learn/Test/Review milestone completion requires a validated, completed, nonempty graded Study Engine session after plan creation. User-facing proof errors must be truthful.
+- The currently suggested action is emphasized with black/eggshell pill CTA; a secondary outlined pill acknowledges exploration or submits legitimate graded proof. Progress remains monochrome/blue and accessible.
+- On desktop the goal console is within the existing sticky Orb panel, on phones it stacks above the active study scene, without two simultaneous Siri Orbs.
+- Persist plan only via authenticated API and Neon; no frontend database secret and no browser-only "AI memory."
+- No fabricated accuracy, retention probability, background push alerts or autonomously recorded voice scores.
+
+See `docs/AGENTIC_OFFER.md` for precise offer mappings, server ownership rules, and future acceptance criteria. This implementation is a **bounded agentic workflow**, not yet a general-purpose multi-agent autonomous tutor, and must not be marketed as equivalent to Quizlet in depth without real-user QA.
