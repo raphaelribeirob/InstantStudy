@@ -1,3 +1,12 @@
+/* Official League Spartan — OFL-1.1. Bundled locally for reliable offline splash rendering. */
+@font-face {
+  font-family: "League Spartan";
+  src: url("/fonts/LeagueSpartan-Variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+}
+
 /* InstantStudy™ → IStudy™ — launch motion, never a second tutor/orb. */
 .study-splash {
   position: fixed;
@@ -34,7 +43,9 @@
   align-items: baseline;
   justify-content: center;
   white-space: nowrap;
-  font-family: Inter, "Helvetica Neue", Arial, system-ui, sans-serif;
+  font-family: "League Spartan", Arial, system-ui, sans-serif;
+  font-weight: 400;
+  font-synthesis: none;
   font-size: clamp(26px, 5vw, 54px);
   letter-spacing: -.045em;
   line-height: 1;
@@ -42,10 +53,10 @@
   will-change: opacity, transform, filter;
 }
 .study-splash__regular { font-weight: 400; }
-.study-splash__medium { font-weight: 500; }
+.study-splash__medium { font-weight: 400; }
 .study-splash__word sup {
   font-size: .31em;
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: 0;
   transform: translateY(-.85em);
   margin-left: .16em;
