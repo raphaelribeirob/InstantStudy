@@ -10,10 +10,10 @@ export type FunnelOffer = {
 
 const FALLBACK_OFFER: FunnelOffer = {
   headline: "Study without limits. Remember across sessions.",
-  cta: "Start 7-day free trial",
+  cta: "Choose Unlimited",
   annualPrice: "$44.99 / year",
   monthlyPrice: "$6.99 / month",
-  trial: "7 days free",
+  trial: "",
 };
 
 function customerId() {

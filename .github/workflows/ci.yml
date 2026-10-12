@@ -24,6 +24,8 @@ jobs:
       - run: npm install
       - name: Assert Neon-only storage
         run: npm run audit:database
+      - name: Validate Quizlet parity inventory (not release certification)
+        run: npm run audit:parity
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
