@@ -204,6 +204,10 @@ export default async function handler(req, res) {
         ? body.mode
         : "learn";
       const learnerId = await verifiedLearner(body);
+      const materialId = cleanId(body.materialId, 64) || undefined;
+      if (materialId && (!learnerId || !/^[a-f0-9-]{36}$/i.test(materialId))) {
+        return json(res, 401, { error: "material_owner_required" });
+      }
       const billingPlan = learnerId
         ? await verifiedBillingPlan(body)
         : "free";
@@ -246,6 +250,7 @@ export default async function handler(req, res) {
         contentText,
         title,
         mode,
+        materialId,
         learnerId: learnerId || undefined,
         billingPlan,
         maxQuestions,
