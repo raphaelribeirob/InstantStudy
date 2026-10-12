@@ -33,6 +33,8 @@ export function HardPaywallGate() {
   const [reason, setReason] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<"plus" | "unlimited">("unlimited");
   const [annual, setAnnual] = useState(true);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
   const [activeAccess, setActiveAccess] = useState<Access | null>(null);
 
   const refresh = useCallback(async () => {
@@ -89,6 +91,16 @@ export function HardPaywallGate() {
     return () => document.removeEventListener("visibilitychange", revalidate);
   }, [stage, activeAccess?.enabled, refresh]);
 
+  const beginCheckout = async () => {
+    if (checkoutBusy) return;
+    setCheckoutBusy(true);
+    setCheckoutError("");
+    try { await openInstantStudyCheckout(selectedPlan, annual); }
+    catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : "checkout_unavailable");
+      setCheckoutBusy(false);
+    }
+  };
   if (stage === "granted") return <SoftwareApp />;
   const session = readInstantAccountSession();
 
@@ -137,8 +149,8 @@ export function HardPaywallGate() {
             </div>
             {session ? (
               <button type="button" className="study-paywall__primary"
-                onClick={() => { void openInstantStudyCheckout(selectedPlan, annual); }}>
-                Ver assinatura e condições
+                disabled={checkoutBusy} onClick={() => void beginCheckout()}>
+                {checkoutBusy ? "Preparando checkout…" : "Ver assinatura e condições"}
               </button>
             ) : (
               accountLoginUrl ? (
@@ -151,6 +163,7 @@ export function HardPaywallGate() {
                 </p>
               )
             )}
+            {checkoutError && <p role="alert" className="study-paywall__alert">{checkoutError}</p>}
             <button type="button" className="study-paywall__restore" onClick={() => void refresh()}>
               Já assinei — verificar acesso
             </button>
