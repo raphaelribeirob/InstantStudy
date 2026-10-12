@@ -49,19 +49,20 @@ void main() {
     await tester.pumpWidget(const InstantStudyApp());
     await tester.pump();
 
-    final openingText = tester.widgetList<RichText>(
+    // Inspect the authored Text.rich spans, not inherited RichText styles.
+    final openingText = tester.widgetList<Text>(
       find.descendant(
         of: find.byType(StudySplashIntro),
-        matching: find.byType(RichText),
+        matching: find.byType(Text),
       ),
     ).where((widget) {
-      final plain = widget.text.toPlainText();
+      final plain = widget.textSpan?.toPlainText() ?? '';
       return plain.contains('InstantStudy') || plain.contains('IStudy');
     }).toList();
 
     expect(openingText, hasLength(2));
     for (final wordmark in openingText) {
-      final span = wordmark.text as TextSpan;
+      final span = wordmark.textSpan!;
       expect(span.style?.fontFamily, 'LeagueSpartan');
       for (final child in span.children!) {
         if (child is TextSpan) {
