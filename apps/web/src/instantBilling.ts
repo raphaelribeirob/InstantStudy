@@ -65,9 +65,22 @@ function offerFor(plan: 'plus' | 'unlimited' | 'family', annual: boolean) {
 }
 
 export async function openInstantStudyCheckout(plan: 'plus' | 'unlimited' | 'family', annual: boolean) {
-  const url = new URL(payBaseUrl());
-  url.searchParams.set('offer', offerFor(plan, annual));
-  url.searchParams.set('source', 'instant_study');
+  const session = readInstantAccountSession();
+  if (!session) throw new Error('instant_account_required');
+  const response = await fetch('/api/checkout', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: 'Bearer ' + session.accessToken,
+    },
+    body: JSON.stringify({ offer: offerFor(plan, annual), accountUserId: session.userId }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || typeof data.checkout_url !== 'string') {
+    throw new Error(String(data.error || 'checkout_unavailable'));
+  }
+  const url = new URL(data.checkout_url);
+  if (url.protocol !== 'https:') throw new Error('checkout_url_invalid');
   window.location.assign(url.toString());
   return true;
 }

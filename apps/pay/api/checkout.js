@@ -1,6 +1,26 @@
 import { resolveOffer } from "./_catalog.js";
 import { paddleApiBase } from "./_paddle.js";
 
+async function verifiedStudyAccount(req, requestedUser) {
+  const url = String(process.env.INSTANT_ACCOUNT_INTROSPECTION_URL || "").trim();
+  if (!url.startsWith("https://")) return { status: 503, error: "identity_not_configured" };
+  const auth = String(req.headers?.authorization || "");
+  if (!/^Bearer [^\s]{10,4000}$/.test(auth)) return { status: 401, error: "account_required" };
+  try {
+    const reply = await fetch(url, {
+      headers: { authorization: auth, accept: "application/json" },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!reply.ok) return { status: [401,403].includes(reply.status) ? 401 : 503, error: "account_required" };
+    const data = await reply.json();
+    const userRef = String(data?.user_id || data?.sub || data?.id || "").trim();
+    if (!userRef || userRef.length > 200) return { status: 401, error: "account_required" };
+    if (userRef !== requestedUser) return { status: 403, error: "identity_mismatch" };
+    return { userRef };
+  } catch { return { status: 503, error: "identity_unavailable" }; }
+}
+
+
 const MAX_CHECKOUT_BODY_BYTES = 16 * 1024;
 
 function json(res, status, body) {
@@ -71,6 +91,11 @@ export default async function handler(req, res) {
     return json(res, 400, { error: "source_offer_mismatch" });
   }
 
+  const identity = offer.product === "instant_study"
+    ? await verifiedStudyAccount(req, String(body.accountUserId || "").trim())
+    : null;
+  if (identity && !identity.userRef) return json(res, identity.status, { error: identity.error });
+
   const response = await fetch(`${paddleApiBase()}/transactions`, {
     method: "POST",
     headers: {
@@ -89,6 +114,7 @@ export default async function handler(req, res) {
         plan_key: offer.plan,
         billing_cadence: offer.cadence,
         source_app: source,
+        ...(identity?.userRef ? { user_ref: identity.userRef } : {}),
       },
     }),
   });

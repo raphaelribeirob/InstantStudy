@@ -110,7 +110,10 @@ export default async function handler(req, res) {
 
     const data = event?.data || {};
     if (eventType === "transaction.completed") {
-      await provisionFromData(data, "completed");
+      // A paid transaction is NOT enough to prove an active recurring
+      // subscription. Subscription lifecycle events own access provision.
+      // Otherwise a transaction without subscription_id could remain active
+      // even after a later cancellation event.
     } else if (
       eventType === "subscription.created" ||
       eventType === "subscription.activated" ||

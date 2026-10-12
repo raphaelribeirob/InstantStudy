@@ -82,9 +82,13 @@ export async function resolveHardPaywallAccess(body, fetchImpl = fetch) {
     if (!data || !Array.isArray(data.entitlements)) {
       return { enabled: true, authorized: false, status: 503, reason: "billing_response_invalid" };
     }
-    const active = data.entitlements.filter(item =>
-      item && item.active === true && PAID_ENTITLEMENTS.has(String(item.key || "")),
-    );
+    const active = data.entitlements.filter(item => {
+      if (!item || item.active !== true || !PAID_ENTITLEMENTS.has(String(item.key || ""))) return false;
+      const expiry = item.expires_at ? Date.parse(String(item.expires_at)) : null;
+      if (expiry !== null && (!Number.isFinite(expiry) || expiry <= Date.now())) return false;
+      return !["canceled", "cancelled", "paused", "past_due", "expired", "deleted"]
+        .includes(String(item.status || "").toLowerCase());
+    });
     const unlimited = active.some(item =>
       ["instant_study.unlimited", "instant_study.family",
        "instant_study.family_member", "instant_one.all"].includes(item.key),
