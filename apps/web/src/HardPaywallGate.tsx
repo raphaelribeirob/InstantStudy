@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { openInstantStudyCheckout, readInstantAccountSession } from "./instantBilling";
 import { SoftwareApp } from "./SoftwareApp";
+import SiriOrb from "./components/smoothui/SiriOrb";
 import "./hard-paywall.css";
 
 type Access = {
@@ -35,7 +36,7 @@ export function HardPaywallGate() {
   const [activeAccess, setActiveAccess] = useState<Access | null>(null);
 
   const refresh = useCallback(async () => {
-    setStage("checking");
+    setStage((current) => current === "granted" ? current : "checking");
     const session = readInstantAccountSession();
     try {
       const response = await fetch("/api/study", {
@@ -110,7 +111,7 @@ export function HardPaywallGate() {
             <h1>Aprenda com o que você já tem.</h1>
             <p>Importe materiais, transforme conteúdo em flashcards, faça simulados e revise com inteligência adaptativa.</p>
             <div className="study-paywall__illustration" aria-hidden="true">
-              <div className="study-paywall__orbit"/>
+              <SiriOrb size="94px" state="idle" colors={{ bg: "#f5f3f1", c1: "#0447ff", c2: "#ff4704", c3: "#bda9d8", c4: "#f7baa4" }} />
             </div>
             <button type="button" className="study-paywall__primary" onClick={() => setStage("paywall")}>
               Continuar
