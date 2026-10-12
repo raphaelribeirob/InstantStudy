@@ -15,6 +15,7 @@ import { hardPaywallServiceEnabled, isSignedBffRequest } from "./hardPaywallSign
 import { ingestFiles } from "./ingest.js";
 import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
+import { gradeObjectiveChoice } from "./objectiveGrading.js";
 import { generateStudyAssets } from "./studyAssets.js";
 import { generatePedagogicalStudyAssets } from "./studyAssetIntelligence.js";
 import { textProviderOrder } from "./freeLlmRouter.js";
@@ -1517,21 +1518,13 @@ app.post("/api/v1/study/evaluate", async (req, res) => {
       active.question.answerMode === "choice" &&
       Array.isArray(active.question.choices);
     const normalizedAnswer = input.userAnswer.trim();
-    const selectedChoice = choiceQuestion &&
-      active.question.choices?.some((choice) => choice.value.trim() === normalizedAnswer);
-    const objectiveCorrect = Boolean(selectedChoice) &&
-      normalizedAnswer === concept.sourceExcerpt.trim();
     const grade = choiceQuestion
-      ? {
-          correctness: objectiveCorrect ? 1 : 0,
-          completeness: objectiveCorrect ? 1 : 0,
-          confidence: 1,
-          missingConcepts: objectiveCorrect ? [] : [concept.label],
-          feedback: objectiveCorrect
-            ? "Correct. This answer is directly supported by the source."
-            : "Not quite. Review the source-backed correct statement.",
-          provider: "deterministic" as const,
-        }
+      ? gradeObjectiveChoice({
+          choices: active.question.choices ?? [],
+          userAnswer: normalizedAnswer,
+          expectedValue: concept.sourceExcerpt,
+          conceptLabel: concept.label,
+        })
       : await gradeStudyAnswer({
           conceptLabel: concept.label,
           sourceExcerpt: concept.sourceExcerpt,
