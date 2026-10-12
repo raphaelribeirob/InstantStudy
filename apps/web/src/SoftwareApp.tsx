@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { StudyViewTransition } from "./StudyMotion";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import {
@@ -942,6 +943,7 @@ export function SoftwareApp() {
               onAction={openOrbitalAction} onSelectMaterial={openMaterial} />
           </div>
           <div className="software-orbital-workspace" id="orbital-focus-content" aria-label={i18n.language.startsWith("pt") ? "Ferramenta orbital ativa" : "Active orbital learning tool"}>
+        <StudyViewTransition view={view}>
         {view === "library" && (
           <section className="software-page">
             <div className="software-title-row"><div><p>{t("software.yourMaterial")}</p><h1>{t("software.titleLibrary")}</h1></div><button onClick={() => setView("create")}>{t("common.create")}</button></div>
@@ -1616,6 +1618,7 @@ export function SoftwareApp() {
             </div>
           </section>
         )}
+        </StudyViewTransition>
           </div>
         </div>
       </main>
