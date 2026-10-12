@@ -62,7 +62,7 @@ void main() {
 
     expect(openingText, hasLength(2));
     for (final wordmark in openingText) {
-      final span = wordmark.textSpan!;
+      final span = wordmark.textSpan! as TextSpan;
       expect(span.style?.fontFamily, 'LeagueSpartan');
       for (final child in span.children!) {
         if (child is TextSpan) {
