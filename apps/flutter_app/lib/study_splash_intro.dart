@@ -71,7 +71,7 @@ class _StudySplashIntroState extends State<StudySplashIntro>
       child: Text.rich(
         TextSpan(
           style: TextStyle(
-            fontFamily: 'Inter',
+            fontFamily: 'LeagueSpartan',
             fontSize: size,
             height: 1,
             color: Colors.black,
@@ -84,7 +84,7 @@ class _StudySplashIntroState extends State<StudySplashIntro>
             ),
             TextSpan(
               text: name,
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              style: const TextStyle(fontWeight: FontWeight.w400),
             ),
             WidgetSpan(
               alignment: PlaceholderAlignment.middle,
@@ -94,9 +94,9 @@ class _StudySplashIntroState extends State<StudySplashIntro>
                   '™',
                   style: TextStyle(
                     color: Colors.black,
-                    fontFamily: 'Inter',
+                    fontFamily: 'LeagueSpartan',
                     fontSize: size * .31,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ),
