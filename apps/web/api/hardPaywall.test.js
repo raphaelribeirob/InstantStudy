@@ -147,3 +147,23 @@ test("paywall status is safe to query without provisioning the study backend", a
   assert.equal(res.body.enabled, true);
   assert.equal(res.body.authorized, false);
 });
+
+test("hosted Web never disables the paywall when its flag is absent or false", async () => {
+  const previous = process.env.VERCEL;
+  try {
+    process.env.VERCEL = "1";
+    delete process.env.INSTANTSTUDY_HARD_PAYWALL_ENABLED;
+    delete process.env.INSTANTSTUDY_BFF_SIGNING_SECRET;
+    const absent = await resolveHardPaywallAccess(user);
+    assert.equal(absent.enabled, true);
+    assert.equal(absent.authorized, false);
+    assert.equal(absent.status, 503);
+    process.env.INSTANTSTUDY_HARD_PAYWALL_ENABLED = "false";
+    const explicitFalse = await resolveHardPaywallAccess(user);
+    assert.equal(explicitFalse.enabled, true);
+    assert.equal(explicitFalse.authorized, false);
+  } finally {
+    if (previous === undefined) delete process.env.VERCEL;
+    else process.env.VERCEL = previous;
+  }
+});
