@@ -915,7 +915,7 @@ app.post("/api/v1/uploads/audio/finalize", async (req, res) => {
       return;
     }
     const content = ingested.text.trim().slice(0, 200000);
-    const assets = await generatePedagogicalStudyAssets(content);
+    const assets = await generatePedagogicalStudyAssets(content, input.learnerId);
     const material = await materialStore.save({
       learnerId: input.learnerId,
       title: input.title?.trim() || upload.fileName,
@@ -948,7 +948,7 @@ app.post("/api/v1/materials/import", async (req, res) => {
       return;
     }
 
-    const assets = await generatePedagogicalStudyAssets(content);
+    const assets = await generatePedagogicalStudyAssets(content, input.learnerId);
     const material = await materialStore.save({
       learnerId: input.learnerId,
       title:
