@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createEmptyCard, fsrs, Rating, type Card } from "ts-fsrs";
 import type { ContentSession, StudyMode } from "./contentSessions.js";
 import {
   createStudyPersistence,
@@ -38,6 +39,8 @@ export type ConceptState = {
   lastPerformance?: number;
   stabilityDays: number;
   nextReviewAt?: string;
+  /** Serialized FSRS card; old sessions without this field remain readable. */
+  fsrsCard?: Omit<Card, "due" | "last_review"> & { due: string; last_review?: string | null };
   missingConcepts: string[];
 };
 
@@ -230,28 +233,31 @@ function chooseConcept(session: AdaptiveStudySession) {
   return ordered[0];
 }
 
-function reviewSchedule(
-  performance: number,
-  previousStabilityDays: number,
-  now = Date.now(),
-) {
-  let stabilityDays: number;
+const reviewScheduler = fsrs();
 
-  if (performance < 0.45) {
-    stabilityDays = 0.25;
-  } else if (performance < 0.65) {
-    stabilityDays = 1;
-  } else if (performance < 0.85) {
-    stabilityDays = Math.max(2, previousStabilityDays * 1.8);
-  } else {
-    stabilityDays = Math.max(3, previousStabilityDays * 2.4);
-  }
+function spacedReview(concept: ConceptState, performance: number, now = new Date()) {
+  const rating = performance < 0.45 ? Rating.Again
+    : performance < 0.65 ? Rating.Hard
+    : performance < 0.85 ? Rating.Good : Rating.Easy;
+  // Respect legacy due dates until the learner submits a new answer.
+  // Migration starts a fresh FSRS card; historic review data is not invented.
+  const previous = concept.fsrsCard;
+  const card: Card = previous ? {
+    ...createEmptyCard(now),
+    ...previous,
+    due: new Date(previous.due),
+    last_review: previous.last_review ? new Date(previous.last_review) : undefined,
+  } : createEmptyCard(now);
 
-  stabilityDays = Math.min(stabilityDays, 120);
-
+  const next = reviewScheduler.next(card, now, rating).card;
   return {
-    stabilityDays: Number(stabilityDays.toFixed(2)),
-    nextReviewAt: new Date(now + stabilityDays * DAY_MS).toISOString(),
+    stabilityDays: Number(Math.max(0.01, next.stability).toFixed(2)),
+    nextReviewAt: next.due.toISOString(),
+    fsrsCard: {
+      ...next,
+      due: next.due.toISOString(),
+      last_review: next.last_review?.toISOString() ?? null,
+    },
   };
 }
 
@@ -263,6 +269,7 @@ function decayedPrior(prior: ConceptState) {
     mastery: clamp(prior.mastery - decay),
     difficulty: prior.difficulty,
     stabilityDays: Math.max(0.25, prior.stabilityDays || 0.25),
+    fsrsCard: prior.fsrsCard,
     nextReviewAt: prior.nextReviewAt,
     lastSeenAt: prior.lastSeenAt,
     lastPerformance: prior.lastPerformance,
@@ -495,12 +502,10 @@ export class StudyEngine {
       concept.difficulty = Math.max(1, concept.difficulty - 1);
     }
 
-    const schedule = reviewSchedule(
-      performance,
-      concept.stabilityDays || 0.25,
-    );
+    const schedule = spacedReview(concept, performance);
     concept.stabilityDays = schedule.stabilityDays;
     concept.nextReviewAt = schedule.nextReviewAt;
+    concept.fsrsCard = schedule.fsrsCard;
 
     const attempt: StudyAttempt = {
       id: randomUUID(),
