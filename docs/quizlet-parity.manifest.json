@@ -1,0 +1,992 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "Quizlet publicly advertised student + teacher + content offer",
+  "baselineDate": "2026-10-12",
+  "sources": {
+    "appstore": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+    "study": "https://quizlet.com/features/study-modes",
+    "ask": "https://quizlet.com/features/ask-quizlet",
+    "games": "https://quizlet.com/features/learning-games",
+    "group": "https://quizlet.com/features/study-groups",
+    "teachers": "https://quizlet.com/br/features/teachers",
+    "intro": "https://quizlet.com/content/quizlet101",
+    "guides": "https://quizlet.com/features/study-guides/",
+    "ai": "https://quizlet.com/features/ai-study-tools"
+  },
+  "policy": {
+    "monetization": "hard_paywall_only",
+    "freeLearning": false,
+    "trials": "only with verified paid entitlement",
+    "database": "neon_postgresql",
+    "objectStorage": "separate encrypted blob storage permitted; not a second database",
+    "productionReleaseAllowed": false,
+    "certification": "NOT_CERTIFIED"
+  },
+  "statusDefinitions": {
+    "implemented_unverified": "Code present, not signed off in real production",
+    "partial": "Some functionality present; acceptance not fully met",
+    "blocked": "External credentials, legal rights or other external dependency needed",
+    "missing": "No adequate implementation located",
+    "verified": "All acceptance evidence attached and independently reviewed"
+  },
+  "languageScope": {
+    "advertisedLanguages": 17,
+    "regionalLocales": 19,
+    "offerLanguages": [
+      {
+        "key": "en",
+        "name": "English",
+        "locales": [
+          "en-US",
+          "en-001"
+        ],
+        "uiStatus": "partial",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "nl",
+        "name": "Dutch",
+        "locales": [
+          "nl"
+        ],
+        "uiStatus": "missing",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "fr",
+        "name": "French",
+        "locales": [
+          "fr-FR",
+          "fr-CA"
+        ],
+        "uiStatus": "missing",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "de",
+        "name": "German",
+        "locales": [
+          "de"
+        ],
+        "uiStatus": "missing",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "id",
+        "name": "Indonesian",
+        "locales": [
+          "id"
+        ],
+        "uiStatus": "missing",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "it",
+        "name": "Italian",
+        "locales": [
+          "it"
+        ],
+        "uiStatus": "missing",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "ja",
+        "name": "Japanese",
+        "locales": [
+          "ja"
+        ],
+        "uiStatus": "missing",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "ko",
+        "name": "Korean",
+        "locales": [
+          "ko"
+        ],
+        "uiStatus": "missing",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "pl",
+        "name": "Polish",
+        "locales": [
+          "pl"
+        ],
+        "uiStatus": "missing",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "pt",
+        "name": "Portuguese",
+        "locales": [
+          "pt-BR"
+        ],
+        "uiStatus": "partial",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "ru",
+        "name": "Russian",
+        "locales": [
+          "ru"
+        ],
+        "uiStatus": "missing",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "zh-Hans",
+        "name": "Simplified Chinese",
+        "locales": [
+          "zh-Hans"
+        ],
+        "uiStatus": "missing",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "es",
+        "name": "Spanish",
+        "locales": [
+          "es"
+        ],
+        "uiStatus": "missing",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "zh-Hant",
+        "name": "Traditional Chinese",
+        "locales": [
+          "zh-Hant"
+        ],
+        "uiStatus": "missing",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "tr",
+        "name": "Turkish",
+        "locales": [
+          "tr"
+        ],
+        "uiStatus": "missing",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "uk",
+        "name": "Ukrainian",
+        "locales": [
+          "uk"
+        ],
+        "uiStatus": "missing",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      },
+      {
+        "key": "vi",
+        "name": "Vietnamese",
+        "locales": [
+          "vi"
+        ],
+        "uiStatus": "missing",
+        "pedagogyStatus": "unverified",
+        "voiceStatus": "unverified",
+        "qaEvidence": []
+      }
+    ]
+  },
+  "requirements": [
+    {
+      "id": "BILL-01",
+      "area": "Subscription",
+      "title": "Hard paywall on all learning surfaces",
+      "priority": "P0",
+      "status": "partial",
+      "platforms": [
+        "App",
+        "PWA",
+        "Native"
+      ],
+      "acceptance": "Entitlement required before access; 401/402 to unpaid; zero free learning",
+      "codePath": "apps/web/api/_hardPaywall.js",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "BILL-02",
+      "area": "Subscription",
+      "title": "Payment ownership, lifecycle and revocation",
+      "priority": "P0",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "Native"
+      ],
+      "acceptance": "Real Paddle sandbox and App Store/Play receipts, renew/refund/expiry/restore verified",
+      "codePath": "docs/HARDWALL_E2E_ACCEPTANCE.md",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "BILL-03",
+      "area": "Subscription",
+      "title": "MCP and direct API per-user paid authorization",
+      "priority": "P0",
+      "status": "blocked",
+      "platforms": [
+        "API",
+        "MCP"
+      ],
+      "acceptance": "OAuth user-bound, signed authorization; no shared-bearer bypass",
+      "codePath": "apps/mcp-server/src/hardPaywallSignature.ts",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "BILL-04",
+      "area": "Subscription",
+      "title": "Teacher/institution sponsored paid seats",
+      "priority": "P1",
+      "status": "missing",
+      "platforms": [
+        "Web",
+        "Native"
+      ],
+      "acceptance": "A sponsoring paid institution grants revocable guest entitlements without freemium",
+      "codePath": "apps/pay/api/entitlements.js",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "ING-01",
+      "area": "Ingestion",
+      "title": "Text, TXT, Markdown, CSV",
+      "priority": "P0",
+      "status": "implemented_unverified",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Real files imported; text persisted and reloadable",
+      "codePath": "apps/mcp-server/src/ingest.ts",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "ING-02",
+      "area": "Ingestion",
+      "title": "PDF, DOCX, PPTX import",
+      "priority": "P0",
+      "status": "implemented_unverified",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Tables, headings, slides, equations and citations sampled across languages",
+      "codePath": "apps/mcp-server/src/ingest.ts",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "ING-03",
+      "area": "Ingestion",
+      "title": "Photo, handwritten notes and diagrams OCR",
+      "priority": "P0",
+      "status": "blocked",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Real provider credentials and accuracy benchmark; legible math preserved",
+      "codePath": "apps/mcp-server/src/ingest.ts",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "ING-04",
+      "area": "Ingestion",
+      "title": "Lecture recording, upload and transcription",
+      "priority": "P0",
+      "status": "blocked",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Length limits, speaker transcripts and latency measured in each supported locale",
+      "codePath": "apps/mcp-server/src/ingest.ts",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "ING-05",
+      "area": "Ingestion",
+      "title": "Private Google Drive and native file selection",
+      "priority": "P0",
+      "status": "blocked",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Scoped OAuth on web and both mobile platforms with private documents",
+      "codePath": "apps/web/src/googleDrivePicker.ts",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "ING-06",
+      "area": "Ingestion",
+      "title": "Large files with durable object storage",
+      "priority": "P1",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Authenticated chunking, object lifecycle, retry, no binary blob in Neon",
+      "codePath": "apps/mcp-server/src/largeAudioUpload.ts",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "SETS-01",
+      "area": "Sets",
+      "title": "Source-grounded guides, summaries and outlines",
+      "priority": "P0",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Human-rated fidelity >=95% on reference sources; citations and no invented claims",
+      "codePath": "apps/mcp-server/src/studyAssetIntelligence.ts",
+      "sourceUrl": "https://quizlet.com/content/quizlet101",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "SETS-02",
+      "area": "Sets",
+      "title": "Generated and manually created study sets",
+      "priority": "P0",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Can create from topic, paste and blank deck; save without source file",
+      "codePath": "apps/web/src/MaterialEditor.tsx",
+      "sourceUrl": "https://quizlet.com/content/quizlet101",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "SETS-03",
+      "area": "Sets",
+      "title": "Edit, duplicate, import/export and reorder flashcards",
+      "priority": "P0",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Edit and persist term/definition and set metadata, export/import round-trip",
+      "codePath": "apps/web/src/MaterialEditor.tsx",
+      "sourceUrl": "https://quizlet.com/content/quizlet101",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "SETS-04",
+      "area": "Sets",
+      "title": "Images, audio, equations and diagrams on cards",
+      "priority": "P1",
+      "status": "missing",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Accessible media cards and interactive diagram hotspots with persisted coordinates",
+      "codePath": "apps/web/src/SoftwareApp.tsx",
+      "sourceUrl": "https://quizlet.com/content/quizlet101",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "SETS-05",
+      "area": "Sets",
+      "title": "Folders, favorites, labels, browse and permissions",
+      "priority": "P1",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Search, folder hierarchy, favorites and least-privilege set sharing",
+      "codePath": "apps/mcp-server/src/materialStore.ts",
+      "sourceUrl": "https://quizlet.com/content/quizlet101",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "SETS-06",
+      "area": "Sets",
+      "title": "Know vs Still learning, shuffle and flip",
+      "priority": "P0",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Persistent classifications and correct study queues, both card directions",
+      "codePath": "apps/web/src/SoftwareApp.tsx",
+      "sourceUrl": "https://quizlet.com/content/quizlet101",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "LEARN-01",
+      "area": "Practice",
+      "title": "Adaptive Learn multiple choice and written",
+      "priority": "P0",
+      "status": "implemented_unverified",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Wrong/right answers update mastery and question policy",
+      "codePath": "apps/mcp-server/src/studyEngine.ts",
+      "sourceUrl": "https://quizlet.com/features/study-modes",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "LEARN-02",
+      "area": "Practice",
+      "title": "Spell and Write modes with audio",
+      "priority": "P0",
+      "status": "missing",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Hear prompt, type answer, accepted variants, accents and localized phonetics",
+      "codePath": "apps/mcp-server/src/studyEngine.ts",
+      "sourceUrl": "https://quizlet.com/features/study-modes",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "LEARN-03",
+      "area": "Practice",
+      "title": "Repair weak concepts and mastery",
+      "priority": "P0",
+      "status": "implemented_unverified",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Re-test only from actual answered questions; no fabricated mastery",
+      "codePath": "apps/mcp-server/src/studyEngine.ts",
+      "sourceUrl": "https://quizlet.com/features/study-modes",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "LEARN-04",
+      "area": "Practice",
+      "title": "Practice Test configurable types, timer, grading",
+      "priority": "P0",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "MC, T/F, matching, written; final answer reveal, score and weaknesses",
+      "codePath": "apps/mcp-server/src/studyEngine.ts",
+      "sourceUrl": "https://quizlet.com/features/study-modes",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "LEARN-05",
+      "area": "Practice",
+      "title": "Answer-quality calibration and sources",
+      "priority": "P0",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "No fabricated distractors; correct answer explainable from cited source",
+      "codePath": "apps/mcp-server/src/questionGenerator.ts",
+      "sourceUrl": "https://quizlet.com/features/study-modes",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "ASK-01",
+      "area": "AI Tutor",
+      "title": "Multi-turn contextual tutoring and step-by-step help",
+      "priority": "P0",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Conversation history per learner; provenance; challenge questions",
+      "codePath": "apps/mcp-server/src/learningIntelligence.ts",
+      "sourceUrl": "https://quizlet.com/features/ask-quizlet",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "ASK-02",
+      "area": "AI Tutor",
+      "title": "Convert Ask threads to saved sets and next practice",
+      "priority": "P0",
+      "status": "missing",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Grounded generated set stored and user can start Learn/Test from Ask",
+      "codePath": "apps/mcp-server/src/materialStore.ts",
+      "sourceUrl": "https://quizlet.com/features/ask-quizlet",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "REVIEW-01",
+      "area": "Retention",
+      "title": "FSRS due scheduling, offline-safe state and review",
+      "priority": "P0",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Durable due queue and multi-device consistency measured over longitudinal scenarios",
+      "codePath": "apps/mcp-server/src/studyPersistence.ts",
+      "sourceUrl": "https://quizlet.com/features/study-modes",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "REVIEW-02",
+      "area": "Retention",
+      "title": "Insights, weak concepts, streak, charms",
+      "priority": "P0",
+      "status": "implemented_unverified",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Metrics recomputed from real graded sessions rather than UI counters",
+      "codePath": "apps/mcp-server/src/offerLayer.ts",
+      "sourceUrl": "https://quizlet.com/features/study-modes",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "AUDIO-01",
+      "area": "Audio",
+      "title": "Guided audio and podcast from source",
+      "priority": "P1",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Two-speaker grounded script with stop/resume and readable transcript",
+      "codePath": "apps/mcp-server/src/offerLayer.ts",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "AUDIO-02",
+      "area": "Audio",
+      "title": "Locale-valid TTS, playback speed and background",
+      "priority": "P1",
+      "status": "missing",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Voice intelligibility measured per locale, media controls on devices",
+      "codePath": "apps/flutter_app/lib/main.dart",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "GAME-01",
+      "area": "Games",
+      "title": "Match with accuracy, timed scores",
+      "priority": "P1",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Real source pairs, time, best score, restart",
+      "codePath": "apps/mcp-server/src/offerLayer.ts",
+      "sourceUrl": "https://quizlet.com/features/learning-games",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "GAME-02",
+      "area": "Games",
+      "title": "Blast equivalent asteroid gameplay",
+      "priority": "P1",
+      "status": "missing",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Moving correct/incorrect answer targets, reaction, scoring and accessibility",
+      "codePath": "apps/web/src/SoftwareApp.tsx",
+      "sourceUrl": "https://quizlet.com/features/learning-games",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "GAME-03",
+      "area": "Games",
+      "title": "Blocks equivalent puzzling gameplay",
+      "priority": "P1",
+      "status": "missing",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Correct answers unlock documented puzzle moves and deterministic score",
+      "codePath": "apps/web/src/SoftwareApp.tsx",
+      "sourceUrl": "https://quizlet.com/features/learning-games",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "GAME-04",
+      "area": "Games",
+      "title": "Quizlet Live equivalent team classroom mode",
+      "priority": "P1",
+      "status": "missing",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Host/join, team collaboration, question validation and race to win",
+      "codePath": "apps/mcp-server/src/studyRoomStore.ts",
+      "sourceUrl": "https://quizlet.com/features/learning-games",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "SOCIAL-01",
+      "area": "Social",
+      "title": "Study groups, shared sets and progress",
+      "priority": "P1",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Members share only authorized content, see independent progress and group weaknesses",
+      "codePath": "apps/mcp-server/src/studyRoomStore.ts",
+      "sourceUrl": "https://quizlet.com/features/study-groups",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "SOCIAL-02",
+      "area": "Social",
+      "title": "Family independent accounts and seats",
+      "priority": "P1",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Real owner seat checkout, inheritance and instant server-side revocation",
+      "codePath": "apps/pay/api/family.js",
+      "sourceUrl": "https://quizlet.com/features/study-groups",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "TEACH-01",
+      "area": "Teachers",
+      "title": "Teacher classes and assignments",
+      "priority": "P1",
+      "status": "missing",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Create class, enroll authorized users, assign Learn/Test and due dates",
+      "codePath": "apps/mcp-server/src/studyRoomStore.ts",
+      "sourceUrl": "https://quizlet.com/br/features/teachers",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "TEACH-02",
+      "area": "Teachers",
+      "title": "Class progress and exportable reports",
+      "priority": "P1",
+      "status": "missing",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Completion and mastery from real sessions, per-class permissions",
+      "codePath": "apps/mcp-server/src/studyEngine.ts",
+      "sourceUrl": "https://quizlet.com/br/features/teachers",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "TEACH-03",
+      "area": "Teachers",
+      "title": "Google Classroom connection",
+      "priority": "P2",
+      "status": "missing",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Scope-limited OAuth assignment sharing/import with revoked-token tests",
+      "codePath": "apps/web/src/googleDrivePicker.ts",
+      "sourceUrl": "https://quizlet.com/br/features/teachers",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "CATALOG-01",
+      "area": "Catalog",
+      "title": "Discover/search shared public sets",
+      "priority": "P2",
+      "status": "missing",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Search/index/report/takedown, licensing and moderation workflows",
+      "codePath": "apps/mcp-server/src/materialStore.ts",
+      "sourceUrl": "https://quizlet.com/content/quizlet101",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "CATALOG-02",
+      "area": "Catalog",
+      "title": "Expert-verified step-by-step textbook solutions",
+      "priority": "P2",
+      "status": "blocked",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Licensed verified content with chapter/question catalog and source rights",
+      "codePath": "docs/OFFER.md",
+      "sourceUrl": "https://quizlet.com/content/quizlet101",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "CATALOG-03",
+      "area": "Catalog",
+      "title": "Community contributions and abuse moderation",
+      "priority": "P2",
+      "status": "missing",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Creator permissions, reporting, copyright requests and privacy safeguards",
+      "codePath": "docs/OFFER.md",
+      "sourceUrl": "https://quizlet.com/content/quizlet101",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "OFFLINE-01",
+      "area": "Offline",
+      "title": "Encrypted offline mobile study",
+      "priority": "P1",
+      "status": "missing",
+      "platforms": [
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "After authorized download, Study works offline with bounded signed access",
+      "codePath": "apps/flutter_app/lib/main.dart",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "OFFLINE-02",
+      "area": "Offline",
+      "title": "Offline edits and conflict reconciliation",
+      "priority": "P1",
+      "status": "missing",
+      "platforms": [
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "No lost updates across two devices and network recovery; revocation eventually enforced",
+      "codePath": "apps/flutter_app/lib/main.dart",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "GLOBAL-01",
+      "area": "Global",
+      "title": "All offer languages translated",
+      "priority": "P0",
+      "status": "partial",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "17 offer languages with 19 regional locales; complete source strings, no English leakage",
+      "codePath": "apps/web/src/i18n.ts",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "GLOBAL-02",
+      "area": "Global",
+      "title": "Per-locale teaching, grading, voice and OCR",
+      "priority": "P0",
+      "status": "blocked",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Real pedagogical evaluation for each locale and independently chosen study language",
+      "codePath": "apps/mcp-server/src/studyAssetIntelligence.ts",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "GLOBAL-03",
+      "area": "Global",
+      "title": "Native purchase/local money/data formatting",
+      "priority": "P0",
+      "status": "missing",
+      "platforms": [
+        "Web",
+        "iOS",
+        "Android"
+      ],
+      "acceptance": "Intl currencies, app stores, locale RTL-safe layout, region-specific policies",
+      "codePath": "apps/web/src/App.tsx",
+      "sourceUrl": "https://apps.apple.com/us/app/quizlet-more-than-flashcards/id546473125",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "OPS-01",
+      "area": "Operations",
+      "title": "Neon exclusively as primary database",
+      "priority": "P0",
+      "status": "implemented_unverified",
+      "platforms": [
+        "Backend"
+      ],
+      "acceptance": "Migration and readiness in actual production; no firebase and no DB fallback",
+      "codePath": "apps/mcp-server/src/databasePolicy.ts",
+      "sourceUrl": "https://quizlet.com/features/ai-study-tools",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "OPS-02",
+      "area": "Operations",
+      "title": "Production Web/API same release and healthy",
+      "priority": "P0",
+      "status": "blocked",
+      "platforms": [
+        "Web",
+        "API"
+      ],
+      "acceptance": "Deployment sha, ready health, live smoke and logs aligned; no preview-only false release",
+      "codePath": "docs/HARDWALL_E2E_ACCEPTANCE.md",
+      "sourceUrl": "https://quizlet.com/features/ai-study-tools",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "OPS-03",
+      "area": "Operations",
+      "title": "Security OWASP, privacy, A11y, load and recovery",
+      "priority": "P0",
+      "status": "partial",
+      "platforms": [
+        "All"
+      ],
+      "acceptance": "OWASP ZAP live + device E2E + auth tests + WCAG AA + SLO sampled",
+      "codePath": "docs/HARDWALL_E2E_ACCEPTANCE.md",
+      "sourceUrl": "https://quizlet.com/features/ai-study-tools",
+      "verifiedEvidence": []
+    },
+    {
+      "id": "OPS-04",
+      "area": "Operations",
+      "title": "Plugin OAuth per learner and correct paid access",
+      "priority": "P1",
+      "status": "blocked",
+      "platforms": [
+        "MCP"
+      ],
+      "acceptance": "Public MCP OAuth2 with PKCE scopes, no shared token bypass",
+      "codePath": "docs/AGENT_CONNECTIONS.md",
+      "sourceUrl": "https://quizlet.com/features/ai-study-tools",
+      "verifiedEvidence": []
+    }
+  ],
+  "releaseGates": {
+    "functional": "Every P0/P1/P2 requirement verified or explicitly scoped out with contract-approved justification; cannot claim literal complete parity if scoped out",
+    "global": "17 offer languages and 19 locales with verified UI, pedagogy, QA, and applicable voice",
+    "hardwall": "Real browser + native purchases, server billing, expiry/refund/restore and MCP OAuth proven",
+    "legal": "Licensed catalog solutions and public UGC moderation",
+    "operations": "Production-identified same release, smoke/E2E, security and perf green"
+  }
+}
