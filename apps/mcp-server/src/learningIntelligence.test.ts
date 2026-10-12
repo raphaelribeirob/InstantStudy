@@ -89,3 +89,38 @@ test("Ask never passes unrelated opening sentences off as factual evidence", () 
   assert.match(response.answer, /could not find enough information/i);
   assert.equal(response.confidence, 0);
 });
+
+test("a copied-but-negated answer is not graded correct by word overlap", () => {
+  const source = "Photosynthesis converts light energy into chemical energy in chloroplasts using chlorophyll.";
+  const grade = deterministicGrade({
+    conceptLabel: "Photosynthesis", sourceExcerpt: source,
+    userAnswer: "Photosynthesis does NOT convert light energy into chemical energy in chloroplasts using chlorophyll.",
+  });
+  assert.ok(grade.correctness <= 0.2);
+  assert.ok(grade.confidence < 0.8);
+  assert.equal(shouldEscalateGrade(grade), true);
+  assert.match(grade.feedback, /contradiction/i);
+});
+
+test("equivalent negative claim from a negative source is not automatically penalized", () => {
+  const source = "Mitochondria do not synthesize proteins from messenger RNA; ribosomes perform translation.";
+  const grade = deterministicGrade({conceptLabel:"Mitochondria", sourceExcerpt:source,
+    userAnswer:source});
+  assert.ok(grade.correctness >= 0.7);
+  assert.ok(grade.confidence >= 0.8);
+});
+
+test("conflicting dates cannot inherit high confidence from matching surrounding text", () => {
+  const source = "The French Revolution began in 1789 with sweeping political changes in France.";
+  const grade = deterministicGrade({conceptLabel:"French Revolution",sourceExcerpt:source,
+    userAnswer:"The French Revolution began in 1790 with sweeping political changes in France."});
+  assert.ok(grade.correctness <= 0.2);
+  assert.equal(shouldEscalateGrade(grade),true);
+});
+
+test("semantic paraphrases with limited word overlap still receive meaning review", () => {
+  const grade = deterministicGrade({conceptLabel:"Photosynthesis",
+    sourceExcerpt:"Photosynthesis converts light energy into chemical energy in chloroplasts using chlorophyll.",
+    userAnswer:"Plants capture sunlight and store it as energy."});
+  assert.equal(shouldEscalateGrade(grade),true);
+});
