@@ -22,6 +22,8 @@ jobs:
           node-version: 22
 
       - run: npm install
+      - name: Assert Neon-only storage
+        run: npm run audit:database
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
