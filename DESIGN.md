@@ -131,6 +131,7 @@ Never imply that a font file has been installed when the app only uses a fallbac
 
 Source files:
 - `apps/web/src/refero-theme.css`: shared semantic styles, appended at the end of the main entrypoint.
+- `apps/web/src/orbital-focus.css`: sticky/stacking product orb and contextual scene layout (imported after the theme, only for orbital layout).
 - `apps/web/src/orbita-system.css`: orbit-specific geometric layout before the reference theme overrides.
 - `apps/web/src/orbita.css`: active review surface and speaking state behavior.
 - `apps/web/src/software.css`: existing study tools and navigation.
@@ -148,7 +149,7 @@ Verify on PR:
 
 ## 9. Explicit non-goals
 
-No copying ElevenLabs text/assets/identity; no redistribution of Waldenburg fonts. No fake "retention percentage" claim, FSRS migration, ChatGPT hosted voice guarantee, OpenAI-hosted tools or auto-grading for live voice, app store payment changes or Flutter native parity as side effects of this design change.
+No copying ElevenLabs text/assets/identity; no redistribution of Waldenburg fonts. No fake "retention percentage" claim, FSRS migration, ChatGPT hosted voice guarantee, OpenAI-hosted grading tools, new app store payment changes, or claiming Flutter native SiriOrb/Realtime parity.
 
 
 ## 10. OpenAI Realtime — voice tutor connection
@@ -161,3 +162,33 @@ No copying ElevenLabs text/assets/identity; no redistribution of Waldenburg font
 - Client ends/cleans tracks after **3 minutes**. This is a client-side safeguard, not a provider-enforced hard spend cap; operate with OpenAI project limits and usage alerting. Starting a voice session may incur charges.
 - Color/motion and status text follow this DESIGN.md; the voice controls remain eggshell/taupe/black. Offer an error fallback that leaves normal study features usable.
 - Native Flutter WebRTC parity and automated attribution of voice practice to the Study Engine require separate projects.
+
+## 11. Unified Orbital APP — Web/PWA + Flutter
+
+The Orb is **not merely a link menu**. On Web/PWA, the actual React SmoothUI Siri Orb now stays mounted and visible as a study companion while the contextual learning workspace changes. On large screens it occupies a persistent taupe sidecar alongside the active tool. On phones the focused Orb stage stacks above the active learning panel and the compact mode rail remains available for navigation.
+
+### Voice-driven tool navigation
+
+OpenAI Realtime includes precisely two allowlisted function tools:
+- `open_study_mode`: **low-risk navigation only** to one of the 15 pre-existing InstantStudy modules. A spoken command opens the visible contextual scene; no backend write is performed by this tool. The voice session remains connected while navigating, subject to the independent 3-minute client timer.
+- `get_study_context`: read-only currently selected material, due concept count, library count and **estimated** mastery.
+
+Do **not** grant Realtime a tool that directly updates mastery, issues charges, shares documents, starts unsolicited recording, or bypasses the Study Engine. Starting Learn/Test/Review through the UI still uses authenticated backend endpoints. The student explicitly submits answers.
+
+### Native Flutter visual identity
+
+- `apps/flutter_app/lib/orbital_home.dart` is the default launch screen. Orbital home displays a native animated, abstract gradient sphere in blue `#0447ff`/orange `#ff4704` inside warm taupe tracks, prominent 300-weight heading, black filled pill CTA, and a 12-mode accessible touch grid.
+- The Flutter gradient sphere is an **independent native interpretation** of the Refero/SmoothUI visual style. It is **not** the identical React SiriOrb, and it is not microphone-reactive.
+- Native feature scenes retain the small Orb and return-to-orbit control. Guide, flashcards, Ask, due reviews, library, Learn, Quiz, Tests, Podcast, insights, game and study room reuse the existing study API. Never imply that flashcard flip alone updates mastery.
+- Native learner ID is saved locally and must be restored between runs, but this is not cross-device account sync.
+- No native Realtime WebRTC/voice tutor should be claimed until implemented and verified on both iOS and Android. File/audio import is not native live lecture recording.
+- All typography, radius and background decisions follow the palette above; dark assessment panels are a functional exception.
+
+### Release checks
+
+1. Opening the Web or native app shows an Orb as the primary product surface.
+2. Starting any supported study feature changes the contextual scene **without losing** the orbital identity.
+3. Flashcards, guides, tests, podcasts, Ask, reviews, room sharing and Insights all use real learner material and existing backend operations; no invented progress.
+4. Keyboard/touch hit areas are accessible on 360px mobile and phone layouts; radial satellites can disappear in favor of readable controls.
+5. Flutter widget tests use finite `pump` cycles, not `pumpAndSettle` on the continuously animated native sphere.
+6. Record visual QA, API-level validation, consent, entitlement checks and app-store readiness separately from compiler/test success.
