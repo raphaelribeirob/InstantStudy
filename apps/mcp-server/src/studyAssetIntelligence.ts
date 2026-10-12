@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tryConsumeAssetGeneration } from "./aiAssetQuota.js";
 import {
   generateStudyAssets,
   type StudyAssets,
@@ -7,7 +8,7 @@ import {
 
 /** Material generation is opt-in, with a narrow output and a deterministic fallback. */
 const MAX_SOURCE_CHARS = 12_000;
-const MODEL_OUTPUT_TOKENS = 1800;
+const MODEL_OUTPUT_TOKENS = 2600;
 const ITEM_COUNT = 10;
 const schema = z.object({
   summary: z.string().min(20).max(1800),
@@ -99,11 +100,12 @@ const strictJsonSchema = {
   },
 };
 
-export async function generatePedagogicalStudyAssets(source: string): Promise<StudyAssets> {
+export async function generatePedagogicalStudyAssets(source: string, learnerId?: string): Promise<StudyAssets> {
   const fallback = generateStudyAssets(source);
   const key = process.env.OPENAI_API_KEY?.trim();
   if (process.env.INSTANTSTUDY_AI_ASSETS_ENABLED !== "true" || !key ||
-      source.trim().length < 160) return fallback;
+      source.trim().length < 160 || !learnerId) return fallback;
+  if (!(await tryConsumeAssetGeneration(learnerId))) return fallback;
 
   const excerpt = source.trim().slice(0, MAX_SOURCE_CHARS);
   const language = studyMaterialLanguage(excerpt) === "pt-BR" ? "Brazilian Portuguese" : "English";
