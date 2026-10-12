@@ -18,7 +18,7 @@ export const studyMotion = {
 
 export const studyEase = [0.22, 1, 0.36, 1] as const;
 
-export function studyEntry(reduced: boolean, distance = studyMotion.distance) {
+export function studyEntry(reduced: boolean, distance: number = studyMotion.distance) {
   return reduced ? { opacity: 0 } : { opacity: 0, y: distance };
 }
 
