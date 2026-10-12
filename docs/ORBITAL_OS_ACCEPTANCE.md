@@ -62,7 +62,7 @@ This release is a **UI and interaction transformation**. It is not a claim that 
 - Flutter native now has an **Orbital-First home and contextual learning scenes** connected to the existing BFF. Its animated sphere is a Flutter-native gradient interpretation, **not** the vendored React SmoothUI component. Native OpenAI Realtime duplex voice, live microphone recording, full podcast parity, native billing/ChatGPT plugin configuration and visual device QA are still pending.
 - Web/PWA offers **OpenAI Realtime WebRTC voice tutoring** with a paid account and backend flag, separately from browser navigation dictation; normal Browser Speech APIs remain fallbacks for existing study and navigation. A live voice response **does not** update Study Engine mastery or replace signed answer submission.
 - The Study Engine now uses **ts-fsrs** for newly submitted graded answers. Prior review dates are not overwritten until the learner performs a new recall; historic data is not fabricated.
-- Study guides and flashcards now **optionally** use OpenAI Structured Outputs, with source-evidence checks and a deterministic fallback. Quality, podcast generation, retention validity and game richness still require real learner testing and separate product improvements.
+- Study guides and flashcards now optionally use the **free-first Groq, OpenRouter or Gemini** text router with source-evidence checks; paid inference is separately gated. Quality, podcast generation, retention validity and game richness still require real learner testing and separate improvements.
 - ChatGPT plugin display is still controlled by the host environment; this Web design does not imply identical widgets inside ChatGPT.
 - Deployment, user-facing smoke testing and accessibility audits must be performed before replacing production.
 
@@ -136,7 +136,7 @@ This branch adds specific engineering improvements over the prior UI-only parity
 
 | Product promise | New implementation | Qualification |
 |---|---|---|
-| Personalised flashcards and guides | `studyAssetIntelligence.ts` uses OpenAI Responses Structured Outputs with source-evidence strings checked against original text, 10 requested cards, short guide and keywords | **Preview opt-in only**, requires API key, Neon and per-user 3/day atomic quota; deterministic fallback on unavailable provider, short documents and insufficient grounding; quality not yet human-evaluated |
+| Personalised flashcards and guides | `studyAssetIntelligence.ts` validates generated JSON and literal source quotes from the configured Groq/OpenRouter/Gemini free-first router | Preview opt-in, requires at least one actual free-provider key, Neon and per-user daily quota; deterministic fallback otherwise; quality not human-evaluated |
 | Study questions based on those flashcards | Web/Flutter pass generated questions and source excerpts into `StudyEngine` `concepts[]` for Quiz, Learn and Test, replacing generic prompts for recall/short-answer where available | Existing multiple-choice distractors and assessment calibration remain areas for improvement |
 | Longer lecture recordings | Signed-in Plus/Unlimited accounts send audio files up to **25 MB** in **1.75 MB** chunks to Neon staging, then finalise transcription and create a regular study material | **Web/PWA only**; 24-hour expiry, 2 new uploads/day, 2 pending; cannot claim hours of recording or guaranteed Vercel response time before live testing; upload stored temporarily in Neon; no native Flutter chunk upload |
 | Objective question grading | Choose-from-options checks the currently presented source-backed correct answer rather than lexical keyword similarity | Open response/essay grading still uses semantic model with deterministic fallback and requires human QA |
@@ -157,3 +157,12 @@ This branch adds specific engineering improvements over the prior UI-only parity
 - Verify one and only one active main Siri Orb is visible during Review.
 - Run TypeScript, tests, Flutter analyze/test and OWASP; human QA and live API tests remain mandatory before production.
 
+
+
+### Awesome Free LLM APIs provider routing — October 2026
+- The Awesome catalog is a reference, **not** a unified free API or license to redistribute keys.
+- Back-end text calls prioritize configured Groq, OpenRouter `:free` and Gemini provider endpoints; the router accepts only allowlisted hosts and operator-selected model IDs.
+- PDF/text extraction remains local on the API; generated cards, guides, Ask, grading, audio transcription and photo OCR may call configured external free-tier providers. Student content must not be sent before privacy disclosure/consent review.
+- **No automatic billable fallbacks:** OpenAI text, Whisper/audio and image OCR all require separate `INSTANTSTUDY_ALLOW_PAID_*` switches; the existing OpenAI Realtime voice still has separate paid entitlement and configuration.
+- Preview environment enables routing switches only; no Groq/OpenRouter/Gemini keys have been supplied, so calls fall back to deterministic/unsupported states rather than pretending to be connected.
+- See `docs/FREE_LLM_PROVIDERS.md` for setup, provider restrictions, safe limits and end-to-end acceptance.
