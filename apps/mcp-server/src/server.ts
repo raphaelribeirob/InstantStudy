@@ -1713,10 +1713,14 @@ app.post("/api/v1/ask", async (req, res) => {
       .object({
         contentText: z.string().min(1).max(200000),
         question: z.string().min(1).max(2000),
+        history: z.array(z.object({
+          role: z.enum(["user", "assistant"]),
+          content: z.string().min(1).max(1000),
+        })).max(8).default([]),
       })
       .parse(req.body ?? {});
 
-    res.json(await answerFromSource(input.contentText, input.question));
+    res.json(await answerFromSource(input.contentText, input.question, input.history));
   } catch (error) {
     sendApiError(res, error);
   }
