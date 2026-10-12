@@ -18,6 +18,7 @@ import { generateStudyAssets } from "./studyAssets.js";
 import { generatePedagogicalStudyAssets } from "./studyAssetIntelligence.js";
 import { materialStore } from "./materialStore.js";
 import { consumeRealtimeVoiceStart } from "./realtimeQuota.js";
+import { storeAudioChunk, loadAudioUpload, discardAudioUpload } from "./largeAudioUpload.js";
 import { buildAudioStudy, buildStudyGame } from "./offerLayer.js";
 import { studyRoomStore } from "./studyRoomStore.js";
 import {
@@ -873,6 +874,60 @@ app.get("/openapi.yaml", (req, res) => {
 });
 
 app.use("/api/v1", apiLimiter, requireApiAuth);
+
+/** Chunks are only accepted from the paid/verified Web BFF. API bearer applies. */
+app.post("/api/v1/uploads/audio/chunk", async (req, res) => {
+  try {
+    const input = z.object({
+      learnerId: z.string().min(3).max(200),
+      uploadId: z.string().uuid(),
+      fileName: z.string().min(1).max(300),
+      mimeType: z.string().min(1).max(200),
+      totalParts: z.number().int().min(1).max(16),
+      partIndex: z.number().int().min(0).max(15),
+      inlineBase64: z.string().min(8).max(2_350_000),
+    }).parse(req.body ?? {});
+    res.json(await storeAudioChunk(input));
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
+app.post("/api/v1/uploads/audio/finalize", async (req, res) => {
+  try {
+    const input = z.object({
+      learnerId: z.string().min(3).max(200),
+      uploadId: z.string().uuid(),
+      title: z.string().max(200).optional(),
+    }).parse(req.body ?? {});
+    const upload = await loadAudioUpload(input.learnerId, input.uploadId);
+    const ingested = await ingestFiles([{
+      file_id: input.uploadId,
+      file_name: upload.fileName,
+      mime_type: upload.mimeType,
+      inline_base64: upload.bytes.toString("base64"),
+    }]);
+    if (!ingested.text.trim()) {
+      res.status(422).json({
+        error: "audio_transcription_empty",
+        ingestion: ingested.files,
+      });
+      return;
+    }
+    const content = ingested.text.trim().slice(0, 200000);
+    const assets = await generatePedagogicalStudyAssets(content);
+    const material = await materialStore.save({
+      learnerId: input.learnerId,
+      title: input.title?.trim() || upload.fileName,
+      content, sourceType: "audio",
+      sourceNames: [upload.fileName], assets,
+    });
+    await discardAudioUpload(input.learnerId, input.uploadId);
+    res.json({ material, ingestion: ingested.files });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
 
 app.post("/api/v1/materials/import", async (req, res) => {
   try {
