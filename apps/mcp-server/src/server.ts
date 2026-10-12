@@ -1031,6 +1031,32 @@ app.post("/api/v1/materials/get", async (req, res) => {
 });
 
 
+/** Clone only the authenticated learner's saved set; preserve the exact authored cards. */
+app.post("/api/v1/materials/duplicate", async (req, res) => {
+  try {
+    const input = z.object({
+      learnerId: z.string().min(3).max(200),
+      id: z.string().uuid(),
+    }).strict().parse(req.body ?? {});
+    const original = await materialStore.get(input.learnerId, input.id);
+    if (!original) {
+      res.status(404).json({ error: "material_not_found" });
+      return;
+    }
+    const material = await materialStore.save({
+      learnerId: input.learnerId,
+      title: (original.title.slice(0, 188) + " (copy)").slice(0, 200),
+      content: original.content,
+      sourceType: original.sourceType,
+      sourceNames: [...original.sourceNames],
+      assets: structuredClone(original.assets),
+    });
+    res.json({ material });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
 /** Editable, durable user-owned study assets. Never accept arbitrary source or owner changes. */
 app.post("/api/v1/materials/update", async (req, res) => {
   try {
