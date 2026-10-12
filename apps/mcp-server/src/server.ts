@@ -18,6 +18,7 @@ import { generateStudyAssets } from "./studyAssets.js";
 import { generatePedagogicalStudyAssets } from "./studyAssetIntelligence.js";
 import { textProviderOrder } from "./freeLlmRouter.js";
 import { materialStore } from "./materialStore.js";
+import { createOfferPlanStore, offerPlanStatus, GRADED_CAPABILITIES } from "./offerAgent.js";
 import { consumeRealtimeVoiceStart } from "./realtimeQuota.js";
 import { storeAudioChunk, loadAudioUpload, discardAudioUpload } from "./largeAudioUpload.js";
 import { buildAudioStudy, buildStudyGame } from "./offerLayer.js";
@@ -50,6 +51,7 @@ const TIMEOUT_MS = Number.parseInt(
 const bridge = new BridgeQueue(TIMEOUT_MS);
 const contentSessions = new ContentSessionStore();
 const studyEngine = new StudyEngine();
+const offerPlanStore = createOfferPlanStore();
 const API_KEY = (process.env.INSTANTSTUDY_API_KEY ?? "").trim();
 const MCP_KEY = (
   process.env.INSTANTSTUDY_MCP_API_KEY ??
@@ -1021,6 +1023,96 @@ app.post("/api/v1/assets/generate", async (req, res) => {
   } catch (error) {
     sendApiError(res, error);
   }
+});
+
+// Offer-first agents: an authenticated student goal, owned material and durable
+// study steps. The model cannot insert grades or invent completed test sessions.
+const offerPlanIdentity = z.object({
+  learnerId: z.string().min(3).max(200),
+  materialId: z.string().uuid(),
+});
+app.post("/api/v1/agent/plan/create", async (req, res) => {
+  try {
+    const input = offerPlanIdentity.extend({
+      goal: z.string().trim().min(8).max(500),
+      deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    }).parse(req.body ?? {});
+    if (input.deadline) {
+      const stamp = Date.parse(input.deadline + "T12:00:00Z");
+      if (!Number.isFinite(stamp) || stamp < Date.now() - 86_400_000 ||
+        stamp > Date.now() + 180 * 86_400_000) {
+        res.status(400).json({ error: "agent_deadline_invalid" }); return;
+      }
+    }
+    const material = await materialStore.get(input.learnerId, input.materialId);
+    if (!material) { res.status(404).json({ error: "material_not_found" }); return; }
+    const existing = await offerPlanStore.getActive(input.learnerId, input.materialId);
+    if (existing) {
+      res.json(await offerPlanStatus(existing, studyEngine));
+      return;
+    }
+    const due = await studyEngine.dueReviews(input.learnerId, { limit: 30 });
+    const dueCount = due.filter(d => d.title === material.title).length;
+    const plan = await offerPlanStore.create({
+      learnerId: input.learnerId, material, goal: input.goal, deadline: input.deadline,
+    }, dueCount);
+    res.json(await offerPlanStatus(plan, studyEngine));
+  } catch (error) { sendApiError(res, error); }
+});
+
+app.post("/api/v1/agent/plan/get", async (req, res) => {
+  try {
+    const input = offerPlanIdentity.parse(req.body ?? {});
+    // This read also guards against probing another student's material IDs.
+    const material = await materialStore.get(input.learnerId, input.materialId);
+    if (!material) { res.status(404).json({ error: "material_not_found" }); return; }
+    const plan = await offerPlanStore.getActive(input.learnerId, input.materialId);
+    res.json(plan ? await offerPlanStatus(plan, studyEngine) : { plan: null, recommendation: null });
+  } catch (error) { sendApiError(res, error); }
+});
+
+app.post("/api/v1/agent/plan/complete", async (req, res) => {
+  try {
+    const input = offerPlanIdentity.extend({
+      planId: z.string().uuid(),
+      stepId: z.string().regex(/^step-\d{1,2}$/),
+      studySessionId: z.string().uuid().optional(),
+    }).parse(req.body ?? {});
+    const active = await offerPlanStore.getActive(input.learnerId, input.materialId);
+    if (!active || active.id !== input.planId) {
+      res.status(404).json({ error: "agent_plan_not_found" }); return;
+    }
+    const step = active.steps.find(s => s.id === input.stepId);
+    if (!step) { res.status(404).json({ error: "agent_step_not_found" }); return; }
+    if (step.status === "completed") {
+      res.json(await offerPlanStatus(active, studyEngine)); return;
+    }
+    const requiresGrade = GRADED_CAPABILITIES.has(step.capability);
+    if (requiresGrade && !input.studySessionId) {
+      res.status(409).json({ error: "agent_step_requires_completed_study_session" }); return;
+    }
+    if (requiresGrade && input.studySessionId) {
+      const session = await studyEngine.get(input.studySessionId);
+      const expected = step.capability === "test" ? "test"
+        : step.capability === "review" ? "review" : "learn";
+      if (!session || session.learnerId !== input.learnerId ||
+        session.title !== active.materialTitle ||
+        session.mode !== expected || session.status !== "completed" ||
+        session.attempts.length === 0) {
+        res.status(409).json({ error: "agent_study_proof_not_verified" }); return;
+      }
+    }
+    if (!requiresGrade && input.studySessionId) {
+      res.status(400).json({ error: "agent_step_does_not_accept_grade" }); return;
+    }
+    const updated = await offerPlanStore.complete(
+      input.learnerId, input.planId, input.stepId,
+      requiresGrade
+        ? { kind: "graded-session", studySessionId: input.studySessionId }
+        : { kind: "acknowledgement" },
+    );
+    res.json(await offerPlanStatus(updated, studyEngine));
+  } catch (error) { sendApiError(res, error); }
 });
 
 app.post("/api/v1/insights", async (req, res) => {
