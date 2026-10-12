@@ -322,6 +322,18 @@ class _StudyHomeState extends State<StudyHome> {
                 'free_recall',
               ]
             : null,
+        concepts: _assets?['flashcards'] is List
+            ? (_assets!['flashcards'] as List)
+                .whereType<Map>()
+                .map((card) => <String, String>{
+                  'label': card['concept']?.toString() ?? '',
+                  'sourceExcerpt': (card['sourceExcerpt'] ?? card['back'] ?? '').toString(),
+                  'studyPrompt': card['front']?.toString() ?? '',
+                })
+                .where((card) => card['label']!.isNotEmpty)
+                .take(12)
+                .toList()
+            : null,
       );
       if (!mounted) return;
       setState(() => _session = result);
