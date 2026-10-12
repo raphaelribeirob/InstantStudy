@@ -65,6 +65,7 @@ export type TestConfig = {
   endsAt?: string;
   questionTypes: TestQuestionType[];
   feedbackPolicy: "end_only";
+  difficulty?: "foundation" | "standard" | "advanced";
 };
 
 export type AdaptiveStudySession = {
@@ -192,6 +193,9 @@ function questionType(
     const types = session.testConfig?.questionTypes.length
       ? session.testConfig.questionTypes
       : defaultTestQuestionTypes();
+    const difficulty = session.testConfig?.difficulty ?? "standard";
+    if (difficulty === "foundation" && types.includes("multiple_choice") && session.questionIndex % 2 === 0) return "multiple_choice";
+    if (difficulty === "advanced" && types.includes("application") && session.questionIndex % 2 === 0) return "application";
     return types[session.questionIndex % types.length];
   }
 
@@ -300,6 +304,7 @@ export class StudyEngine {
       maxQuestions?: number;
       testDurationMinutes?: number;
       testQuestionTypes?: TestQuestionType[];
+      testDifficulty?: "foundation" | "standard" | "advanced";
       concepts?: Array<{ label: string; sourceExcerpt?: string; studyPrompt?: string }>;
     },
   ) {
@@ -366,6 +371,7 @@ export class StudyEngine {
                   ? [...new Set(options.testQuestionTypes)].slice(0, 5)
                   : defaultTestQuestionTypes(),
               feedbackPolicy: "end_only",
+              difficulty: options?.testDifficulty ?? "standard",
             }
           : undefined,
     };
@@ -421,6 +427,7 @@ export class StudyEngine {
         })),
       questionIndex: session.questionIndex,
       difficulty: concept.difficulty,
+      testDifficulty: session.testConfig?.difficulty,
     });
 
     return {

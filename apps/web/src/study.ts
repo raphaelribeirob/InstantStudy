@@ -300,6 +300,7 @@ export async function prepareStudy(input: {
   title?: string;
   maxQuestions?: number;
   testDurationMinutes?: number;
+  testDifficulty?: "foundation" | "standard" | "advanced";
   testQuestionTypes?: TestQuestionType[];
   concepts?: Array<{ label: string; sourceExcerpt?: string; studyPrompt?: string }>;
 }) {
@@ -313,6 +314,7 @@ export async function prepareStudy(input: {
         mode: input.mode,
         maxQuestions: input.maxQuestions,
         testDurationMinutes: input.testDurationMinutes,
+        testDifficulty: input.testDifficulty,
         testQuestionTypes: input.testQuestionTypes,
         concepts: input.concepts,
       }),

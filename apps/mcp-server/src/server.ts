@@ -129,6 +129,7 @@ const prepareStudySchema = z
     targetMinutes: z.number().int().min(1).max(180).optional(),
     maxQuestions: z.number().int().min(1).max(50).default(12),
     testDurationMinutes: z.number().int().min(1).max(180).optional(),
+    testDifficulty: z.enum(["foundation","standard","advanced"]).optional(),
     testQuestionTypes: z
       .array(
         z.enum([
@@ -1391,6 +1392,7 @@ app.post("/api/v1/study/prepare", async (req, res) => {
       targetMinutes: input.targetMinutes,
       maxQuestions: input.maxQuestions,
       testDurationMinutes: input.testDurationMinutes,
+      testDifficulty: input.testDifficulty,
       testQuestionTypes: input.testQuestionTypes,
       concepts: input.concepts,
     });

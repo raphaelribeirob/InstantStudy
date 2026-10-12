@@ -240,6 +240,8 @@ export default async function handler(req, res) {
       const maxQuestions = Number.isInteger(body.maxQuestions)
         ? Math.max(1, Math.min(Number(body.maxQuestions), 50))
         : mode === "test" ? 20 : 12;
+      const testDifficulty = ["foundation","standard","advanced"].includes(body.testDifficulty)
+        ? body.testDifficulty : "standard";
       const testDurationMinutes = Number.isInteger(body.testDurationMinutes)
         ? Math.max(1, Math.min(Number(body.testDurationMinutes), 180))
         : undefined;
@@ -281,6 +283,7 @@ export default async function handler(req, res) {
         billingPlan,
         maxQuestions,
         testDurationMinutes,
+        testDifficulty,
         testQuestionTypes: testQuestionTypes?.length ? testQuestionTypes : undefined,
         concepts: concepts?.length ? concepts : undefined,
       });

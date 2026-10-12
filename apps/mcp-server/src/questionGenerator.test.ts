@@ -64,3 +64,14 @@ test("false choice does not repeat the correct source text", () => {
   assert.ok(falseChoice);
   assert.doesNotMatch(falseChoice.value, /converts light energy into chemical energy/i);
 });
+
+test("cannot fabricate ungrounded multiple-choice distractors", () => {
+  const question = generateQuestion({type:"multiple_choice", concept, alternatives:[]});
+  assert.equal(question.answerMode,"text");
+  assert.equal(question.choices,undefined);
+});
+
+test("advanced recall explicitly requires evidence and reasoning", () => {
+  const question = generateQuestion({type:"free_recall",concept,testDifficulty:"advanced"});
+  assert.match(question.prompt,/evidence|mechanism/i);
+});
