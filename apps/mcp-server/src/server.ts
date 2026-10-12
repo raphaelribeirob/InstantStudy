@@ -1098,7 +1098,10 @@ app.post("/api/v1/agent/plan/complete", async (req, res) => {
       if (!session || session.learnerId !== input.learnerId ||
         session.title !== active.materialTitle ||
         session.mode !== expected || session.status !== "completed" ||
-        session.attempts.length === 0) {
+        session.attempts.length === 0 ||
+        !session.completedAt ||
+        Date.parse(session.createdAt) < Date.parse(active.createdAt) ||
+        Date.parse(session.completedAt) < Date.parse(active.createdAt)) {
         res.status(409).json({ error: "agent_study_proof_not_verified" }); return;
       }
     }
