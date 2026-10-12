@@ -3,10 +3,12 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { HardPaywallGate } from "./HardPaywallGate";
 import { StudySplashIntro } from "./StudySplashIntro";
+import { StudyMotionProvider } from "./StudyMotion";
 import "./i18n";
 import "./styles.css";
 import "./refero-theme.css";
 import "./orbital-focus.css";
+import "./study-motion.css";
 
 const isSoftware = window.location.pathname === "/app" || window.location.pathname.startsWith("/app/");
 
@@ -24,7 +26,9 @@ function ProductApp() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    {isSoftware ? <ProductApp /> : <App />}
+    <StudyMotionProvider>
+      {isSoftware ? <ProductApp /> : <App />}
+    </StudyMotionProvider>
   </StrictMode>,
 );
 
