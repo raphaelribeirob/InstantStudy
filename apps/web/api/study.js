@@ -186,6 +186,9 @@ export default async function handler(req, res) {
     "realtime_offer",
     "audio_chunk",
     "audio_finalize",
+    "agent_plan_create",
+    "agent_plan_get",
+    "agent_plan_complete",
   ];
   const action = allowedActions.includes(body.action) ? body.action : "prepare";
 
@@ -292,6 +295,40 @@ export default async function handler(req, res) {
         learnerId,
         limit: Math.max(1, Math.min(Number(body.limit || 20), 100)),
       });
+    } else if (action === "agent_plan_create" ||
+               action === "agent_plan_get" ||
+               action === "agent_plan_complete") {
+      // Agent plans are private learner records; anonymous or forged IDs must
+      // never reach the server using our privileged service API bearer.
+      const learnerId = await verifiedLearner(body);
+      if (!learnerId || ANON_ID.test(learnerId)) {
+        return json(res, 401, { error: "instant_account_required_for_agent_plan" });
+      }
+      const materialId = cleanId(body.materialId, 64);
+      if (!/^[a-f0-9-]{36}$/i.test(materialId)) {
+        return json(res, 400, { error: "agent_material_invalid" });
+      }
+      const common = { learnerId, materialId };
+      if (action === "agent_plan_create") {
+        const goal = typeof body.goal === "string" ? body.goal.trim().slice(0, 500) : "";
+        if (goal.length < 8) return json(res, 400, { error: "agent_goal_required" });
+        const deadline = typeof body.deadline === "string" ? body.deadline.slice(0, 10) : undefined;
+        result = await upstream(base, apiKey, "/api/v1/agent/plan/create", {
+          ...common, goal, deadline,
+        });
+      } else if (action === "agent_plan_get") {
+        result = await upstream(base, apiKey, "/api/v1/agent/plan/get", common);
+      } else {
+        const planId = cleanId(body.planId, 64);
+        const stepId = cleanId(body.stepId, 30);
+        const studySessionId = cleanId(body.studySessionId, 64) || undefined;
+        if (!/^[a-f0-9-]{36}$/i.test(planId) || !/^step-\d{1,2}$/.test(stepId)) {
+          return json(res, 400, { error: "agent_step_input_invalid" });
+        }
+        result = await upstream(base, apiKey, "/api/v1/agent/plan/complete", {
+          ...common, planId, stepId, studySessionId,
+        });
+      }
     } else if (action === "audio_chunk" || action === "audio_finalize") {
       const learnerId = await verifiedLearner(body);
       if (!learnerId || ANON_ID.test(learnerId)) {
