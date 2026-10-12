@@ -56,3 +56,19 @@ test("signed GET allows query but denies tampering", () => {
   assert.equal(isSignedBffRequest(signed), true);
   assert.equal(isSignedBffRequest({ ...signed, path: "/api/v1/study/due?learnerId=xyz" }), false);
 });
+
+test("hosted Study API stays signed-paywall protected when flag is unset or false", () => {
+  const previous = process.env.VERCEL;
+  try {
+    process.env.VERCEL = "1";
+    delete process.env.INSTANTSTUDY_HARD_PAYWALL_ENABLED;
+    assert.equal(hardPaywallServiceEnabled(), true);
+    process.env.INSTANTSTUDY_HARD_PAYWALL_ENABLED = "false";
+    assert.equal(hardPaywallServiceEnabled(), true);
+    delete process.env.INSTANTSTUDY_BFF_SIGNING_SECRET;
+    assert.equal(isSignedBffRequest(create({})), false);
+  } finally {
+    if (previous === undefined) delete process.env.VERCEL;
+    else process.env.VERCEL = previous;
+  }
+});
