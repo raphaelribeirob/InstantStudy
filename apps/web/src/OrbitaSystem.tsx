@@ -93,9 +93,10 @@ type Props = {
   selected: StudyMaterial | null;
   onAction: (id: OrbitalAction) => void;
   onSelectMaterial: (material: StudyMaterial) => void;
+  focused?: boolean;
 };
 
-export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial }: Props) {
+export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial, focused = false }: Props) {
   const { i18n } = useTranslation();
   const pt = i18n.language.toLowerCase().startsWith("pt");
   const tr = (ptValue: string, enValue: string) => pt ? ptValue : enValue;
@@ -140,7 +141,7 @@ export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial }
         recognition.stop();
       }
     };
-  }, []);
+  }, [focused]);
 
   function open(id: OrbitalAction) {
     tutor.stop();
@@ -209,11 +210,11 @@ export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial }
   ];
 
   return (
-    <div className="orbital-system" data-orbital-shell="true">
+    <div className={"orbital-system" + (focused ? " orbital-system-focused" : "")} data-orbital-shell="true">
       <header className="orbital-system-head">
         <p>INSTANTSTUDY™ / {tr("SISTEMA DE APRENDIZAGEM", "LEARNING SYSTEM")}</p>
-        <h1>{tr("Sua mente, em órbita.", "Put your mind in orbit.")}</h1>
-        <span>{tr("Qualquer material se transforma em aprendizado, prática e memória.", "Turn any material into learning, practice and lasting recall.")}</span>
+        <h1>{focused ? tr("Sua Órbita continua.", "Your orbit stays with you.") : tr("Sua mente, em órbita.", "Put your mind in orbit.")}</h1>
+        <span>{focused ? tr("Converse, revise e alterne ferramentas sem sair da sua Órbita.", "Talk, recall and switch tools without leaving your orbit.") : tr("Qualquer material se transforma em aprendizado, prática e memória.", "Turn any material into learning, practice and lasting recall.")}</span>
       </header>
 
       <div className="orbital-system-grid">
@@ -346,6 +347,7 @@ export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial }
         </aside>
       </div>
 
+      {!focused && <>
       <div className="orbital-system-section-heading">
         <div><span>{tr("FERRAMENTAS DE APRENDIZAGEM", "YOUR LEARNING TOOLS")}</span><h2>{tr("Todas as possibilidades. Uma interface.", "Every study mode. One interface.")}</h2></div>
         <button type="button" onClick={() => void refresh()} disabled={pending}><RotateCcw size={15} /> {tr("Sincronizar", "Refresh")}</button>
@@ -369,6 +371,7 @@ export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial }
         <div><Sparkles size={17} /> {tr("Seus materiais alimentam o motor de estudo; a Órbita é a interface.", "Your material powers the study engine; Órbita is the interface.")}</div>
         <span><CheckCircle2 size={14} /> {tr("Aprendizagem adaptativa e revisão registradas no InstantStudy", "Adaptive practice and review tracked in InstantStudy")}</span>
       </footer>
+      </>}
     </div>
   );
 }
