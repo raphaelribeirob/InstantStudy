@@ -12,7 +12,7 @@ function sqlClient() {
   return neon(url);
 }
 
-async function ensureTables(sql: ReturnType<typeof neon>) {
+async function ensureTables(sql: ReturnType<typeof sqlClient>) {
   await sql`
     CREATE TABLE IF NOT EXISTS instantstudy_large_audio_uploads (
       upload_id uuid PRIMARY KEY,
