@@ -1,3 +1,5 @@
+import { createHmac } from "node:crypto";
+
 /**
  * Authoritative Web/PWA paid-access policy.
  * OFF until account sign-in + Paddle offer provisioning have been proven E2E.
@@ -5,6 +7,25 @@
  */
 export function hardPaywallEnabled() {
   return process.env.INSTANTSTUDY_HARD_PAYWALL_ENABLED === "true";
+}
+
+function signingSecret() {
+  const secret = String(process.env.INSTANTSTUDY_BFF_SIGNING_SECRET || "");
+  return secret.length >= 32 ? secret : "";
+}
+
+export function signedUpstreamHeaders(method, path, bodyText = "") {
+  if (!hardPaywallEnabled()) return {};
+  const secret = signingSecret();
+  if (!secret) throw new Error("hard_paywall_signing_not_configured");
+  const timestamp = Date.now().toString();
+  const signature = createHmac("sha256", secret)
+    .update(`${timestamp}\\n${method.toUpperCase()}\\n${path}\\n${bodyText}`)
+    .digest("hex");
+  return {
+    "x-instantstudy-timestamp": timestamp,
+    "x-instantstudy-signature": signature,
+  };
 }
 
 const PAID_ENTITLEMENTS = new Set([
@@ -24,6 +45,9 @@ function validIdentity(value) {
 export async function resolveHardPaywallAccess(body, fetchImpl = fetch) {
   if (!hardPaywallEnabled()) {
     return { enabled: false, authorized: true, status: 200, plan: null };
+  }
+  if (!signingSecret()) {
+    return { enabled: true, authorized: false, status: 503, reason: "hard_paywall_signing_not_configured" };
   }
 
   const id = validIdentity(body?.learnerId);
