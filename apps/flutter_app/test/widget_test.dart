@@ -23,6 +23,8 @@ void main() {
 
     expect(find.text('Sua mente,\nem órbita.'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Adicionar material').first);
+    await tester.pump(const Duration(milliseconds: 120));
     await tester.tap(find.text('Adicionar material').first);
     await tester.pump(const Duration(milliseconds: 380));
     expect(find.text('Aprenda com\nqualquer coisa.'), findsOneWidget);
