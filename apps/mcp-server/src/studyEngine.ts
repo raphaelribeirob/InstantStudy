@@ -70,6 +70,8 @@ export type TestConfig = {
 export type AdaptiveStudySession = {
   id: string;
   contentSessionId: string;
+  /** Exact source material owned by the authenticated learner, when present. */
+  materialId?: string;
   learnerId?: string;
   title: string;
   mode: StudyMode;
@@ -77,6 +79,7 @@ export type AdaptiveStudySession = {
   createdAt: string;
   completedAt?: string;
   status: "active" | "completed";
+  completionReason?: "all_questions" | "mastery_reached" | "time_expired";
   questionIndex: number;
   maxQuestions: number;
   targetMinutes?: number;
@@ -291,6 +294,7 @@ export class StudyEngine {
     content: ContentSession,
     options?: {
       learnerId?: string;
+      materialId?: string;
       mode?: StudyMode;
       targetMinutes?: number;
       maxQuestions?: number;
@@ -337,6 +341,7 @@ export class StudyEngine {
     const session: AdaptiveStudySession = {
       id: randomUUID(),
       contentSessionId: content.id,
+      materialId: options?.materialId,
       learnerId: options?.learnerId,
       title: content.title,
       mode,
@@ -475,9 +480,18 @@ export class StudyEngine {
     evaluation: StudyEvaluation,
   ) {
     const session = await this.requireActive(sessionId);
+    // Grade only the concept actually presented by next(). A caller cannot
+    // submit an arbitrary concept or alter mastery by skipping questions.
+    const presented = await this.next(sessionId);
+    if (presented.done || presented.concept.id !== conceptId) {
+      throw new Error("Study answer is not for the active question.");
+    }
     const concept = session.concepts.find((item) => item.id === conceptId);
-
     if (!concept) throw new Error("Concept not found in this study session.");
+    if (session.testConfig?.endsAt &&
+        Date.now() >= new Date(session.testConfig.endsAt).getTime()) {
+      throw new Error("The timed test has expired; finish it to see the result.");
+    }
 
     const correctness = clamp(evaluation.correctness);
     const completeness = clamp(evaluation.completeness);
@@ -541,6 +555,8 @@ export class StudyEngine {
     if (done) {
       session.status = "completed";
       session.completedAt = new Date().toISOString();
+      session.completionReason = testExpired ? "time_expired"
+        : session.questionIndex >= session.maxQuestions ? "all_questions" : "mastery_reached";
     }
     await this.persistence.save(session);
 
@@ -590,8 +606,18 @@ export class StudyEngine {
   async finish(sessionId: string) {
     const session = await this.get(sessionId);
     if (!session) throw new Error("Study session not found.");
+    if (session.status === "completed") return this.summary(session);
 
+    // A /finish request is not evidence that the learner answered the exam.
+    // Timed tests are the sole exception: the real clock must have expired,
+    // and the learner must have answered at least one presented question.
+    const expired = session.mode === "test" && session.testConfig?.endsAt &&
+      Date.now() >= new Date(session.testConfig.endsAt).getTime();
+    if (!expired || session.attempts.length === 0) {
+      throw new Error("study_session_incomplete");
+    }
     session.status = "completed";
+    session.completionReason = "time_expired";
     session.completedAt = new Date().toISOString();
     await this.persistence.save(session);
     return this.summary(session);
@@ -638,13 +664,14 @@ export class StudyEngine {
         missingConcepts: concept.missingConcepts,
       }));
 
+    // Missing questions receive 0, not a free pass for answering one easy item.
     const testPerformance =
       session.mode === "test" && attempts
         ? session.attempts.reduce(
             (sum, attempt) =>
               sum + attempt.correctness * 0.65 + attempt.completeness * 0.35,
             0,
-          ) / attempts
+          ) / Math.max(1, session.maxQuestions)
         : undefined;
 
     const durationSeconds = Math.max(
@@ -665,9 +692,8 @@ export class StudyEngine {
       conceptsStudied: session.concepts.filter((concept) => concept.attempts > 0)
         .length,
       weakConcepts,
-      completed:
-        session.status === "completed" ||
-        session.questionIndex >= session.maxQuestions,
+      completed: session.status === "completed",
+      completionReason: session.completionReason,
       nextReviewAt: session.concepts
         .map((concept) => concept.nextReviewAt)
         .filter((value): value is string => Boolean(value))
