@@ -11,10 +11,12 @@ import { AdaptyClient } from "./adapty.js";
 import { readFileSync } from "node:fs";
 import { ContentSessionStore } from "./contentSessions.js";
 import { StudyEngine } from "./studyEngine.js";
+import { correctChoiceForQuestion } from "./questionGenerator.js";
 import { hardPaywallServiceEnabled, isSignedBffRequest } from "./hardPaywallSignature.js";
 import { ingestFiles } from "./ingest.js";
 import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
+import { gradeObjectiveChoice } from "./objectiveGrading.js";
 import { generateStudyAssets } from "./studyAssets.js";
 import { generatePedagogicalStudyAssets } from "./studyAssetIntelligence.js";
 import { textProviderOrder } from "./freeLlmRouter.js";
@@ -1505,30 +1507,42 @@ app.post("/api/v1/study/evaluate", async (req, res) => {
       return;
     }
 
-    // Objective questions are graded against the actual presented correct
-    // answer, never by lexical similarity to a possibly wrong distractor.
+    // Objective questions are graded only against a presented choice.
+    // Never route an arbitrary answer through a semantic model: doing so would
+    // allow unsupported answers to receive partial/full credit.
     const active = await studyEngine.next(input.studySessionId);
-    const choiceQuestion = !active.done &&
-      active.concept.id === input.conceptId &&
+    if (active.done || active.concept.id !== input.conceptId) {
+      res.status(409).json({ error: "question_not_active" });
+      return;
+    }
+    const choiceQuestion =
       active.question.answerMode === "choice" &&
       Array.isArray(active.question.choices);
-    const selectedChoice = choiceQuestion &&
-      active.question.choices?.some((choice) => choice.value.trim() === input.userAnswer.trim());
-    const grade = selectedChoice
-      ? {
-          correctness: input.userAnswer.trim() === concept.sourceExcerpt.trim() ? 1 : 0,
-          completeness: input.userAnswer.trim() === concept.sourceExcerpt.trim() ? 1 : 0,
-          confidence: 1,
-          missingConcepts: input.userAnswer.trim() === concept.sourceExcerpt.trim() ? [] : [concept.label],
-          feedback: input.userAnswer.trim() === concept.sourceExcerpt.trim()
-            ? "Correct. This answer is directly supported by the source."
-            : "Not quite. Review the source-backed correct statement.",
-          provider: "deterministic" as const,
-        }
+    const normalizedAnswer = input.userAnswer.trim();
+    const grade = choiceQuestion
+      ? gradeObjectiveChoice({
+          choices: active.question.choices ?? [],
+          userAnswer: normalizedAnswer,
+          expectedValue: correctChoiceForQuestion({
+            type: active.questionPolicy.type,
+            concept: {
+              label: concept.label,
+              sourceExcerpt: concept.sourceExcerpt,
+              studyPrompt: concept.studyPrompt,
+            },
+            alternatives: session.concepts
+              .filter((item) => item.id !== concept.id)
+              .map((item) => ({ label: item.label, sourceExcerpt: item.sourceExcerpt })),
+            questionIndex: session.questionIndex,
+            difficulty: concept.difficulty,
+            testDifficulty: session.testConfig?.difficulty,
+          }) ?? "",
+          conceptLabel: concept.label,
+        })
       : await gradeStudyAnswer({
           conceptLabel: concept.label,
           sourceExcerpt: concept.sourceExcerpt,
-          userAnswer: input.userAnswer,
+          userAnswer: normalizedAnswer,
         });
 
     const submission = await studyEngine.submit(

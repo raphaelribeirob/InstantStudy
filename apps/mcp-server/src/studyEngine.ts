@@ -447,7 +447,9 @@ export class StudyEngine {
       concept: {
         id: concept.id,
         label: concept.label,
-        sourceExcerpt: concept.sourceExcerpt,
+        // Closed-book Practice Test must not expose the canonical answer in the
+        // study API payload. Grading still uses the server-owned sourceExcerpt.
+        ...(session.mode === "test" ? {} : { sourceExcerpt: concept.sourceExcerpt }),
         mastery: Number(concept.mastery.toFixed(2)),
         difficulty: concept.difficulty,
         nextReviewAt: concept.nextReviewAt,

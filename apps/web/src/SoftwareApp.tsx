@@ -1066,10 +1066,19 @@ export function SoftwareApp() {
 
                 {(view === "learn" || view === "test") && (session || busy || summary) && (
                   <div className="software-study-stage">
-                    <aside>
-                      <span>{t("software.studyGuide")}</span>
-                      <p>{selected.assets.summary}</p>
-                    </aside>
+                    {view === "test" && !summary ? (
+                      <aside aria-label="Closed-book practice test">
+                        <span>{i18n.language.startsWith("pt") ? "Modo simulado" : "Practice Test"}</span>
+                        <p>{i18n.language.startsWith("pt")
+                          ? "O guia de estudo fica oculto durante o simulado. O resultado aparece no final."
+                          : "Study notes are hidden during the test. Your results appear after submission."}</p>
+                      </aside>
+                    ) : (
+                      <aside>
+                        <span>{t("software.studyGuide")}</span>
+                        <p>{selected.assets.summary}</p>
+                      </aside>
+                    )}
                     <article>
                       {busy ? <div className="software-loading">{t("software.buildingSession")}</div> : summary ? (
                         <div className="software-test-result">

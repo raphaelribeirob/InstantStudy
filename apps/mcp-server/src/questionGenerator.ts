@@ -86,19 +86,26 @@ export function generateQuestion(input: {
   }
 
   if (input.type === "true_false") {
-    const trueFirst = index % 2 === 0;
-    const falseValue = "No. This statement is not supported by the study material.";
+    const distractors = distinctAlternativeStatements(
+      input.concept, input.alternatives ?? [],
+    );
+    const useDifferentSource = index % 2 === 1 && distractors.length > 0;
+    const statement = useDifferentSource ? distractors[0] : source;
+    // If we lack a verifiable alternative, we cannot honestly construct a
+    // false statement; ask a written question instead of fabricating one.
+    if (index % 2 === 1 && distractors.length === 0) {
+      return {
+        prompt: authoredPrompt || `Explain ${concept} using the study material.`,
+        answerMode: "text",
+        generatedBy: "deterministic",
+      };
+    }
     return {
-      prompt: `Which option matches the source about ${concept}?`,
-      choices: trueFirst
-        ? [
-            { label: "True", value: source },
-            { label: "False", value: falseValue },
-          ]
-        : [
-            { label: "False", value: falseValue },
-            { label: "True", value: source },
-          ],
+      prompt: `Does this statement match the studied source for ${concept}? ${statement}`,
+      choices: [
+        { label: "True", value: "True" },
+        { label: "False", value: "False" },
+      ],
       answerMode: "choice",
       generatedBy: "deterministic",
     };
@@ -135,4 +142,24 @@ export function generateQuestion(input: {
     answerMode: "text",
     generatedBy: "deterministic",
   };
+}
+
+/**
+ * The answer key is computed on the trusted service only; never place it in
+ * the serialized question sent to a learner.
+ */
+export function correctChoiceForQuestion(input: Parameters<typeof generateQuestion>[0]) {
+  if (input.type === "true_false") {
+    const alternatives = distinctAlternativeStatements(
+      input.concept, input.alternatives ?? [],
+    );
+    const index = Math.max(0, input.questionIndex ?? 0);
+    if (index % 2 === 1 && !alternatives.length) return null;
+    return index % 2 === 1 ? "False" : "True";
+  }
+  if (input.type === "multiple_choice") {
+    if (distinctAlternativeStatements(input.concept, input.alternatives ?? []).length < 3) return null;
+    return clean(input.concept.sourceExcerpt);
+  }
+  return null;
 }
