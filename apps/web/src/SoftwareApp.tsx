@@ -1150,7 +1150,7 @@ export function SoftwareApp() {
         )}
 
         {view === "orbita" && (
-          <OrbitaReview material={selected} onCreateMaterial={() => setView("create")} />
+          <OrbitaReview material={selected} suppressVisualOrb onCreateMaterial={() => setView("create")} />
         )}
 
         {view === "review" && (
