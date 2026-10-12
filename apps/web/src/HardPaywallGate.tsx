@@ -35,10 +35,10 @@ export function HardPaywallGate() {
   const [annual, setAnnual] = useState(true);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
-  const [activeAccess, setActiveAccess] = useState<Access | null>(null);
+  const [, setActiveAccess] = useState<Access | null>(null);
 
   const refresh = useCallback(async () => {
-    setStage((current) => current === "granted" ? current : "checking");
+    setStage("checking");
     const session = readInstantAccountSession();
     try {
       const response = await fetch("/api/study", {
@@ -82,14 +82,26 @@ export function HardPaywallGate() {
   }, [refresh]);
 
   useEffect(() => {
+    if (stage !== "granted") return;
     const revalidate = () => {
-      if (document.visibilityState === "visible" && stage === "granted" && activeAccess?.enabled) {
-        void refresh();
-      }
+      if (document.visibilityState === "visible") void refresh();
+    };
+    const sessionChanged = (event: StorageEvent) => {
+      if (event.key === "instant.account.session" || event.key === null) void refresh();
     };
     document.addEventListener("visibilitychange", revalidate);
-    return () => document.removeEventListener("visibilitychange", revalidate);
-  }, [stage, activeAccess?.enabled, refresh]);
+    window.addEventListener("focus", revalidate);
+    window.addEventListener("storage", sessionChanged);
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, 5 * 60 * 1000);
+    return () => {
+      document.removeEventListener("visibilitychange", revalidate);
+      window.removeEventListener("focus", revalidate);
+      window.removeEventListener("storage", sessionChanged);
+      window.clearInterval(interval);
+    };
+  }, [stage, refresh]);
 
   const beginCheckout = async () => {
     if (checkoutBusy) return;
