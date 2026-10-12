@@ -180,6 +180,54 @@ export type StudyRoom = {
   }>;
 };
 
+/** Offer-aligned agentic study plan persisted in Neon, not browser storage. */
+export type OfferStepCapability =
+  | "guide" | "flashcards" | "ask" | "learn" | "test"
+  | "review" | "audio" | "game" | "friends";
+export type OfferAgentPlan = {
+  id: string;
+  learnerId: string;
+  materialId: string;
+  materialTitle: string;
+  goal: string;
+  deadline?: string;
+  status: "active" | "completed";
+  steps: Array<{
+    id: string;
+    capability: OfferStepCapability;
+    label: string;
+    purpose: string;
+    status: "pending" | "completed";
+    completion?: { kind: "acknowledgement" | "graded-session"; at: string; studySessionId?: string };
+  }>;
+  createdAt: string;
+  updatedAt: string;
+};
+export type OfferAgentPlanView = {
+  plan: OfferAgentPlan | null;
+  recommendation: {
+    next: OfferAgentPlan["steps"][number] | null;
+    reason: string;
+  } | null;
+};
+export async function createOfferAgentPlan(materialId: string, goal: string, deadline?: string) {
+  return await request(identified({
+    action: "agent_plan_create", materialId, goal, deadline,
+  })) as OfferAgentPlanView;
+}
+export async function getOfferAgentPlan(materialId: string) {
+  return await request(identified({
+    action: "agent_plan_get", materialId,
+  })) as OfferAgentPlanView;
+}
+export async function completeOfferAgentStep(
+  materialId: string, planId: string, stepId: string, studySessionId?: string,
+) {
+  return await request(identified({
+    action: "agent_plan_complete", materialId, planId, stepId, studySessionId,
+  })) as OfferAgentPlanView;
+}
+
 export type DueReview = {
   sessionId: string;
   title: string;
