@@ -208,9 +208,9 @@ export function extractiveAnswer(contentText: string, question: string): AskResu
     .slice(0,3)
     .filter((item) => item.score > 0);
 
-  const highlights = ranked.length
-    ? ranked.map((item)=>item.sentence)
-    : sentences(contentText).slice(0,2);
+  // Do not cite arbitrary opening sentences when the question has no
+  // source match. That would misleadingly present unrelated text as an answer.
+  const highlights = ranked.map((item) => item.sentence);
   const bestScore = ranked[0]?.score ?? 0;
   const confidence = query.size
     ? clamp(bestScore / Math.min(query.size, 6))
