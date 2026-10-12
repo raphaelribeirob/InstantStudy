@@ -26,6 +26,8 @@ jobs:
         run: npm run audit:database
       - name: Validate Quizlet parity inventory (not release certification)
         run: npm run audit:parity
+      - name: Verify shared motion design and reduced-motion coverage
+        run: npm run audit:motion
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
