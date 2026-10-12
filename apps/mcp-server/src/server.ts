@@ -16,6 +16,7 @@ import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
 import { generateStudyAssets } from "./studyAssets.js";
 import { generatePedagogicalStudyAssets } from "./studyAssetIntelligence.js";
+import { textProviderOrder } from "./freeLlmRouter.js";
 import { materialStore } from "./materialStore.js";
 import { consumeRealtimeVoiceStart } from "./realtimeQuota.js";
 import { storeAudioChunk, loadAudioUpload, discardAudioUpload } from "./largeAudioUpload.js";
@@ -1715,9 +1716,21 @@ app.get("/health", (_req, res) => {
       docx: true,
       pptx: true,
       text: true,
-      audioTranscription: Boolean(process.env.OPENAI_API_KEY),
-      imageTranscription: Boolean(process.env.OPENAI_API_KEY),
+      audioTranscription: Boolean(
+        (process.env.INSTANTSTUDY_FREE_AUDIO_ENABLED === "true" && process.env.GROQ_API_KEY) ||
+        (process.env.INSTANTSTUDY_ALLOW_PAID_AUDIO_FALLBACK === "true" && process.env.OPENAI_API_KEY)
+      ),
+      imageTranscription: Boolean(
+        (process.env.INSTANTSTUDY_FREE_VISION_ENABLED === "true" && process.env.GEMINI_API_KEY) ||
+        (process.env.INSTANTSTUDY_ALLOW_PAID_VISION_FALLBACK === "true" && process.env.OPENAI_API_KEY)
+      ),
       maxFileMb: 25,
+    },
+    inference: {
+      textProviders: textProviderOrder(),
+      freeFirst: process.env.INSTANTSTUDY_FREE_LLM_ENABLED === "true",
+      paidTextFallback: process.env.INSTANTSTUDY_ALLOW_PAID_LLM_FALLBACK === "true",
+      modelResponsesVerified: true,
     },
     entitlements: {
       enabled: true,
