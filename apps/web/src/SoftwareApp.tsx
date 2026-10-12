@@ -821,6 +821,11 @@ export function SoftwareApp() {
         <div className={"software-orbital-stage" + (view === "home" ? " software-orbital-home" : " software-orbital-in-session")}>
           <div className="software-orbital-hub">
             <OrbitaSystem focused={view !== "home"} materials={library} selected={selected}
+              gradedSession={summary?.sessionId && session?.mode ? {
+                sessionId: summary.sessionId,
+                mode: session.mode,
+                title: session.title || selected?.title || "",
+              } : undefined}
               onAction={openOrbitalAction} onSelectMaterial={openMaterial} />
           </div>
           <div className="software-orbital-workspace" id="orbital-focus-content" aria-label={i18n.language.startsWith("pt") ? "Ferramenta orbital ativa" : "Active orbital learning tool"}>
