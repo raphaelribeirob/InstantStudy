@@ -88,7 +88,7 @@ test("E2E Hardwall: no account -> denied; checkout binds account; paid study -> 
       return jsonResult(200,{studySessionId:"session-mock",mode:"learn",next:{question:{prompt:"Recall photosynthesis"}}});
     }
     if (address.hostname==="study-api.test" &&
-      ["/api/v1/study/evaluate","/api/v1/study/next","/api/v1/study/finish","/api/v1/ask"].includes(address.pathname)) {
+      ["/api/v1/study/evaluate","/api/v1/study/next","/api/v1/study/finish","/api/v1/ask","/api/v1/materials/duplicate"].includes(address.pathname)) {
       upstreamCalls++;
       const stamp=options.headers["x-instantstudy-timestamp"];
       const proof=options.headers["x-instantstudy-signature"];
@@ -98,6 +98,10 @@ test("E2E Hardwall: no account -> denied; checkout binds account; paid study -> 
       const payload=JSON.parse(options.body);
       if (address.pathname!=="/api/v1/ask") assert.equal(payload.learnerId,identity.accountUserId);
       if (address.pathname==="/api/v1/ask") return jsonResult(200,{answer:"Chloroplasts capture light energy."});
+      if (address.pathname==="/api/v1/materials/duplicate") {
+        assert.equal(payload.id,"2eacde46-050a-4546-8e80-e69826667210");
+        return jsonResult(200,{material:{id:"new-copy",title:"Biology (copy)"}});
+      }
       if (address.pathname==="/api/v1/study/evaluate") return jsonResult(200,{grade:{feedback:"Correct"},next:null});
       if (address.pathname==="/api/v1/study/finish") return jsonResult(200,{completed:true});
       return jsonResult(200,{done:false,question:{prompt:"Next question"}});
@@ -135,22 +139,30 @@ test("E2E Hardwall: no account -> denied; checkout binds account; paid study -> 
     {...identity,action:"next",studySessionId:"session-mock"},
     {...identity,action:"finish",studySessionId:"session-mock"},
     {...identity,action:"ask",contentText:studyBody.contentText,question:"Where is light captured?"},
+    {...identity,action:"material_duplicate",materialId:"2eacde46-050a-4546-8e80-e69826667210"},
   ]) {
     response=collector();
     await study(req(payload),response);
     assert.equal(response.code,200);
   }
-  assert.equal(upstreamCalls,5);
+  assert.equal(upstreamCalls,6);
+
+  // Unpaid or spoofed identities cannot duplicate someone else's material.
+  response=collector();
+  await study(req({...identity,accountUserId:"different-account",action:"material_duplicate",
+    materialId:"2eacde46-050a-4546-8e80-e69826667210"}),response);
+  assert.equal(response.code,401);
+  assert.equal(upstreamCalls,6);
 
   phase="canceled";
   response=collector();
   await study(req(studyBody),response);
   assert.equal(response.code,402);
-  assert.equal(upstreamCalls,5);
+  assert.equal(upstreamCalls,6);
 
   phase="expired";
   response=collector();
   await study(req(studyBody),response);
   assert.equal(response.code,402);
-  assert.equal(upstreamCalls,5);
+  assert.equal(upstreamCalls,6);
 });
