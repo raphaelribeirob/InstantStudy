@@ -22,6 +22,7 @@ import { generateStudyAssets } from "./studyAssets.js";
 import { generatePedagogicalStudyAssets } from "./studyAssetIntelligence.js";
 import { textProviderOrder } from "./freeLlmRouter.js";
 import { materialStore } from "./materialStore.js";
+import { flashcardProgressStore } from "./flashcardProgress.js";
 import { createOfferPlanStore, offerPlanStatus, GRADED_CAPABILITIES } from "./offerAgent.js";
 import { consumeRealtimeVoiceStart } from "./realtimeQuota.js";
 import { storeAudioChunk, loadAudioUpload, discardAudioUpload } from "./largeAudioUpload.js";
@@ -1030,6 +1031,37 @@ app.post("/api/v1/materials/get", async (req, res) => {
   }
 });
 
+
+/** Learner-owned flashcard progress is persisted in Neon and never shared between accounts. */
+app.post("/api/v1/flashcards/progress", async (req, res) => {
+  try {
+    const input = z.object({
+      learnerId: z.string().min(3).max(200),
+      materialId: z.string().uuid(),
+    }).strict().parse(req.body ?? {});
+    const owned = await materialStore.get(input.learnerId, input.materialId);
+    if (!owned) { res.status(404).json({ error: "material_not_found" }); return; }
+    const saved = await flashcardProgressStore.list(input.learnerId, input.materialId);
+    const ids = new Set(owned.assets.flashcards.map(card => card.id));
+    res.json({ progress: saved.filter(row => ids.has(row.cardId)) });
+  } catch (error) { sendApiError(res, error); }
+});
+app.post("/api/v1/flashcards/mark", async (req, res) => {
+  try {
+    const input = z.object({
+      learnerId: z.string().min(3).max(200),
+      materialId: z.string().uuid(),
+      cardId: z.string().min(1).max(100),
+      status: z.enum(["known", "learning"]),
+    }).strict().parse(req.body ?? {});
+    const owned = await materialStore.get(input.learnerId, input.materialId);
+    if (!owned || !owned.assets.flashcards.some(card => card.id === input.cardId)) {
+      res.status(404).json({ error: "flashcard_not_found" }); return;
+    }
+    await flashcardProgressStore.mark(input.learnerId, input.materialId, input.cardId, input.status);
+    res.json({ cardId: input.cardId, status: input.status });
+  } catch (error) { sendApiError(res, error); }
+});
 
 /** Clone only the authenticated learner's saved set; preserve the exact authored cards. */
 app.post("/api/v1/materials/duplicate", async (req, res) => {
