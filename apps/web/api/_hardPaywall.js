@@ -20,7 +20,7 @@ export function signedUpstreamHeaders(method, path, bodyText = "") {
   if (!secret) throw new Error("hard_paywall_signing_not_configured");
   const timestamp = Date.now().toString();
   const signature = createHmac("sha256", secret)
-    .update(`${timestamp}\\n${method.toUpperCase()}\\n${path}\\n${bodyText}`)
+    .update(`${timestamp}\n${method.toUpperCase()}\n${path}\n${bodyText}`)
     .digest("hex");
   return {
     "x-instantstudy-timestamp": timestamp,
