@@ -11,6 +11,7 @@ import { AdaptyClient } from "./adapty.js";
 import { readFileSync } from "node:fs";
 import { ContentSessionStore } from "./contentSessions.js";
 import { StudyEngine } from "./studyEngine.js";
+import { correctChoiceForQuestion } from "./questionGenerator.js";
 import { hardPaywallServiceEnabled, isSignedBffRequest } from "./hardPaywallSignature.js";
 import { ingestFiles } from "./ingest.js";
 import { studyEntitlements, UsageLimitError } from "./entitlements.js";
@@ -1522,7 +1523,20 @@ app.post("/api/v1/study/evaluate", async (req, res) => {
       ? gradeObjectiveChoice({
           choices: active.question.choices ?? [],
           userAnswer: normalizedAnswer,
-          expectedValue: concept.sourceExcerpt,
+          expectedValue: correctChoiceForQuestion({
+            type: active.questionPolicy.type,
+            concept: {
+              label: concept.label,
+              sourceExcerpt: concept.sourceExcerpt,
+              studyPrompt: concept.studyPrompt,
+            },
+            alternatives: session.concepts
+              .filter((item) => item.id !== concept.id)
+              .map((item) => ({ label: item.label, sourceExcerpt: item.sourceExcerpt })),
+            questionIndex: session.questionIndex,
+            difficulty: concept.difficulty,
+            testDifficulty: session.testConfig?.difficulty,
+          }) ?? "",
           conceptLabel: concept.label,
         })
       : await gradeStudyAnswer({
