@@ -251,7 +251,7 @@ export async function prepareStudy(input: {
   maxQuestions?: number;
   testDurationMinutes?: number;
   testQuestionTypes?: TestQuestionType[];
-  concepts?: Array<{ label: string; sourceExcerpt?: string }>;
+  concepts?: Array<{ label: string; sourceExcerpt?: string; studyPrompt?: string }>;
 }) {
   try {
     return (await request(
