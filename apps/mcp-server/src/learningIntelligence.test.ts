@@ -79,3 +79,13 @@ test("grounded Ask follow-ups remain extractive when their source is sufficient"
   assert.match(answer.answer, /Mitochondria generate ATP/i);
   assert.doesNotMatch(answer.answer, /invented claim/i);
 });
+
+test("Ask never passes unrelated opening sentences off as factual evidence", () => {
+  const response = extractiveAnswer(
+    "Mitochondria generate ATP through cellular respiration. Ribosomes synthesize proteins from messenger RNA.",
+    "Who won the championship?",
+  );
+  assert.equal(response.sourceHighlights.length, 0);
+  assert.match(response.answer, /could not find enough information/i);
+  assert.equal(response.confidence, 0);
+});
