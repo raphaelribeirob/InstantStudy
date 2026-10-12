@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'i18n.dart';
 import 'instantstudy_api.dart';
 import 'orbital_home.dart';
+import 'native_hard_paywall.dart';
 import 'study_splash_intro.dart';
 
 void main() {
@@ -115,6 +116,11 @@ class _StartupGate extends StatefulWidget {
 }
 
 class _StartupGateState extends State<_StartupGate> {
+  // Never enable before verified StoreKit / Play Billing and restoration exist.
+  static const _nativePaywallEnabled = bool.fromEnvironment(
+    'INSTANTSTUDY_NATIVE_HARD_PAYWALL_ENABLED',
+    defaultValue: false,
+  );
   bool _opening = true;
 
   @override
@@ -124,7 +130,9 @@ class _StartupGateState extends State<_StartupGate> {
         excluding: _opening,
         child: AbsorbPointer(
           absorbing: _opening,
-          child: StudyHome(onLocaleChanged: widget.onLocaleChanged),
+          child: _nativePaywallEnabled
+            ? const NativeHardPaywall()
+            : StudyHome(onLocaleChanged: widget.onLocaleChanged),
         ),
       ),
       if (_opening)

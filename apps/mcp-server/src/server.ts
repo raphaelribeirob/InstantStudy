@@ -11,6 +11,7 @@ import { AdaptyClient } from "./adapty.js";
 import { readFileSync } from "node:fs";
 import { ContentSessionStore } from "./contentSessions.js";
 import { StudyEngine } from "./studyEngine.js";
+import { hardPaywallServiceEnabled, isSignedBffRequest } from "./hardPaywallSignature.js";
 import { ingestFiles } from "./ingest.js";
 import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
@@ -797,6 +798,16 @@ function requireApiAuth(
 
   if (!apiAuthorized(req)) {
     res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  if (hardPaywallServiceEnabled() && !isSignedBffRequest({
+    method: req.method,
+    path: req.originalUrl,
+    body: req.body,
+    timestamp: req.header("x-instantstudy-timestamp"),
+    signature: req.header("x-instantstudy-signature"),
+  })) {
+    res.status(403).json({ error: "signed_paid_access_required" });
     return;
   }
   next();
@@ -1944,6 +1955,16 @@ app.post("/bridge/result", (req, res) => {
 });
 
 app.all("/mcp", async (req, res) => {
+  // The shared bearer MCP cannot identify or bill individual students.
+  // Do not allow its use as a bypass while hard-paywall policy is active.
+  if (hardPaywallServiceEnabled()) {
+    res.status(503).json({
+      jsonrpc: "2.0",
+      error: { code: -32002, message: "Per-user OAuth required for MCP paid access" },
+      id: null,
+    });
+    return;
+  }
   if (!mcpAuthorized(req)) {
     res.setHeader("WWW-Authenticate", 'Bearer realm="InstantStudy MCP"');
     res.status(401).json({
