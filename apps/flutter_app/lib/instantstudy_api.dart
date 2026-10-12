@@ -23,9 +23,12 @@ class InstantStudyApi {
 
       final response = await request.close().timeout(const Duration(seconds: 45));
       final text = await utf8.decoder.bind(response).join();
-      final body = text.isEmpty
-          ? <String, dynamic>{}
-          : (jsonDecode(text) as Map<String, dynamic>);
+      final decoded = text.isEmpty ? <String, dynamic>{} : jsonDecode(text);
+      final body = decoded is Map<String, dynamic>
+          ? decoded
+          : decoded is List
+              ? <String, dynamic>{'items': decoded}
+              : <String, dynamic>{'error': 'invalid_response'};
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw InstantStudyApiException(
