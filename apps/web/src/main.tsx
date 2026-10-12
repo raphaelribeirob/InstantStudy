@@ -1,7 +1,7 @@
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
-import { SoftwareApp } from "./SoftwareApp";
+import { HardPaywallGate } from "./HardPaywallGate";
 import { StudySplashIntro } from "./StudySplashIntro";
 import "./i18n";
 import "./styles.css";
@@ -15,7 +15,7 @@ function ProductApp() {
   return (
     <>
       <div inert={opening} aria-hidden={opening}>
-        <SoftwareApp />
+        <HardPaywallGate />
       </div>
       {opening && <StudySplashIntro onComplete={() => setOpening(false)} />}
     </>
