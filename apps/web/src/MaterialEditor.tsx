@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { duplicateStudyMaterial, updateStudyMaterial, type StudyAssets, type StudyMaterial } from "./study";
+import { parseFlashcardCsv } from "./flashcardCsv";
 import "./material-editor.css";
 
 /** Quizlet-style editable cards and study guides, persisted through the owner-scoped API. */
@@ -65,6 +66,24 @@ export function MaterialEditor({material,onSaved,onDuplicated}:{material:StudyMa
       setError(error instanceof Error ? error.message : "Could not duplicate this material.");
     } finally { setBusy(false); }
   };
+  const importCards = async (file?: File) => {
+    if (!file) return;
+    if (busy) return;
+    setError("");
+    try {
+      if (file.size > 1_000_000) throw new Error("flashcards_csv_too_large");
+      const parsed = parseFlashcardCsv(await file.text());
+      if (cards.length + parsed.length > 100) throw new Error("flashcards_csv_max_100");
+      setCards(current => [...current, ...parsed.map(card => ({
+        id: `user-${crypto.randomUUID()}`,
+        ...card,
+        sourceExcerpt: card.back.slice(0, 2000),
+      }))]);
+      setOpen(true);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not import CSV.");
+    }
+  };
   const exportCards = () => {
     const protect = (value: string) => {
       const safe = /^[\s]*[=+\-@]/.test(value) ? "'" + value : value;
@@ -99,6 +118,15 @@ export function MaterialEditor({material,onSaved,onDuplicated}:{material:StudyMa
       <label>{pt?"Resumo":"Summary"}<textarea rows={4} maxLength={12000} value={summary} onChange={e=>setSummary(e.target.value)}/></label>
       <label>{pt?"Tópicos (um por linha)":"Outline (one per line)"}<textarea rows={5} value={outline} onChange={e=>setOutline(e.target.value)}/></label>
       <h3>{pt?"Cartões":"Flashcards"}</h3>
+      <label>
+        {pt?"Importar cartões CSV (adiciona ao material)":"Import flashcards CSV (appends to this set)"}
+        <input type="file" accept=".csv,text/csv" disabled={busy}
+          onChange={event => {
+            const file = event.currentTarget.files?.[0];
+            event.currentTarget.value = "";
+            void importCards(file);
+          }} />
+      </label>
       {cards.map((card,index)=><article key={card.id} className="is-edit-card">
         <strong>{pt?"Cartão":"Card"} {index+1}</strong>
         <label>{pt?"Conceito":"Concept"}<input maxLength={200} value={card.concept} onChange={e=>change(index,"concept",e.target.value)}/></label>
