@@ -396,8 +396,8 @@ function Pricing() {
         <p className="eyebrow">{t("landing.pricingKicker")}</p>
         <h2>{t("landing.pricingTitle")}</h2>
         <p>
-          The free experience gets you into the learning loop. Plus increases
-          your monthly study allowance. Unlimited removes the core Learn and Test caps.
+          Every study mode requires a verified subscription. Choose an individual
+          or Family plan to unlock the learning system.
         </p>
       </div>
 
@@ -406,31 +406,16 @@ function Pricing() {
           {t("landing.monthly")}
         </button>
         <button type="button" className={annual ? "active" : ""} onClick={() => setAnnual(true)}>
-          {t("landing.annual")} <span>{t("landing.trial7")}</span>
+          {t("landing.annual")}
         </button>
       </div>
 
       <div className="pricing-grid quizlet-pricing-grid">
-        <article className="pricing-card free-card">
-          <div>
-            <span className="plan-name">{t("landing.free")}</span>
-            <h3>$0</h3>
-            <p>Start with your own material and experience the study loop.</p>
-          </div>
-          <ul>
-            <li><Check size={16} /> Generate study sessions from your material</li>
-            <li><Check size={16} /> Limited Learn and Quiz rounds</li>
-            <li><Check size={16} /> Test preview before upgrade</li>
-            <li><Check size={16} /> Basic mastery state</li>
-          </ul>
-          <a className="plan-button secondary-plan" href="#generator">Start free</a>
-        </article>
-
         <article className="pricing-card plus-card">
           <div>
             <span className="plan-name">{t("landing.plus")}</span>
             <h3>{annual ? annualPlusEquivalent : plusMonthly}</h3>
-            <p>{annual ? `Billed at ${plusAnnual} · 7-day free trial.` : "Cancel anytime."}</p>
+            <p>{annual ? `Billed at ${plusAnnual}.` : "Cancel anytime."}</p>
           </div>
           <ul>
             <li><Check size={16} /> 20 Learn rounds per month</li>
@@ -451,7 +436,7 @@ function Pricing() {
               });
             }}
           >
-            {annual ? "Start free trial" : "Choose Plus"}
+            {"Choose Plus"}
           </a>
         </article>
 
@@ -460,7 +445,7 @@ function Pricing() {
           <div>
             <span className="plan-name">{t("landing.unlimited")}</span>
             <h3>{annual ? annualUnlimitedEquivalent : unlimitedMonthly}</h3>
-            <p>{annual ? `Billed at ${unlimitedAnnual} · ${offer?.trial ?? "7 days free"}.` : "Cancel anytime."}</p>
+            <p>{annual ? `Billed at ${unlimitedAnnual}${offer?.trial ? ` · ${offer.trial}` : ""}.` : "Cancel anytime."}</p>
           </div>
           <ul>
             <li><Check size={16} /> Unlimited Learn rounds</li>
@@ -486,7 +471,7 @@ function Pricing() {
               });
             }}
           >
-            {annual ? (offer?.cta ?? "Start 7-day free trial") : "Go Unlimited"}
+            {offer?.cta || "Choose Unlimited"}
             <ArrowRight size={16} />
           </a>
         </article>
@@ -520,8 +505,8 @@ function Pricing() {
       </div>
 
       <p className="pricing-disclosure">
-        Plus/Unlimited limits are the intended offer ladder. Billing and entitlement enforcement
-        activate when production checkout is connected.
+        Study features require an active, server-verified entitlement. Subscription
+        availability, trial terms and billing are determined by the checkout provider.
       </p>
     </section>
   );
@@ -666,8 +651,8 @@ export function App() {
             <span><Check size={15} /> Final score + weak concepts</span>
           </div>
           <div className="free-round-note">
-            <strong>Try Test before upgrading.</strong>
-            <span>Free access proves the loop; paid plans remove study limits.</span>
+            <strong>Practice Tests are included in the subscription.</strong>
+            <span>Sign in and activate a valid plan before studying.</span>
           </div>
         </div>
         <TestPreview />
@@ -719,8 +704,8 @@ export function App() {
           <h2>Learn once. Keep it longer.</h2>
           <p>The future of learning is adaptive, continuous and already inside your AI.</p>
         </div>
-        <a href="/app">
-          Start studying free <ArrowRight size={17} />
+        <a href="#pricing">
+          Choose a study plan <ArrowRight size={17} />
         </a>
       </section>
 
