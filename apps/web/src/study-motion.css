@@ -1,0 +1,76 @@
+/*
+ * InstantStudy Motion — original design adaptation inspired by ElevenLabs UI.
+ * One restrained choreography across public landing, paywall, workspace, cards.
+ * Never tint UI with orb colors; never animate answers or consent decisions.
+ */
+:root{
+  --is-motion-fast:160ms;
+  --is-motion-standard:240ms;
+  --is-motion-deliberate:340ms;
+  --is-motion-ease:cubic-bezier(.22,1,.36,1);
+}
+.study-motion-view,.study-motion-panel{min-width:0;width:100%}
+.study-motion-view{isolation:isolate}
+.study-motion-reveal{min-width:0}
+:where(.software-orbital-shell,.study-paywall,.is-edit-container,#top) :where(
+  button,a,[role="button"],.software-nav-item,.software-library-list>button
+){
+  transition-property:background-color,border-color,color,box-shadow,opacity;
+  transition-duration:var(--is-motion-fast);
+  transition-timing-function:var(--is-motion-ease);
+}
+@media(hover:hover) and (pointer:fine){
+  :where(.software-orbital-shell,.study-paywall,.is-edit-container,#top)
+    :where(button,a,[role="button"]):not(:disabled):not([aria-disabled="true"]):hover{
+    filter:brightness(.96);
+  }
+  :where(.software-library-list>button,.mode-cards>article,.pricing-card,.software-output-preview>div,.software-flashcard-item)
+    {transition:box-shadow var(--is-motion-standard) var(--is-motion-ease),border-color var(--is-motion-standard) var(--is-motion-ease),transform var(--is-motion-standard) var(--is-motion-ease)}
+  :where(.software-library-list>button,.mode-cards>article,.pricing-card,.software-output-preview>div,.software-flashcard-item):hover{
+    transform:translateY(-2px);
+  }
+}
+:where(.software-orbital-shell,.study-paywall,#top) button:active:not(:disabled){
+  opacity:.82;
+}
+:where(.software-orbital-shell,.study-paywall,#top) :where(button,a):disabled{
+  filter:none;cursor:not-allowed;
+}
+/* Animate only the selected tab indicator; preserve simple native controls. */
+.software-orbital-shell :where(.software-nav-item,.software-mode-switch button,.software-import-tabs button,
+  .software-test-types button,.software-orbital-context-nav button){
+  transition:background-color var(--is-motion-standard) var(--is-motion-ease),
+    color var(--is-motion-standard) var(--is-motion-ease),
+    border-color var(--is-motion-standard) var(--is-motion-ease);
+}
+/* Fast feedback should be quiet, not a permanent loading shimmer. */
+.software-loading,.software-feedback,.software-ask-answer,.software-test-result,
+.software-game-status,.orbita-feedback,.orbita-error,.study-paywall__alert{
+  animation:is-study-soft-appear var(--is-motion-standard) var(--is-motion-ease) both;
+}
+@keyframes is-study-soft-appear{
+  from{opacity:.25;translate:0 5px}
+  to{opacity:1;translate:0 0}
+}
+/* Status only: subtle processing signal, never on long reading tasks. */
+:where(.software-orbital-shell,.study-paywall) [aria-busy="true"]{
+  cursor:progress;
+}
+:where(.software-orbital-shell,.study-paywall) :where(input,textarea,select){
+  transition:border-color var(--is-motion-fast) var(--is-motion-ease),
+    box-shadow var(--is-motion-fast) var(--is-motion-ease);
+}
+@media(prefers-reduced-motion:reduce){
+  :root{--is-motion-fast:0ms;--is-motion-standard:0ms;--is-motion-deliberate:0ms}
+  .study-motion-view,.study-motion-panel,.study-motion-reveal,
+  .software-loading,.software-feedback,.software-ask-answer,.software-test-result,
+  .software-game-status,.orbita-feedback,.orbita-error,.study-paywall__alert{
+    animation:none!important;transition:none!important;
+  }
+  :where(.software-orbital-shell,.study-paywall,.is-edit-container,#top) *{
+    scroll-behavior:auto!important;
+  }
+  :where(.software-library-list>button,.mode-cards>article,.pricing-card,.software-output-preview>div,.software-flashcard-item):hover{
+    transform:none!important;
+  }
+}

@@ -1,4 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "motion/react";
+import { StudyViewTransition } from "./StudyMotion";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import {
@@ -942,6 +944,7 @@ export function SoftwareApp() {
               onAction={openOrbitalAction} onSelectMaterial={openMaterial} />
           </div>
           <div className="software-orbital-workspace" id="orbital-focus-content" aria-label={i18n.language.startsWith("pt") ? "Ferramenta orbital ativa" : "Active orbital learning tool"}>
+        <StudyViewTransition view={view}>
         {view === "library" && (
           <section className="software-page">
             <div className="software-title-row"><div><p>{t("software.yourMaterial")}</p><h1>{t("software.titleLibrary")}</h1></div><button onClick={() => setView("create")}>{t("common.create")}</button></div>
@@ -1133,7 +1136,10 @@ export function SoftwareApp() {
                     <div className="software-flashcards">
                       {orderedCards.map(card => (
                         <div key={card.id} className="software-flashcard-item">
-                          <article role="button" tabIndex={0}
+                          <motion.article role="button" tabIndex={0}
+                            whileTap={{ scale: 0.985 }}
+                            animate={{ scale: flippedCard === card.id ? 1.01 : 1 }}
+                            transition={{ duration: 0.16 }}
                             aria-label={i18n.language.startsWith("pt") ? "Virar cartão" : "Flip card"}
                             onClick={() => setFlippedCard(flippedCard === card.id ? null : card.id)}
                             onKeyDown={event => {
@@ -1144,7 +1150,7 @@ export function SoftwareApp() {
                             }}>
                             <span>{flippedCard === card.id ? card.concept : card.front}</span>
                             <p>{flippedCard === card.id ? card.back : t("software.clickReveal")}</p>
-                          </article>
+                          </motion.article>
                           <div className="software-flashcard-status">
                             <button type="button" aria-pressed={flashcardProgress[card.id] === "known"}
                               disabled={Boolean(flashcardBusy)} onClick={() => void markCard(card.id, "known")}>
@@ -1239,7 +1245,12 @@ export function SoftwareApp() {
                           <span className="software-question-type">
                             {t("software.questionProgress", { current: session.next.questionIndex ?? "–", total: session.next.totalPlanned ?? "–" })} · {session.next.questionPolicy?.type || "adaptive"}
                           </span>
-                          <h2>{session.next.question?.prompt || session.next.concept.label}</h2>
+                          <motion.h2
+                            key={`${session.studySessionId ?? "study"}:${session.next.questionIndex ?? 0}`}
+                            initial={{ opacity: 0.4, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.24 }}
+                          >{session.next.question?.prompt || session.next.concept.label}</motion.h2>
                           {feedback ? <div className="software-feedback">{feedback}</div> : null}
 
                           {session.next.question?.choices?.length ? (
@@ -1291,12 +1302,18 @@ export function SoftwareApp() {
                     {askHistory.length > 0 ? (
                       <div className="software-ask-thread" aria-live="polite">
                         {askHistory.map((turn, index) => (
-                          <div key={index} className={turn.role === "user" ? "software-ask-answer user" : "software-ask-answer"}>
+                          <motion.div
+                            key={index}
+                            className={turn.role === "user" ? "software-ask-answer user" : "software-ask-answer"}
+                            initial={{ opacity: 0, y: 7 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.24 }}
+                          >
                             <span>{turn.role === "user"
                               ? (i18n.language.startsWith("pt") ? "VOCÊ" : "YOU")
                               : "INSTANTSTUDY"}</span>
                             <p>{turn.content}</p>
-                          </div>
+                          </motion.div>
                         ))}
                         <button onClick={() => { setView("learn"); void startMode("learn"); }}>{t("software.quizMe")}</button>
                         <button disabled={askSaveBusy || askBusy} onClick={() => void saveAskAsStudySet()}>
@@ -1481,15 +1498,18 @@ export function SoftwareApp() {
                     const matched = gameMatchedPairs.includes(card.pairId);
                     const open = matched || gameOpenIds.includes(card.id);
                     return (
-                      <button
+                      <motion.button
                         key={card.id}
                         className={matched ? "matched" : open ? "open" : ""}
                         disabled={matched || gameLocked}
+                        whileTap={{ scale: 0.97 }}
+                        animate={{ opacity: matched ? 0.72 : 1, scale: open && !matched ? 1.015 : 1 }}
+                        transition={{ duration: 0.16 }}
                         onClick={() => chooseGameCard(card.id)}
                       >
                         <span>{open ? (card.kind === "prompt" ? t("software.questionCard") : t("software.answerCard")) : t("software.recall")}</span>
                         <strong>{open ? card.text : t("software.reveal")}</strong>
-                      </button>
+                      </motion.button>
                     );
                   })}
                 </div>
@@ -1616,6 +1636,7 @@ export function SoftwareApp() {
             </div>
           </section>
         )}
+        </StudyViewTransition>
           </div>
         </div>
       </main>

@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { motion } from "motion/react";
+import { StudyReveal } from "./StudyMotion";
 import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
@@ -566,12 +568,16 @@ export function App() {
           <span>{t("landing.adaptivePersistent")}</span>
         </div>
 
-        <div className="future-title" aria-label="The future of learning">
+        <motion.div className="future-title" aria-label="The future of learning"
+          initial={{ opacity: 0, y: 11 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.42 }}>
           <span>{t("landing.futureLine1")}</span>
           <span>{t("landing.futureLine2")}</span>
-        </div>
+        </motion.div>
 
-        <div className="future-intro">
+        <motion.div className="future-intro"
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.42, delay: 0.10 }}>
           <p>
             Your AI already knows how to explain. InstantStudy™ adds the system
             that makes learning stick: adaptive practice, exam rehearsal,
@@ -583,17 +589,20 @@ export function App() {
             </a>
             <a className="hero-secondary" href="#demo">{t("landing.experienceLoop")}</a>
           </div>
-        </div>
+        </motion.div>
 
         <StudyGenerator />
         <HeroProduct />
       </section>
 
+      <StudyReveal className="study-motion-reveal">
       <section className="trust-strip future-strip">
         <span>{t("landing.oneSystem")}</span>
         <strong>ChatGPT</strong><strong>Claude</strong><strong>Cursor</strong><strong>Codex</strong><strong>Study Rooms</strong><strong>Any MCP agent</strong>
       </section>
+      </StudyReveal>
 
+      <StudyReveal className="study-motion-reveal">
       <section className="feature-band learn-band" id="learn">
         <div className="feature-copy">
           <p className="eyebrow">Adaptive Learn</p>
@@ -613,7 +622,9 @@ export function App() {
         </div>
         <AdaptiveLearnPreview />
       </section>
+      </StudyReveal>
 
+      <StudyReveal className="study-motion-reveal">
       <section className="section tools-section" id="tools">
         <div className="section-heading wide-heading">
           <p className="eyebrow">A new learning architecture</p>
@@ -636,7 +647,9 @@ export function App() {
           ))}
         </div>
       </section>
+      </StudyReveal>
 
+      <StudyReveal className="study-motion-reveal">
       <section className="feature-band test-band" id="test">
         <div className="feature-copy">
           <p className="eyebrow light">Future-ready testing</p>
@@ -657,7 +670,9 @@ export function App() {
         </div>
         <TestPreview />
       </section>
+      </StudyReveal>
 
+      <StudyReveal className="study-motion-reveal">
       <section className="feature-band review-band" id="review">
         <RetentionPreview />
         <div className="feature-copy dark-copy">
@@ -674,7 +689,9 @@ export function App() {
           </div>
         </div>
       </section>
+      </StudyReveal>
 
+      <StudyReveal className="study-motion-reveal">
       <section className="section continuity-section">
         <div className="continuity-copy">
           <p className="eyebrow">A living knowledge state</p>
@@ -693,11 +710,13 @@ export function App() {
           </div>
         </div>
       </section>
+      </StudyReveal>
 
-      <ConnectAgent />
-      <Pricing />
-      <FAQ />
+      <StudyReveal className="study-motion-reveal"><ConnectAgent /></StudyReveal>
+      <StudyReveal className="study-motion-reveal"><Pricing /></StudyReveal>
+      <StudyReveal className="study-motion-reveal"><FAQ /></StudyReveal>
 
+      <StudyReveal className="study-motion-reveal">
       <section className="final-cta">
         <div>
           <p className="eyebrow light">InstantStudy™</p>
@@ -708,6 +727,7 @@ export function App() {
           Choose a study plan <ArrowRight size={17} />
         </a>
       </section>
+      </StudyReveal>
 
       <footer>
         <Logo />
