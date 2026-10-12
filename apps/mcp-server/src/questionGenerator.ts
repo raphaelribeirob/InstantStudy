@@ -13,6 +13,7 @@ export type GeneratedQuestion = {
 type ConceptLike = {
   label: string;
   sourceExcerpt: string;
+  studyPrompt?: string;
 };
 
 function clean(value: string) {
@@ -54,6 +55,7 @@ export function generateQuestion(input: {
   const concept = clean(input.concept.label);
   const source = clean(input.concept.sourceExcerpt);
   const index = Math.max(0, input.questionIndex ?? 0);
+  const authoredPrompt = clean(input.concept.studyPrompt || "");
 
   if (input.type === "multiple_choice") {
     const distractors = distinctAlternativeStatements(
@@ -111,7 +113,7 @@ export function generateQuestion(input: {
 
   if (input.type === "free_recall") {
     return {
-      prompt: `Without looking back, explain ${concept} in your own words and include the most important detail.`,
+      prompt: authoredPrompt || `Without looking back, explain ${concept} in your own words and include the most important detail.`, 
       answerMode: "text",
       generatedBy: "deterministic",
     };
@@ -126,7 +128,7 @@ export function generateQuestion(input: {
   }
 
   return {
-    prompt: `What is ${concept}, and what does the source say about it?`,
+    prompt: authoredPrompt || `What is ${concept}, and what does the source say about it?`, 
     answerMode: "text",
     generatedBy: "deterministic",
   };
