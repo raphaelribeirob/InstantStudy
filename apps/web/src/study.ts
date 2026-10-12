@@ -304,7 +304,6 @@ export async function prepareStudy(input: {
   testQuestionTypes?: TestQuestionType[];
   concepts?: Array<{ label: string; sourceExcerpt?: string; studyPrompt?: string }>;
 }) {
-  try {
     return (await request(
       identified({
         action: "prepare",
@@ -319,28 +318,6 @@ export async function prepareStudy(input: {
         concepts: input.concepts,
       }),
     )) as PreparedStudy;
-  } catch {
-    return {
-      title: input.title || "Study session",
-      mode: input.mode,
-      localFallback: true,
-      next: {
-        concept: {
-          label: "Adaptive engine unavailable",
-          sourceExcerpt: input.contentText.slice(0, 280),
-        },
-        question: {
-          prompt: "The secure adaptive engine is currently unavailable.",
-          answerMode: "text",
-          generatedBy: "local-fallback",
-        },
-        questionPolicy: {
-          type: input.mode === "test" ? "free_recall" : "adaptive",
-          instruction: "Reconnect to continue this study session.",
-        },
-      },
-    } satisfies PreparedStudy;
-  }
 }
 
 export async function submitStudyAnswer(input: {
