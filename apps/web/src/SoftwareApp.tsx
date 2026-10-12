@@ -804,10 +804,12 @@ export function SoftwareApp() {
           </div>
         )}
 
-        {view === "home" && (
-          <OrbitaSystem materials={library} selected={selected} onAction={openOrbitalAction} onSelectMaterial={openMaterial} />
-        )}
-
+        <div className={"software-orbital-stage" + (view === "home" ? " software-orbital-home" : " software-orbital-in-session")}>
+          <div className="software-orbital-hub">
+            <OrbitaSystem focused={view !== "home"} materials={library} selected={selected}
+              onAction={openOrbitalAction} onSelectMaterial={openMaterial} />
+          </div>
+          <div className="software-orbital-workspace" id="orbital-focus-content" aria-label={i18n.language.startsWith("pt") ? "Ferramenta orbital ativa" : "Active orbital learning tool"}>
         {view === "library" && (
           <section className="software-page">
             <div className="software-title-row"><div><p>{t("software.yourMaterial")}</p><h1>{t("software.titleLibrary")}</h1></div><button onClick={() => setView("create")}>{t("common.create")}</button></div>
@@ -1406,6 +1408,8 @@ export function SoftwareApp() {
             </div>
           </section>
         )}
+          </div>
+        </div>
       </main>
     </div>
   );
