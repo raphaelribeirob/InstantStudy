@@ -200,6 +200,7 @@ export default async function handler(req, res) {
     "material_list",
     "material_get",
     "material_update",
+    "material_duplicate",
     "insights",
     "audio_study",
     "study_game",
@@ -442,6 +443,12 @@ export default async function handler(req, res) {
         contentText: contentText || undefined,
         files,
       });
+    } else if (action === "material_duplicate") {
+      const learnerId = await verifiedLearner(body);
+      if (!learnerId || ANON_ID.test(learnerId)) return json(res, 401, { error: "learner_identity_required" });
+      const id = cleanId(body.materialId, 64);
+      if (!/^[a-f0-9-]{36}$/i.test(id)) return json(res, 400, { error: "material_id_invalid" });
+      result = await upstream(base, apiKey, "/api/v1/materials/duplicate", { learnerId, id });
     } else if (action === "material_update") {
       const learnerId = await verifiedLearner(body);
       if (!learnerId) return json(res, 401, { error: "learner_identity_required" });
