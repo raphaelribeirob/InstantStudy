@@ -367,6 +367,7 @@ export function SoftwareApp() {
     try {
       setSession(await prepareStudy({
         contentText: material.content,
+        materialId: material.id,
         title: material.title,
         mode,
         maxQuestions: mode === "test" ? testQuestions : 12,
@@ -517,6 +518,7 @@ export function SoftwareApp() {
     try {
       setSession(await prepareStudy({
         contentText: item.sourceExcerpt,
+        materialId: item.materialId,
         title: item.title,
         mode: "review",
         maxQuestions: 4,
