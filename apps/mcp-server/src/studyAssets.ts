@@ -3,6 +3,7 @@ export type StudyFlashcard = {
   front: string;
   back: string;
   concept: string;
+  sourceExcerpt?: string;
 };
 
 export type StudyAssets = {
@@ -10,7 +11,7 @@ export type StudyAssets = {
   outline: string[];
   keyConcepts: string[];
   flashcards: StudyFlashcard[];
-  generatedBy: "deterministic";
+  generatedBy: "deterministic" | "openai";
 };
 
 const STOPWORDS = new Set([
@@ -59,6 +60,8 @@ export function generateStudyAssets(contentText: string): StudyAssets {
   const clean = contentText.replace(/\s+/g, " ").trim().slice(0, 200000);
   const sourceSentences = sentences(clean);
   const keyConcepts = keywords(clean, 12);
+  const pt = (clean.match(/\b(uma|com|para|sobre|dos|das|que|como|pela|pelos|entre|ainda|são|não|mais)\b/gi) || []).length >
+    (clean.match(/\b(the|with|from|where|which|through|between|during|into|what|this|their|about|while)\b/gi) || []).length;
 
   const scored = sourceSentences.map((sentence, index) => {
     const bag = new Set(normalizedWords(sentence));
@@ -90,9 +93,10 @@ export function generateStudyAssets(contentText: string): StudyAssets {
 
     flashcards.push({
       id: `card-${flashcards.length + 1}-${concept}`,
-      front: `What should you remember about ${titleCase(concept)}?`,
+      front: pt ? `O que é importante lembrar sobre ${titleCase(concept)}?` : `What should you remember about ${titleCase(concept)}?`,
       back: sentence,
       concept: titleCase(concept),
+      sourceExcerpt: sentence,
     });
 
     if (flashcards.length >= 12) break;
@@ -102,9 +106,10 @@ export function generateStudyAssets(contentText: string): StudyAssets {
     for (const [index, sentence] of sourceSentences.slice(0, 8).entries()) {
       flashcards.push({
         id: `card-${index + 1}`,
-        front: `Explain this idea in your own words: ${sentence.slice(0, 90)}${sentence.length > 90 ? "…" : ""}`,
+        front: pt ? `Explique com suas palavras: ${sentence.slice(0, 90)}?` : `Explain this idea in your own words: ${sentence.slice(0, 90)}${sentence.length > 90 ? "…" : ""}?`,
         back: sentence,
-        concept: `Idea ${index + 1}`,
+        concept: pt ? `Ideia ${index + 1}` : `Idea ${index + 1}`,
+        sourceExcerpt: sentence,
       });
     }
   }
