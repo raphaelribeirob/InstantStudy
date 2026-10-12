@@ -11,7 +11,7 @@ export type StudyAssets = {
   outline: string[];
   keyConcepts: string[];
   flashcards: StudyFlashcard[];
-  generatedBy: "deterministic" | "openai";
+  generatedBy: "deterministic" | "openai" | "groq" | "openrouter" | "gemini";
 };
 
 const STOPWORDS = new Set([
