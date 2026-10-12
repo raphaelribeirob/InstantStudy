@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { updateStudyMaterial, type StudyAssets, type StudyMaterial } from "./study";
+import { duplicateStudyMaterial, updateStudyMaterial, type StudyAssets, type StudyMaterial } from "./study";
 import "./material-editor.css";
 
 /** Quizlet-style editable cards and study guides, persisted through the owner-scoped API. */
-export function MaterialEditor({material,onSaved}:{material:StudyMaterial;onSaved:(material:StudyMaterial)=>void}) {
+export function MaterialEditor({material,onSaved,onDuplicated}:{material:StudyMaterial;onSaved:(material:StudyMaterial)=>void;onDuplicated:(material:StudyMaterial)=>void}) {
   const [open,setOpen]=useState(false);
   const [title,setTitle]=useState(material.title);
   const [summary,setSummary]=useState(material.assets.summary);
@@ -55,11 +55,44 @@ export function MaterialEditor({material,onSaved}:{material:StudyMaterial;onSave
     }catch(e){setError(e instanceof Error?e.message:"Could not save changes.");}
     finally{setBusy(false);}
   };
+  const duplicate = async () => {
+    setBusy(true); setError("");
+    try {
+      const result = await duplicateStudyMaterial(material.id);
+      onDuplicated(result.material);
+      setOpen(false);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not duplicate this material.");
+    } finally { setBusy(false); }
+  };
+  const exportCards = () => {
+    const protect = (value: string) => {
+      const safe = /^[\s]*[=+\-@]/.test(value) ? "'" + value : value;
+      return '"' + safe.replaceAll('"', '""') + '"';
+    };
+    const rows = [["Question", "Answer", "Concept"],
+      ...material.assets.flashcards.map(card => [card.front, card.back, card.concept])];
+    const text = "\uFEFF" + rows.map(row => row.map(protect).join(",")).join("\r\n");
+    const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "instantstudy-flashcards.csv";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
   if(!/^[a-f0-9-]{36}$/i.test(material.id))return null;
   return <section className="is-edit-container">
+    <div className="is-edit-actions">
+      <button type="button" disabled={busy} onClick={()=>void duplicate()}>{pt?"Duplicar material":"Duplicate study set"}</button>
+      <button type="button" onClick={exportCards}>{pt?"Exportar cartões CSV":"Export cards CSV"}</button>
+    </div>
     <button type="button" className="is-edit-toggle" aria-expanded={open} onClick={()=>setOpen(v=>!v)}>
       {open?(pt?"Fechar editor":"Close editor"):(pt?"Editar guia e flashcards":"Edit guide and flashcards")}
     </button>
+    {!open&&error&&<p role="alert" className="is-edit-error">{error}</p>}
     {open&&<div className="is-edit-panel">
       <h2>{pt?"Personalize seu material":"Personalize your study set"}</h2>
       <label>{pt?"Título":"Title"}<input maxLength={200} value={title} onChange={e=>setTitle(e.target.value)}/></label>
