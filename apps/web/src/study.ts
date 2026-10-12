@@ -102,6 +102,7 @@ export type StudyAssets = {
     front: string;
     back: string;
     concept: string;
+    sourceExcerpt?: string;
   }>;
   generatedBy: string;
 };
