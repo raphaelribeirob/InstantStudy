@@ -1,0 +1,101 @@
+/* Orbital-first study workspace: keep the living Siri Orb and its voice
+   control present while existing reliable learning tools render beside it.
+   Editorial eggshell / warm taupe / pill controls follow DESIGN.md v3. */
+.software-orbital-stage{width:100%;min-width:0;}
+.software-orbital-home .software-orbital-workspace{display:none}
+.software-orbital-in-session{
+  display:grid;grid-template-columns:minmax(305px,350px) minmax(0,1fr);
+  align-items:start;gap:clamp(16px,2.2vw,36px);
+  max-width:1600px;margin:0 auto;
+  padding:24px clamp(14px,2.4vw,40px) 76px;
+}
+.software-orbital-hub{min-width:0}
+.software-orbital-in-session .software-orbital-hub{
+  position:sticky;top:14px;max-height:calc(100dvh - 28px);overflow-y:auto;
+  scrollbar-width:thin;overscroll-behavior:contain;
+}
+.software-orbital-workspace{min-width:0;scroll-margin-top:90px;}
+.software-orbital-in-session .software-orbital-workspace .software-page{
+  margin:0;max-width:none;padding:12px 0 90px;
+}
+.software-orbital-in-session .software-orbital-workspace .software-title-row h1{font-size:clamp(27px,3vw,44px);font-weight:300;letter-spacing:-.025em}
+.orbital-system-focused{padding:0;max-width:100%}
+.orbital-system-focused .orbital-system-head{padding:8px 0 14px}
+.orbital-system-focused .orbital-system-head h1{font-size:clamp(26px,2.8vw,35px);line-height:1.1;margin-bottom:8px}
+.orbital-system-focused .orbital-system-head>p{font-size:9px;margin-bottom:9px}
+.orbital-system-focused .orbital-system-head>span{font-size:12px;line-height:1.5}
+.orbital-system-focused .orbital-system-grid{display:flex;flex-direction:column;gap:12px}
+.orbital-system-focused .orbital-system-galaxy{
+  width:100%;min-height:285px;border-radius:22px;
+}
+.orbital-system-focused .orbital-system-corner{font-size:9px;left:15px;top:16px}
+.orbital-system-focused .orbital-system-ring-outer{width:230px}
+.orbital-system-focused .orbital-system-ring-mid{width:175px}
+.orbital-system-focused .orbital-system-ring-inner{width:125px}
+.orbital-system-focused .orbital-system-core{transform:translate(-50%,-50%) scale(.76)}
+.orbital-system-focused .orbital-system-node{display:none}
+.orbital-system-focused .orbital-system-core-caption{
+  font-size:11px;bottom:28px;left:15px;right:15px;
+}
+.orbital-system-focused .orbital-system-footnote{display:none}
+.orbital-system-focused .orbital-system-console{
+  width:100%;padding:14px;gap:12px;border-radius:20px;display:flex;
+}
+.orbital-system-focused .orbital-system-console>.orbital-system-section-label,
+.orbital-system-focused .orbital-system-console>.orbital-system-metrics,
+.orbital-system-focused .orbital-system-console>.orbital-system-today,
+.orbital-system-focused .orbital-system-console>.orbital-system-quick,
+.orbital-system-focused .orbital-system-console>.orbital-system-recent,
+.orbital-system-focused .orbital-system-console>.orbital-system-empty{
+  display:none;
+}
+.orbital-system-focused .orbital-realtime{
+  padding:14px;gap:9px;border-radius:16px;
+}
+.orbital-system-focused .orbital-realtime-head>strong{font-size:18px}
+.orbital-system-focused .orbital-realtime p{font-size:11px}
+.orbital-system-focused .orbital-system-command>label{font-size:9px}
+.orbital-system-focused .orbital-system-command>div{gap:3px}
+.orbital-system-focused .orbital-system-command input{font-size:11px;padding:10px}
+.orbital-system-focused .orbital-system-command small{font-size:9px}
+.software-orbital-in-session .orbita-page{padding:4px 0 70px;max-width:100%}
+.software-orbital-in-session .orbita-heading h1{font-size:clamp(42px,5vw,76px)}
+.software-orbital-in-session .orbita-layout{display:flex;flex-direction:column}
+.software-orbital-in-session .orbita-stage{position:relative;top:auto;min-height:360px;width:100%}
+.software-orbital-in-session .orbita-siri-wrap{transform:translate(-50%,-50%) scale(.8)}
+.software-orbital-in-session .orbita-content{min-width:0;width:100%}
+/* Avoid a second "main orb" in review: the pinned orb is the source of
+   identity; the review satellites still remain available as concept controls. */
+@media(max-width:1120px){
+  .software-orbital-in-session{grid-template-columns:minmax(240px,310px) minmax(0,1fr)}
+}
+@media(max-width:850px){
+  .software-orbital-in-session{display:flex;flex-direction:column;padding:14px 16px 70px;gap:18px}
+  .software-orbital-in-session .software-orbital-hub{position:relative;top:auto;max-height:none;overflow:visible;width:100%}
+  .orbital-system-focused .orbital-system-head{padding:0 0 10px}
+  .orbital-system-focused .orbital-system-head h1{font-size:30px}
+  .orbital-system-focused .orbital-system-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:12px}
+  .orbital-system-focused .orbital-system-galaxy{min-height:255px}
+  .orbital-system-focused .orbital-system-console{align-self:stretch}
+  .orbital-system-focused .orbital-system-command{display:none}
+  .orbital-system-focused .orbital-realtime>small:last-child{display:none}
+  .software-orbital-in-session .software-orbital-workspace{width:100%}
+}
+@media(max-width:580px){
+  .software-orbital-in-session{padding:10px 14px 48px;gap:14px}
+  .orbital-system-focused .orbital-system-head>span{display:none}
+  .orbital-system-focused .orbital-system-head h1{font-size:26px}
+  .orbital-system-focused .orbital-system-grid{grid-template-columns:1fr;gap:9px}
+  .orbital-system-focused .orbital-system-galaxy{min-height:214px}
+  .orbital-system-focused .orbital-system-core{transform:translate(-50%,-50%) scale(.66)}
+  .orbital-system-focused .orbital-system-core-caption{bottom:13px}
+  .orbital-system-focused .orbital-system-console{padding:12px}
+  .orbital-system-focused .orbital-realtime p{display:none}
+  .orbital-system-focused .orbital-realtime-head{flex-direction:row;align-items:center;justify-content:space-between}
+  .orbital-system-focused .orbital-realtime-head>strong{font-size:16px}
+  .orbital-system-focused .orbital-realtime-head>span{font-size:9px}
+  .software-orbital-in-session .software-orbital-workspace .software-page{padding:8px 0 60px}
+}
+@media(prefers-reduced-motion:reduce){
+  .orbital-system-focused .orbital-system-core{transition:none}
+}
