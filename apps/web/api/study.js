@@ -312,9 +312,19 @@ export default async function handler(req, res) {
         return json(res, 400, { error: "ask_input_invalid" });
       }
 
+      const history = Array.isArray(body.history)
+        ? body.history.slice(-8)
+            .filter((turn) => turn && ["user","assistant"].includes(turn.role) &&
+              typeof turn.content === "string" && turn.content.trim())
+            .map((turn) => ({
+              role: turn.role,
+              content: turn.content.trim().slice(0, 1000),
+            }))
+        : [];
       result = await upstream(base, apiKey, "/api/v1/ask", {
         contentText,
         question,
+        history,
       });
     } else if (action === "next") {
       const studySessionId = cleanId(body.studySessionId, 64);
