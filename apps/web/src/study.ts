@@ -457,6 +457,11 @@ export async function updateStudyMaterial(input: {
   }))) as { material: StudyMaterial };
 }
 
+/** Duplicate the current user's saved material, not another learner's set. */
+export async function duplicateStudyMaterial(materialId: string) {
+  return (await request(identified({ action: "material_duplicate", materialId }))) as { material: StudyMaterial };
+}
+
 export async function listStudyMaterials(query = "") {
   return (await request(
     identified({
