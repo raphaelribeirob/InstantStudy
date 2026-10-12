@@ -1,12 +1,16 @@
 import { createHmac } from "node:crypto";
 
 /**
- * Authoritative Web/PWA paid-access policy.
- * OFF until account sign-in + Paddle offer provisioning have been proven E2E.
- * Never trust the browser's user ID or plan without the Instant Pay introspection.
+ * Authoritative paid-only access policy.
+ *
+ * Hosted builds MUST fail closed: an absent or accidentally false environment
+ * flag can never open the learning product. Local development is permitted
+ * to opt in to the full billing flow with INSTANTSTUDY_HARD_PAYWALL_ENABLED=true.
+ * Never trust browser identity or entitlement.
  */
 export function hardPaywallEnabled() {
-  return process.env.INSTANTSTUDY_HARD_PAYWALL_ENABLED === "true";
+  const hosted = Boolean(process.env.VERCEL || process.env.NODE_ENV === "production");
+  return hosted || process.env.INSTANTSTUDY_HARD_PAYWALL_ENABLED === "true";
 }
 
 function signingSecret() {
