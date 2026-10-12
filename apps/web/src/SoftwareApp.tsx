@@ -69,6 +69,7 @@ import {
   type InstantStudyFamily,
 } from "./instantBilling";
 import { OrbitaReview } from "./OrbitaReview";
+import { MaterialEditor } from "./MaterialEditor";
 import { OrbitaSystem, type OrbitalAction } from "./OrbitaSystem";
 import SiriOrb from "./components/smoothui/SiriOrb";
 import "./software.css";
@@ -984,6 +985,8 @@ export function SoftwareApp() {
                     <button onClick={() => setView("ask")}>{t("common.ask")}</button>
                   </div>
                 </div>
+
+                {(view === "guide" || view === "flashcards") && <MaterialEditor key={selected.id} material={selected} onSaved={material => { setLibrary(current => { const next=current.map(row=>row.id===material.id?material:row); cacheLibrary(next); return next; }); setSession(null); setSummary(null); setFlippedCard(null); }} />}
 
                 {view === "guide" && (
                   <div className="software-guide">
