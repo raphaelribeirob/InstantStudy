@@ -1026,6 +1026,54 @@ app.post("/api/v1/materials/get", async (req, res) => {
   }
 });
 
+
+/** Editable, durable user-owned study assets. Never accept arbitrary source or owner changes. */
+app.post("/api/v1/materials/update", async (req, res) => {
+  try {
+    const cardSchema = z.object({
+      id: z.string().min(1).max(100),
+      front: z.string().trim().min(5).max(1000),
+      back: z.string().trim().min(1).max(4000),
+      concept: z.string().trim().min(1).max(200),
+      sourceExcerpt: z.string().max(2000).optional(),
+    }).strict();
+    const input = z.object({
+      learnerId: z.string().min(3).max(200),
+      id: z.string().uuid(),
+      title: z.string().trim().min(1).max(200),
+      summary: z.string().trim().min(1).max(12000),
+      outline: z.array(z.string().trim().min(1).max(2000)).min(1).max(40),
+      flashcards: z.array(cardSchema).min(1).max(100),
+    }).strict().parse(req.body ?? {});
+    const original = await materialStore.get(input.learnerId, input.id);
+    if (!original) {
+      res.status(404).json({ error: "material_not_found" });
+      return;
+    }
+    const normalizedCards = input.flashcards.map(card => ({
+      ...card,
+      sourceExcerpt: card.sourceExcerpt ?? "",
+    }));
+    const updated = await materialStore.update(input.learnerId, input.id, {
+      title: input.title,
+      assets: {
+        ...original.assets,
+        summary: input.summary,
+        outline: input.outline,
+        keyConcepts: [...new Set(normalizedCards.map(card => card.concept))],
+        flashcards: normalizedCards,
+      },
+    });
+    if (!updated) {
+      res.status(404).json({ error: "material_not_found" });
+      return;
+    }
+    res.json({ material: updated });
+  } catch (error) {
+    sendApiError(res, error);
+  }
+});
+
 app.post("/api/v1/assets/generate", async (req, res) => {
   try {
     const input = z

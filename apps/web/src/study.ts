@@ -460,6 +460,20 @@ export async function importLongAudioMaterial(
   return result;
 }
 
+/** Persist user edits to existing generated material, scoped to the verified learner. */
+export async function updateStudyMaterial(input: {
+  materialId: string;
+  title: string;
+  summary: string;
+  outline: string[];
+  flashcards: StudyAssets["flashcards"];
+}) {
+  return (await request(identified({
+    action: "material_update",
+    ...input,
+  }))) as { material: StudyMaterial };
+}
+
 export async function listStudyMaterials(query = "") {
   return (await request(
     identified({

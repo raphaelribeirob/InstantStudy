@@ -199,6 +199,7 @@ export default async function handler(req, res) {
     "material_import",
     "material_list",
     "material_get",
+    "material_update",
     "insights",
     "audio_study",
     "study_game",
@@ -420,6 +421,18 @@ export default async function handler(req, res) {
         sourceType,
         contentText: contentText || undefined,
         files,
+      });
+    } else if (action === "material_update") {
+      const learnerId = await verifiedLearner(body);
+      if (!learnerId) return json(res, 401, { error: "learner_identity_required" });
+      const id = cleanId(body.materialId, 64);
+      if (!/^[a-f0-9-]{36}$/i.test(id)) return json(res, 400, { error: "material_id_invalid" });
+      result = await upstream(base, apiKey, "/api/v1/materials/update", {
+        learnerId, id,
+        title: typeof body.title === "string" ? body.title.slice(0, 200) : "",
+        summary: typeof body.summary === "string" ? body.summary.slice(0, 12000) : "",
+        outline: Array.isArray(body.outline) ? body.outline.slice(0, 40) : [],
+        flashcards: Array.isArray(body.flashcards) ? body.flashcards.slice(0, 100) : [],
       });
     } else if (action === "insights") {
       const learnerId = await verifiedLearner(body);
