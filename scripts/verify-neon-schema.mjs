@@ -13,9 +13,11 @@ try {
     to_regclass('public.instantstudy_sessions')::text AS sessions,
     to_regclass('public.instantstudy_materials')::text AS materials,
     to_regclass('public.instantstudy_sessions_learner_updated_idx')::text AS sessions_index,
-    to_regclass('public.instantstudy_materials_learner_updated_idx')::text AS materials_index`;
+    to_regclass('public.instantstudy_materials_learner_updated_idx')::text AS materials_index,
+    to_regclass('public.instantstudy_flashcard_progress')::text AS flashcard_progress`;
   const row = rows[0] ?? {};
-  const ready = Boolean(row.sessions && row.materials && row.sessions_index && row.materials_index);
+  const ready = Boolean(row.sessions && row.materials && row.sessions_index && row.materials_index &&
+    row.flashcard_progress);
   console.log(JSON.stringify({ database: row.database || "unknown", storage: "neon", schemaReady: ready }));
   if (!ready) process.exitCode = 1;
 } catch {
