@@ -2,8 +2,7 @@ import { randomUUID } from "node:crypto";
 import { neon } from "@neondatabase/serverless";
 import { databaseUrl, durableDatabaseRequired, DurableDatabaseRequiredError } from "./databasePolicy.js";
 import type { StudyMaterial } from "./materialStore.js";
-import type { RetentionInsights } from "./offerLayer.js";
-import type { DueReview, StudyPersistence } from "./studyPersistence.js";
+import type { StudyEngine } from "./studyEngine.js";
 
 export type OfferAgentCapability =
   | "guide" | "flashcards" | "ask" | "learn" | "test"
@@ -228,15 +227,13 @@ export function createOfferPlanStore(): OfferPlanStore {
 }
 
 export async function offerPlanStatus(
-  plan: OfferAgentPlan, study: Pick<StudyPersistence, "dueReviews" | "recentSessions">,
+  plan: OfferAgentPlan, study: Pick<StudyEngine, "dueReviews" | "insights">,
 ) {
-  const [due, recent] = await Promise.all([
-    study.dueReviews(plan.learnerId, isoNow(), 30),
-    study.recentSessions(plan.learnerId, 30),
+  const [due, insights] = await Promise.all([
+    study.dueReviews(plan.learnerId, { before: isoNow(), limit: 30 }),
+    study.insights(plan.learnerId),
   ]);
-  const weak = recent.flatMap(s => s.concepts)
-    .filter(c => c.mastery < 0.7 && c.attempts > 0)
-    .map(c => c.label);
+  const weak = insights.weakConcepts.map(c => c.label);
   return {
     plan,
     recommendation: recommendOfferNext(plan, {
