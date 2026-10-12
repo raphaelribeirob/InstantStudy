@@ -40,6 +40,21 @@ test("StudyEngine updates mastery, difficulty and review schedule deterministica
   assert.ok((result.concept.mastery ?? 0) > 0.15);
   assert.equal(result.concept.difficulty, 2);
   assert.ok(result.concept.nextReviewAt);
+  const stored = await engine.get(session.id);
+  const card = stored?.concepts[0]?.fsrsCard;
+  assert.ok(card, "FSRS card should persist after a graded attempt");
+  assert.equal(card.due, result.concept.nextReviewAt);
+  assert.ok(Number.isFinite(card.stability));
+  const nextSession = await engine.start(content, {
+    learnerId: "learner-test",
+    maxQuestions: 1,
+    concepts: [{
+      label: "Photosynthesis",
+      sourceExcerpt: "Photosynthesis converts light energy into chemical energy in chloroplasts.",
+    }],
+  });
+  assert.equal(nextSession.concepts[0]?.fsrsCard?.due, card.due);
+  assert.equal(nextSession.concepts[0]?.nextReviewAt, result.concept.nextReviewAt);
   assert.equal(result.nextPolicy, "continue");
   assert.equal(result.activationEvent, "first_answer_submitted");
 });
