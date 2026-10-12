@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { completeStudyText, textProviderOrder, type TextProvider } from "./freeLlmRouter.js";
 import { tryConsumeAssetGeneration } from "./aiAssetQuota.js";
 import {
   generateStudyAssets,
@@ -33,7 +34,7 @@ function normalizeEvidence(s: string) {
 }
 
 /** Do not accept unsupported study cards or mismatched response language. */
-export function verifyGeneratedStudyAssets(source: string, raw: unknown): StudyAssets | null {
+export function verifyGeneratedStudyAssets(source: string, raw: unknown, provider: TextProvider = "openai"): StudyAssets | null {
   const parsed = schema.safeParse(raw);
   if (!parsed.success) return null;
   const data = parsed.data;
@@ -63,48 +64,25 @@ export function verifyGeneratedStudyAssets(source: string, raw: unknown): StudyA
     outline: data.outline.map(x => x.trim()),
     keyConcepts: data.keyConcepts.map(x => x.trim()),
     flashcards: cards,
-    generatedBy: "openai",
+    generatedBy: provider,
   };
 }
 
-function outputText(payload: any) {
-  if (typeof payload?.output_text === "string") return payload.output_text;
-  return (Array.isArray(payload?.output) ? payload.output : [])
-    .flatMap((item: any) => item?.content || [])
-    .filter((item: any) => item?.type === "output_text" && typeof item.text === "string")
-    .map((item: any) => item.text).join("");
+function parseAssetJson(text: string): unknown {
+  const cleaned = text.replace(/^\s*```(?:json)?/i, "").replace(/```\s*$/, "").trim();
+  try { return JSON.parse(cleaned) as unknown; }
+  catch {
+    const first = cleaned.indexOf("{"), last = cleaned.lastIndexOf("}");
+    if (first < 0 || last <= first) return null;
+    try { return JSON.parse(cleaned.slice(first, last + 1)) as unknown; }
+    catch { return null; }
+  }
 }
-
-const strictJsonSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["summary", "outline", "keyConcepts", "flashcards"],
-  properties: {
-    summary: { type: "string" },
-    outline: { type: "array", items: { type: "string" } },
-    keyConcepts: { type: "array", items: { type: "string" } },
-    flashcards: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["front", "back", "concept", "evidence"],
-        properties: {
-          front: { type: "string" },
-          back: { type: "string" },
-          concept: { type: "string" },
-          evidence: { type: "string" },
-        },
-      },
-    },
-  },
-};
 
 export async function generatePedagogicalStudyAssets(source: string, learnerId?: string): Promise<StudyAssets> {
   const fallback = generateStudyAssets(source);
-  const key = process.env.OPENAI_API_KEY?.trim();
-  if (process.env.INSTANTSTUDY_AI_ASSETS_ENABLED !== "true" || !key ||
-      source.trim().length < 160 || !learnerId) return fallback;
+  if (process.env.INSTANTSTUDY_AI_ASSETS_ENABLED !== "true" ||
+      source.trim().length < 160 || !learnerId || textProviderOrder().length === 0) return fallback;
   if (!(await tryConsumeAssetGeneration(learnerId))) return fallback;
 
   const excerpt = source.trim().slice(0, MAX_SOURCE_CHARS);
@@ -122,26 +100,14 @@ export async function generatePedagogicalStudyAssets(source: string, learnerId?:
     "Return only JSON fitting the schema.",
   ].join("\n");
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: process.env.INSTANTSTUDY_ASSETS_MODEL?.trim() || "gpt-4o-mini",
-        input: [
-          { role: "developer", content: instructions },
-          { role: "user", content: "SOURCE:\n" + excerpt },
-        ],
-        max_output_tokens: MODEL_OUTPUT_TOKENS,
-        text: { format: { type: "json_schema", name: "instantstudy_assets", strict: true,
-          schema: strictJsonSchema } },
-        store: false,
-      }),
-      signal: AbortSignal.timeout(25_000),
+    const response = await completeStudyText({
+      system: instructions,
+      user: "SOURCE (untrusted reference):\n" + excerpt,
+      maxTokens: MODEL_OUTPUT_TOKENS,
+      accept: (text) => Boolean(verifyGeneratedStudyAssets(excerpt, parseAssetJson(text))),
     });
-    if (!response.ok) return fallback;
-    const text = outputText(await response.json());
-    const result = verifyGeneratedStudyAssets(excerpt, JSON.parse(text));
-    return result || fallback;
+    if (!response) return fallback;
+    return verifyGeneratedStudyAssets(excerpt, parseAssetJson(response.text), response.provider) || fallback;
   } catch {
     return fallback;
   }
