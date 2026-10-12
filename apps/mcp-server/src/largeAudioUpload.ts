@@ -24,6 +24,14 @@ async function ensureTables(sql: ReturnType<typeof sqlClient>) {
     )
   `;
   await sql`
+    CREATE TABLE IF NOT EXISTS instantstudy_large_audio_daily_quota (
+      learner_id text NOT NULL,
+      day date NOT NULL,
+      accepted integer NOT NULL DEFAULT 0,
+      PRIMARY KEY (learner_id, day)
+    )
+  `;
+  await sql`
     CREATE TABLE IF NOT EXISTS instantstudy_large_audio_parts (
       upload_id uuid NOT NULL REFERENCES instantstudy_large_audio_uploads(upload_id) ON DELETE CASCADE,
       part_index integer NOT NULL,
@@ -71,6 +79,15 @@ export async function storeAudioChunk(input: LargeAudioChunkInput) {
       WHERE learner_id = ${input.learnerId}
     `;
     if (Number(pending[0]?.pending || 0) >= 2) throw new Error("audio_upload_pending_limit");
+    const admitted = await sql`
+      INSERT INTO instantstudy_large_audio_daily_quota(learner_id, day, accepted)
+      VALUES (${input.learnerId}, (now() AT TIME ZONE 'UTC')::date, 1)
+      ON CONFLICT (learner_id, day) DO UPDATE SET
+        accepted = instantstudy_large_audio_daily_quota.accepted + 1
+      WHERE instantstudy_large_audio_daily_quota.accepted < 2
+      RETURNING accepted
+    `;
+    if (admitted.length === 0) throw new Error("audio_upload_daily_limit_reached");
     await sql`
       INSERT INTO instantstudy_large_audio_uploads
       (upload_id, learner_id, file_name, mime_type, total_parts)
