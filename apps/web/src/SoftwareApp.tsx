@@ -1035,7 +1035,7 @@ export function SoftwareApp() {
                   </div>
                 </div>
 
-                {(view === "guide" || view === "flashcards") && <MaterialEditor key={selected.id} material={selected} onSaved={material => { setLibrary(current => current.map(row=>row.id===material.id?material:row)); setSession(null); setSummary(null); setFlippedCard(null); }} />}
+                {(view === "guide" || view === "flashcards") && <MaterialEditor key={selected.id} material={selected} onSaved={material => { setLibrary(current => current.map(row=>row.id===material.id?material:row)); setSession(null); setSummary(null); setFlippedCard(null); }} onDuplicated={material => { setLibrary(current => [material, ...current]); setSelectedId(material.id); setSession(null); setSummary(null); setFlippedCard(null); }} />}
 
                 {view === "guide" && (
                   <div className="software-guide">
