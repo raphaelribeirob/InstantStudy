@@ -145,7 +145,7 @@ class _NativeMaterialEditorState extends State<NativeMaterialEditor> {
           const SizedBox(height: 18),
           FilledButton(onPressed: save, child: const Text('Review and save changes')),
         ]),
-      )),
+      ),
     );
   }
 }
