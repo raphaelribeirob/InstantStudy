@@ -147,6 +147,8 @@ export function SoftwareApp() {
   const [summary, setSummary] = useState<StudySummary | null>(null);
   const [question, setQuestion] = useState("");
   const [askAnswer, setAskAnswer] = useState("");
+  const [askHistory, setAskHistory] = useState<Array<{role: "user" | "assistant"; content: string}>>([]);
+  const activeAskSourceRef = useRef<string | null>(null);
   const [askBusy, setAskBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [flippedCard, setFlippedCard] = useState<string | null>(null);
@@ -192,6 +194,14 @@ export function SoftwareApp() {
     () => library.find((item) => item.id === selectedId) ?? library[0] ?? null,
     [library, selectedId],
   );
+  // Context is intentionally scoped to the currently selected source.
+  useEffect(() => {
+    activeAskSourceRef.current = selected?.id ?? null;
+    setAskHistory([]);
+    setAskAnswer("");
+    setQuestion("");
+    setAskBusy(false);
+  }, [selected?.id]);
 
   function materialFromRoom(value: StudyRoom): StudyMaterial {
     const now = new Date().toISOString();
@@ -441,22 +451,33 @@ export function SoftwareApp() {
 
   async function askMaterial() {
     if (!selected || !question.trim()) return;
+    const sourceId = selected.id;
     setAskBusy(true);
     setAskAnswer("");
     try {
+      const asked = question.trim();
+      const history = askHistory.slice(-8);
       const result = await askStudyMaterial({
         contentText: selected.content,
-        question: question.trim(),
+        question: asked,
+        history,
       });
+      if (activeAskSourceRef.current !== sourceId) return;
       setAskAnswer(result.answer);
+      setAskHistory((current) => [
+        ...current.slice(-14),
+        { role: "user", content: asked },
+        { role: "assistant", content: result.answer },
+      ]);
+      setQuestion("");
     } catch (error) {
-      setAskAnswer(
-        error instanceof Error
+      if (activeAskSourceRef.current === sourceId) {
+        setAskAnswer(error instanceof Error
           ? error.message
-          : "InstantStudy could not answer from this material.",
-      );
+          : "InstantStudy could not answer from this material.");
+      }
     } finally {
-      setAskBusy(false);
+      if (activeAskSourceRef.current === sourceId) setAskBusy(false);
     }
   }
 
@@ -1153,12 +1174,20 @@ export function SoftwareApp() {
                 {view === "ask" && (
                   <div className="software-ask">
                     <div className="software-ask-context"><Sparkles size={18}/><span>{t("software.groundedIn", { title: selected.title })}</span></div>
-                    {askAnswer ? (
-                      <div className="software-ask-answer">
-                        <span>INSTANTSTUDY</span>
-                        <p>{askAnswer}</p>
+                    {askHistory.length > 0 ? (
+                      <div className="software-ask-thread" aria-live="polite">
+                        {askHistory.map((turn, index) => (
+                          <div key={index} className={turn.role === "user" ? "software-ask-answer user" : "software-ask-answer"}>
+                            <span>{turn.role === "user"
+                              ? (i18n.language.startsWith("pt") ? "VOCÊ" : "YOU")
+                              : "INSTANTSTUDY"}</span>
+                            <p>{turn.content}</p>
+                          </div>
+                        ))}
                         <button onClick={() => { setView("learn"); void startMode("learn"); }}>{t("software.quizMe")}</button>
                       </div>
+                    ) : askAnswer ? (
+                      <div className="software-ask-answer"><span>INSTANTSTUDY</span><p>{askAnswer}</p></div>
                     ) : (
                       <div className="software-chat-empty"><MessageCircle size={28}/><h2>{t("software.askAnything")}</h2><p>{t("software.askBody")}</p></div>
                     )}

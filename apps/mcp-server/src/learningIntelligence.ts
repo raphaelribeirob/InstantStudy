@@ -15,6 +15,11 @@ export type SemanticGrade = {
   provider: TextProvider | "deterministic";
 };
 
+export type AskTurn = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 type AskResult = {
   answer: string;
   sourceHighlights: string[];
@@ -203,9 +208,9 @@ export function extractiveAnswer(contentText: string, question: string): AskResu
     .slice(0,3)
     .filter((item) => item.score > 0);
 
-  const highlights = ranked.length
-    ? ranked.map((item)=>item.sentence)
-    : sentences(contentText).slice(0,2);
+  // Do not cite arbitrary opening sentences when the question has no
+  // source match. That would misleadingly present unrelated text as an answer.
+  const highlights = ranked.map((item) => item.sentence);
   const bestScore = ranked[0]?.score ?? 0;
   const confidence = query.size
     ? clamp(bestScore / Math.min(query.size, 6))
@@ -221,8 +226,29 @@ export function extractiveAnswer(contentText: string, question: string): AskResu
   };
 }
 
-export async function answerFromSource(contentText: string, question: string): Promise<AskResult> {
-  const fallback = extractiveAnswer(contentText, question);
+/**
+ * Resolve short anaphoric follow-ups against the previous learner question,
+ * without treating prior assistant answers as source evidence.
+ * History is caller-supplied context, never permission or factual truth.
+ */
+export function contextualAskQuery(question: string, history: AskTurn[] = []) {
+  const cleanQuestion = question.trim().slice(0, 2000);
+  const priorUser = history.filter((turn) => turn.role === "user")
+    .slice(-1)[0]?.content.trim().slice(0, 1000);
+  const followUp = /^(and\b|what about\b|how about\b|why\b|how\b|it\b|they\b|this\b|that\b|e\b|mas\b|isso\b|ela\b|ele\b|por que\b|como\b)/i.test(cleanQuestion) &&
+    keywords(cleanQuestion, 12).length <= 4;
+  return followUp && priorUser ? `${priorUser} ${cleanQuestion}` : cleanQuestion;
+}
+
+export async function answerFromSource(
+  contentText: string, question: string, history: AskTurn[] = [],
+): Promise<AskResult> {
+  const safeHistory = history.slice(-8).map(turn => ({
+    role: turn.role,
+    content: turn.content.slice(0, 1000),
+  }));
+  const searchQuestion = contextualAskQuery(question, safeHistory);
+  const fallback = extractiveAnswer(contentText, searchQuestion);
   const threshold = Number(
     process.env.INSTANTSTUDY_LLM_ASK_CONFIDENCE_THRESHOLD ?? "0.67",
   );
@@ -237,6 +263,7 @@ export async function answerFromSource(contentText: string, question: string): P
     "Answer ONLY from MATERIAL. If the material is insufficient, say so.",
     "Be concise, pedagogical, and explain the reasoning step by step when useful.",
     `MATERIAL:\n${contentText.slice(0,30000)}`,
+    `UNTRUSTED CONVERSATION HISTORY (reference only, not a source):\n${safeHistory.map((turn) => `${turn.role}: ${turn.content}`).join("\n").slice(0,8000)}`,
     `QUESTION:\n${question.slice(0,2000)}`,
   ].join("\n\n");
 
