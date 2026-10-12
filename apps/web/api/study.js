@@ -1,3 +1,5 @@
+import { hardPaywallEnabled, resolveHardPaywallAccess } from "./_hardPaywall.js";
+
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const MAX_INLINE_BASE64 = 3_500_000;
 const ANON_ID = /^(web|flutter)-[A-Za-z0-9-]{8,200}$/;
@@ -160,11 +162,30 @@ export default async function handler(req, res) {
   const length = Number(req.headers["content-length"] || 0);
   if (length > MAX_BODY_BYTES) return json(res, 413, { error: "body_too_large" });
 
+  const body = req.body && typeof req.body === "object" ? req.body : {};
+  const enabled = hardPaywallEnabled();
+  const access = enabled || body.action === "paywall_status"
+    ? await resolveHardPaywallAccess(body)
+    : null;
+
+  // Status is a public check only: it NEVER exposes an entitlement without
+  // validating the token and learner ID against the signed Instant Pay account.
+  if (body.action === "paywall_status") {
+    return json(res, 200, {
+      enabled: Boolean(access?.enabled),
+      authorized: Boolean(access?.authorized),
+      plan: access?.authorized ? access.plan : null,
+      reason: access?.authorized ? null : access?.reason || "account_required",
+    });
+  }
+  if (access && !access.authorized) {
+    return json(res, access.status, { error: access.reason || "subscription_required" });
+  }
+
   const base = String(process.env.INSTANTSTUDY_API_URL || "").trim().replace(/\/$/, "");
   const apiKey = String(process.env.INSTANTSTUDY_API_KEY || "").trim();
   if (!base || !apiKey) return json(res, 503, { error: "study_api_not_configured" });
 
-  const body = req.body && typeof req.body === "object" ? req.body : {};
   const allowedActions = [
     "prepare",
     "answer",
@@ -203,14 +224,15 @@ export default async function handler(req, res) {
       const mode = ["learn", "review", "quiz", "test"].includes(body.mode)
         ? body.mode
         : "learn";
-      const learnerId = await verifiedLearner(body);
+      const learnerId = access?.authorized && access.enabled
+        ? cleanId(body.accountUserId) : await verifiedLearner(body);
       const materialId = cleanId(body.materialId, 64) || undefined;
       if (materialId && (!learnerId || !/^[a-f0-9-]{36}$/i.test(materialId))) {
         return json(res, 401, { error: "material_owner_required" });
       }
-      const billingPlan = learnerId
-        ? await verifiedBillingPlan(body)
-        : "free";
+      const billingPlan = access?.authorized && access.enabled
+        ? access.plan
+        : learnerId ? await verifiedBillingPlan(body) : "free";
       const maxQuestions = Number.isInteger(body.maxQuestions)
         ? Math.max(1, Math.min(Number(body.maxQuestions), 50))
         : mode === "test" ? 20 : 12;
