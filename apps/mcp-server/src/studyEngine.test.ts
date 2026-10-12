@@ -149,3 +149,84 @@ test("a real final answer persists completed status and completion time for agen
     /completed/,
   );
 });
+
+test("cannot finish an unanswered or partially answered exam, nor grade an unpresented concept", async () => {
+  const content = new ContentSessionStore().create({
+    title: "Biology", mode: "test",
+    contentText: "Photosynthesis uses light. Chloroplasts contain chlorophyll.",
+  });
+  const engine = new StudyEngine();
+  const session = await engine.start(content, {
+    learnerId: "exam-learner",
+    mode: "test", maxQuestions: 3,
+    materialId: "81e63e6b-a05f-4ae7-8789-823d66cf84ab",
+    concepts: [
+      { label: "Photosynthesis", sourceExcerpt: "Photosynthesis uses light." },
+      { label: "Chlorophyll", sourceExcerpt: "Chloroplasts contain chlorophyll." },
+    ],
+  });
+  await assert.rejects(() => engine.finish(session.id), /study_session_incomplete/);
+  const first = await engine.next(session.id);
+  if (first.done) throw new Error("expected question");
+  const wrong = session.concepts.find(c => c.id !== first.concept.id)!;
+  await assert.rejects(() => engine.submit(session.id, wrong.id, {
+    correctness: 1, completeness: 1, userAnswer: "forged score",
+  }), /not for the active question/);
+  const answered = await engine.submit(session.id, first.concept.id, {
+    correctness: 1, completeness: 1, userAnswer: "Light energy",
+  });
+  assert.equal(answered.done, false);
+  assert.equal((await engine.get(session.id))?.attempts.length, 1);
+  await assert.rejects(() => engine.finish(session.id), /study_session_incomplete/);
+  assert.equal((await engine.get(session.id))?.status, "active");
+});
+
+test("a legitimately expired timed test is marked complete but unanswered questions score zero", async () => {
+  const content = new ContentSessionStore().create({
+    title: "History", mode: "test", contentText: "Rome was founded in antiquity.",
+  });
+  const engine = new StudyEngine();
+  const session = await engine.start(content, {
+    learnerId: "timed-learner", mode: "test", maxQuestions: 4,
+    testDurationMinutes: 5,
+    concepts: [{ label: "Rome", sourceExcerpt: "Rome was founded in antiquity." }],
+  });
+  const next = await engine.next(session.id);
+  if (next.done) throw new Error("expected first question");
+  await engine.submit(session.id, next.concept.id, {
+    correctness: 1, completeness: 1, userAnswer: "Rome",
+  });
+  if (!session.testConfig) throw new Error("timed test missing config");
+  session.testConfig.endsAt = new Date(Date.now() - 1000).toISOString();
+  const summary = await engine.finish(session.id);
+  assert.equal(summary.completed, true);
+  assert.equal(summary.completionReason, "time_expired");
+  assert.equal(summary.testResult?.answered, 1);
+  assert.equal(summary.testResult?.totalQuestions, 4);
+  assert.equal(summary.testResult?.scorePercent, 25);
+  assert.equal((await engine.get(session.id))?.completionReason, "time_expired");
+});
+
+test("a completed test must have all actual answers and retains material provenance", async () => {
+  const content = new ContentSessionStore().create({
+    title: "Physics", mode: "test", contentText: "Velocity is displacement per time.",
+  });
+  const engine = new StudyEngine();
+  const sourceId = "81e63e6b-a05f-4ae7-8789-823d66cf84ab";
+  const session = await engine.start(content, {
+    learnerId: "source-learner", materialId: sourceId, mode: "test", maxQuestions: 2,
+    concepts: [{ label: "Velocity", sourceExcerpt: "Velocity is displacement per time." }],
+  });
+  for (let i = 0; i < 2; i++) {
+    const next = await engine.next(session.id);
+    if (next.done) throw new Error("expected answerable question");
+    await engine.submit(session.id, next.concept.id, {
+      correctness: 0.8, completeness: 0.8, userAnswer: "displacement over time",
+    });
+  }
+  const stored = await engine.get(session.id);
+  assert.equal(stored?.status, "completed");
+  assert.equal(stored?.completionReason, "all_questions");
+  assert.equal(stored?.materialId, sourceId);
+  assert.equal((await engine.finish(session.id)).testResult?.answered, 2);
+});
