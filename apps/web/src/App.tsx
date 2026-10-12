@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion } from "motion/react";
 import { StudyReveal } from "./StudyMotion";
 import { useTranslation } from "react-i18next";
 import {
@@ -567,12 +568,16 @@ export function App() {
           <span>{t("landing.adaptivePersistent")}</span>
         </div>
 
-        <div className="future-title" aria-label="The future of learning">
+        <motion.div className="future-title" aria-label="The future of learning"
+          initial={{ opacity: 0, y: 11 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.42 }}>
           <span>{t("landing.futureLine1")}</span>
           <span>{t("landing.futureLine2")}</span>
-        </div>
+        </motion.div>
 
-        <div className="future-intro">
+        <motion.div className="future-intro"
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.42, delay: 0.10 }}>
           <p>
             Your AI already knows how to explain. InstantStudy™ adds the system
             that makes learning stick: adaptive practice, exam rehearsal,
@@ -584,7 +589,7 @@ export function App() {
             </a>
             <a className="hero-secondary" href="#demo">{t("landing.experienceLoop")}</a>
           </div>
-        </div>
+        </motion.div>
 
         <StudyGenerator />
         <HeroProduct />
@@ -707,10 +712,11 @@ export function App() {
       </section>
       </StudyReveal>
 
-      <ConnectAgent />
-      <Pricing />
-      <FAQ />
+      <StudyReveal className="study-motion-reveal"><ConnectAgent /></StudyReveal>
+      <StudyReveal className="study-motion-reveal"><Pricing /></StudyReveal>
+      <StudyReveal className="study-motion-reveal"><FAQ /></StudyReveal>
 
+      <StudyReveal className="study-motion-reveal">
       <section className="final-cta">
         <div>
           <p className="eyebrow light">InstantStudy™</p>
@@ -721,6 +727,7 @@ export function App() {
           Choose a study plan <ArrowRight size={17} />
         </a>
       </section>
+      </StudyReveal>
 
       <footer>
         <Logo />
