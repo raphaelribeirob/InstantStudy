@@ -167,6 +167,7 @@ export function SoftwareApp() {
   const [insightsBusy, setInsightsBusy] = useState(false);
   const [audioStudy, setAudioStudy] = useState<AudioStudy | null>(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
+  const [podcastRate, setPodcastRate] = useState(1);
   const [room, setRoom] = useState<StudyRoom | null>(null);
   const [roomCode, setRoomCode] = useState("");
   const [displayName, setDisplayName] = useState(
@@ -293,10 +294,20 @@ export function SoftwareApp() {
 
   useEffect(() => {
     if (view !== "audio" || !selected) return;
+    const materialId = selected.id;
+    let active = true;
+    podcastStopRef.current = true;
+    window.speechSynthesis?.cancel();
+    setAudioPlaying(false);
     setAudioStudy(null);
-    void getAudioStudy(selected.id)
-      .then(setAudioStudy)
-      .catch(() => setAudioStudy(null));
+    void getAudioStudy(materialId)
+      .then(data => { if (active) setAudioStudy(data); })
+      .catch(() => { if (active) setAudioStudy(null); });
+    return () => {
+      active = false;
+      podcastStopRef.current = true;
+      window.speechSynthesis?.cancel();
+    };
   }, [view, selectedId]);
 
   useEffect(() => {
@@ -619,12 +630,11 @@ export function SoftwareApp() {
     podcastStopRef.current = false;
     setAudioPlaying(true);
     const voices = window.speechSynthesis.getVoices();
-    const english = voices.filter((voice) => /^en(-|_)/i.test(voice.lang));
-    const hostVoice = english[0] ?? voices[0];
-    const coachVoice =
-      english.find((voice) => voice.name !== hostVoice?.name) ??
-      voices.find((voice) => voice.name !== hostVoice?.name) ??
-      hostVoice;
+    const locale = i18n.language || "en-US";
+    const voiceLanguage = locale.split("-")[0].toLowerCase();
+    const localized = voices.filter(voice => voice.lang.toLowerCase().split(/[-_]/)[0] === voiceLanguage);
+    const hostVoice = localized[0] ?? null;
+    const coachVoice = localized.find(voice => voice.name !== hostVoice?.name) ?? hostVoice;
 
     const speakAt = (index: number) => {
       if (podcastStopRef.current || !audioStudy.segments[index]) {
@@ -633,7 +643,8 @@ export function SoftwareApp() {
       }
       const segment = audioStudy.segments[index];
       const utterance = new SpeechSynthesisUtterance(segment.text);
-      utterance.rate = segment.speaker === "Host" ? 0.98 : 0.94;
+      utterance.lang = locale;
+      utterance.rate = Math.max(0.5, Math.min(2, podcastRate * (segment.speaker === "Host" ? 1 : 0.94)));
       utterance.pitch = segment.speaker === "Host" ? 1.02 : 0.94;
       utterance.voice = segment.speaker === "Host" ? hostVoice ?? null : coachVoice ?? null;
       utterance.onend = () => speakAt(index + 1);
@@ -1425,7 +1436,16 @@ export function SoftwareApp() {
                   <Headphones size={28}/>
                   <strong>{audioStudy.title}</strong>
                   <span>~{audioStudy.estimatedMinutes} min · {t("software.podcastBody")}</span>
-                  <button onClick={toggleAudioStudy}>{audioPlaying ? t("software.stopPodcast") : t("software.playPodcast")}</button>
+                  <label>
+                    {i18n.language.startsWith("pt") ? "Velocidade" : "Playback speed"}
+                    <select value={podcastRate} disabled={audioPlaying}
+                      onChange={e => setPodcastRate(Number(e.target.value))}>
+                      {[0.75, 1, 1.25, 1.5].map(rate => <option key={rate} value={rate}>{rate}×</option>)}
+                    </select>
+                  </label>
+                  <button type="button" onClick={toggleAudioStudy} aria-pressed={audioPlaying}>
+                    {audioPlaying ? t("software.stopPodcast") : t("software.playPodcast")}
+                  </button>
                 </aside>
                 <article>
                   {audioStudy.segments.map((segment, index) => (
