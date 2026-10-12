@@ -29,15 +29,18 @@ function distinctAlternativeStatements(
   const seen = new Set([canonical(current.sourceExcerpt)]);
   const currentLabel = canonical(current.label);
   const values: Array<{text: string; overlap: number; position: number}> = [];
+  const normalizeTerm = (word: string) => word.length >= 6 && word.endsWith("s")
+    ? word.slice(0, -1) : word;
   const topicWords = new Set(canonical(current.sourceExcerpt).split(" ")
-    .filter(word => word.length >= 5 && !["which","there","their","other","these","those"].includes(word)));
+    .filter(word => word.length >= 5 && !["which","there","their","other","these","those"].includes(word))
+    .map(normalizeTerm));
 
   for (const item of alternatives) {
     const value = clean(item.sourceExcerpt);
     const key = canonical(value);
     if (!value || seen.has(key) || canonical(item.label) === currentLabel) continue;
     seen.add(key);
-    const alternativeWords = new Set(canonical(value).split(" ").filter(Boolean));
+    const alternativeWords = new Set(canonical(value).split(" ").filter(Boolean).map(normalizeTerm));
     const overlap = [...topicWords].filter(word => alternativeWords.has(word)).length;
     values.push({text:value,overlap,position:values.length});
   }
