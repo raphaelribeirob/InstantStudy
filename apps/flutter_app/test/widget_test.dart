@@ -43,6 +43,40 @@ void main() {
     expect(find.byIcon(Icons.upload_file_outlined), findsOneWidget);
   });
 
+  testWidgets('opening wordmarks use bundled League Spartan Regular 400',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const InstantStudyApp());
+    await tester.pump();
+
+    final openingText = tester.widgetList<RichText>(
+      find.descendant(
+        of: find.byType(StudySplashIntro),
+        matching: find.byType(RichText),
+      ),
+    ).where((widget) {
+      final plain = widget.text.toPlainText();
+      return plain.contains('InstantStudy') || plain.contains('IStudy');
+    }).toList();
+
+    expect(openingText, hasLength(2));
+    for (final wordmark in openingText) {
+      final span = wordmark.text as TextSpan;
+      expect(span.style?.fontFamily, 'LeagueSpartan');
+      for (final child in span.children!) {
+        if (child is TextSpan) {
+          expect(child.style?.fontWeight, FontWeight.w400);
+        } else if (child is WidgetSpan) {
+          // Superscript trademark is rendered separately in the same family.
+          final trademarkTransform = child.child as Transform;
+          final trademark = trademarkTransform.child as Text;
+          expect(trademark.style?.fontFamily, 'LeagueSpartan');
+          expect(trademark.style?.fontWeight, FontWeight.w400);
+        }
+      }
+    }
+  });
+
   testWidgets('opening motion can be skipped without remounting the app',
       (tester) async {
     SharedPreferences.setMockInitialValues({});
