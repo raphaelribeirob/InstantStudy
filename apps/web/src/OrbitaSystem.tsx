@@ -108,7 +108,22 @@ export function OrbitaSystem({ materials, selected, onAction, onSelectMaterial, 
   const [commandStatus, setCommandStatus] = useState("");
   const [listening, setListening] = useState(false);
   const [highlight, setHighlight] = useState<OrbitalAction>("orbita");
-  const tutor = useRealtimeTutor();
+  const tutor = useRealtimeTutor({
+    onOpenMode: (mode) => {
+      setHighlight(mode);
+      setCommandStatus(tr("Abrindo por voz: ", "Opening by voice: ") + mode);
+      // Voice-initiated navigation keeps the already-authorized WebRTC session alive.
+      // No grade, purchase, file upload, or other mutation is exposed to the model.
+      onAction(mode);
+    },
+    getStudyContext: () => ({
+      selectedMaterial: selected?.title || "",
+      libraryMaterials: materials.length,
+      dueConcepts: due.length,
+      masteryIsEstimated: true,
+      averageMasteryPercent: insights ? Math.round(insights.averageMastery * 100) : 0,
+    }),
+  });
   const recognitionRef = useRef<SpeechListener | null>(null);
   const speechWindow = window as SpeechBrowser;
   const canRecognize = Boolean(speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition);
