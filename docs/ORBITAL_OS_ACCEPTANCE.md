@@ -18,7 +18,7 @@ This release is a **UI and interaction transformation**. It is not a claim that 
 | Quiz | Quiz | `learn` + `prepareStudy("quiz")` | Existing Study Engine, quick grading |
 | Practice tests | Test | `test` | Keeps existing test builder and delayed grading |
 | Ask | Ask | `ask` | Existing grounded Q&A |
-| Spaced review | Review | `orbita` | Existing schedule, **not FSRS** |
+| Spaced review | Review | `orbita` | **ts-fsrs** for new graded attempts; stored legacy due dates preserved until next review |
 | Retention insights | Insights | `insights` | Mastery proxy, due count, streaks |
 | Podcast | Podcast | `audio` | Existing 2-speaker script and browser TTS |
 | Charms/game | Game | `game` | Existing card matching, not Quizlet Charms parity |
@@ -61,8 +61,8 @@ This release is a **UI and interaction transformation**. It is not a claim that 
 
 - Flutter native now has an **Orbital-First home and contextual learning scenes** connected to the existing BFF. Its animated sphere is a Flutter-native gradient interpretation, **not** the vendored React SmoothUI component. Native OpenAI Realtime duplex voice, live microphone recording, full podcast parity, native billing/ChatGPT plugin configuration and visual device QA are still pending.
 - Web/PWA offers **OpenAI Realtime WebRTC voice tutoring** with a paid account and backend flag, separately from browser navigation dictation; normal Browser Speech APIs remain fallbacks for existing study and navigation. A live voice response **does not** update Study Engine mastery or replace signed answer submission.
-- The scheduler remains InstantStudy's existing heuristic, not migrated to FSRS.
-- Study-guide and flashcard quality, podcast generation, retention validity and game richness require separate pedagogical/product validation and upgrades.
+- The Study Engine now uses **ts-fsrs** for newly submitted graded answers. Prior review dates are not overwritten until the learner performs a new recall; historic data is not fabricated.
+- Study guides and flashcards now **optionally** use OpenAI Structured Outputs, with source-evidence checks and a deterministic fallback. Quality, podcast generation, retention validity and game richness still require real learner testing and separate product improvements.
 - ChatGPT plugin display is still controlled by the host environment; this Web design does not imply identical widgets inside ChatGPT.
 - Deployment, user-facing smoke testing and accessibility audits must be performed before replacing production.
 
@@ -129,3 +129,31 @@ The Web app needs no OpenAI key. It uses the existing `INSTANTSTUDY_API_URL` and
 8. Native Talk-to-OpenAI action is **not** represented as active until native WebRTC client and paid authentication are completed.
 9. Flutter analyze/test, TypeScript checks, JS tests, Web build and security workflow pass before merge.
 10. Live WebRTC, file imports, app store purchase flows, keyboard and screen-reader behavior must be manually validated on representative real devices.
+
+## Sensor Tower / Quizlet offer gap closure — October 2026
+
+This branch adds specific engineering improvements over the prior UI-only parity:
+
+| Product promise | New implementation | Qualification |
+|---|---|---|
+| Personalised flashcards and guides | `studyAssetIntelligence.ts` uses OpenAI Responses Structured Outputs with source-evidence strings checked against original text, 10 requested cards, short guide and keywords | **Preview opt-in only**, requires API key, Neon and per-user 3/day atomic quota; deterministic fallback on unavailable provider, short documents and insufficient grounding; quality not yet human-evaluated |
+| Study questions based on those flashcards | Web/Flutter pass generated questions and source excerpts into `StudyEngine` `concepts[]` for Quiz, Learn and Test, replacing generic prompts for recall/short-answer where available | Existing multiple-choice distractors and assessment calibration remain areas for improvement |
+| Longer lecture recordings | Signed-in Plus/Unlimited accounts send audio files up to **25 MB** in **1.75 MB** chunks to Neon staging, then finalise transcription and create a regular study material | **Web/PWA only**; 24-hour expiry, 2 new uploads/day, 2 pending; cannot claim hours of recording or guaranteed Vercel response time before live testing; upload stored temporarily in Neon; no native Flutter chunk upload |
+| Objective question grading | Choose-from-options checks the currently presented source-backed correct answer rather than lexical keyword similarity | Open response/essay grading still uses semantic model with deterministic fallback and requires human QA |
+| Spaced repetition | `ts-fsrs` per-concept persisted state and real-answer updates | Legacy due dates are retained until the next real answer; does not infer historical reviews or imply measured retention |
+| Single orbital learning experience | Review screen suppresses its duplicate Siri Orb and duplicate OpenAI live tutor when embedded in the persistent Web orb | Separate mobile Flutter gradient remains independent from React visual implementation |
+
+**Preview configuration:** `INSTANTSTUDY_AI_ASSETS_ENABLED=true` is configured only on the `feat/orbita-voice-review` Vercel API preview branch. `INSTANTSTUDY_AI_ASSETS_PER_DAY` default is 3. Do not activate on production without cost monitoring and end-to-end acceptance.
+
+**Not solved by this increment:** offline downloadable narrated podcasts, richer Charms gameplay, collaborative live editing, 16-language localisation, native Flutter WebRTC, mobile store subscription parity, human-validated grading quality, large audio >25 MB, provable long-term memory outcomes, and a confirmed production deployment.
+
+### New verification gates
+
+- Upload a 4 MB real audio file from a paid test account, ensure chunk staging, transcription and material creation work; refuse Free/anonymous on larger files.
+- Demonstrate quota exhaustion, file type/size rejection and old pending chunk expiry without leaking source text or keys.
+- Generate cards in Portuguese and English, verify exact evidence exists in the source, and test AI quota fallback without network.
+- Complete consecutive graded attempts, verify real FSRS card state is persisted and inherited across sessions.
+- Perform a quiz with actual source-based authored prompt and verify the answer plus persisted grade.
+- Verify one and only one active main Siri Orb is visible during Review.
+- Run TypeScript, tests, Flutter analyze/test and OWASP; human QA and live API tests remain mandatory before production.
+
