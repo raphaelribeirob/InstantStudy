@@ -4,6 +4,15 @@ import cors from "cors";
 import express from "express";
 import * as helmetNamespace from "helmet";
 import { rateLimit } from "express-rate-limit";
+import {
+  assertPaidPlan,
+  oauthChallenge,
+  oauthConfig,
+  protectedResourceMetadata,
+  resolveLearnerId,
+  verifyOauthBearer,
+  type PluginPrincipal,
+} from "./mcpOAuth.js";
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { BridgeQueue } from "./bridgeQueue.js";
@@ -217,7 +226,10 @@ async function cardsFromQuery(query: string, limit: number) {
     : [];
 }
 
-function createMcpServer() {
+function createMcpServer(principal?: PluginPrincipal) {
+  const pluginSecurity = principal
+    ? { securitySchemes: [{ type: "oauth2" as const, scopes: ["study:read", "study:write"] }] }
+    : {};
   const server = new McpServer({
     name: "instantstudy",
     version: "0.1.0",
@@ -226,6 +238,7 @@ function createMcpServer() {
   server.registerTool(
     "prepare_study",
     {
+      ...pluginSecurity,
       title: "Start InstantStudy from content",
       description:
         "PRIMARY CONTENT-FIRST ENTRY. Use immediately when the learner pastes notes, provides content in the conversation, or uploads files and asks to study, learn, review, quiz, test, or 'InstantStudy' them. Create the study session before asking onboarding questions. Do not require Anki. If the host can read the supplied file, also pass the relevant extracted text in contentText. After this tool returns, begin the first study question immediately.",
@@ -267,12 +280,13 @@ function createMcpServer() {
         mode,
       });
 
-      const usage = learnerId
-        ? await studyEntitlements.consume(learnerId, mode)
+      const verifiedLearnerId = resolveLearnerId(learnerId, principal);
+      const usage = verifiedLearnerId
+        ? await studyEntitlements.consume(verifiedLearnerId, mode)
         : undefined;
 
       const studySession = await studyEngine.start(contentSession, {
-        learnerId,
+        learnerId: verifiedLearnerId,
         mode,
         targetMinutes,
         maxQuestions,
@@ -303,6 +317,7 @@ function createMcpServer() {
   server.registerTool(
     "get_study_plan",
     {
+      ...pluginSecurity,
       title: "Get InstantStudy plan and usage",
       description:
         "Return the learner's current Free, Plus, or Unlimited entitlement and the remaining monthly Learn/Test allowance.",
@@ -316,13 +331,14 @@ function createMcpServer() {
       },
     },
     async ({ learnerId }) => {
-      return toolResult(await studyEntitlements.getStatus(learnerId));
+      return toolResult(await studyEntitlements.getStatus(resolveLearnerId(learnerId, principal)!));
     },
   );
 
   server.registerTool(
     "get_study_session",
     {
+      ...pluginSecurity,
       title: "Get InstantStudy session",
       description:
         "Retrieve the active content-first study session and its source context.",
@@ -337,7 +353,7 @@ function createMcpServer() {
     },
     async ({ sessionId }) => {
       const session = await studyEngine.get(sessionId);
-      if (!session) {
+      if (!session || (principal && session.learnerId !== principal.learnerId)) {
         throw new Error("Study session not found.");
       }
 
@@ -365,6 +381,7 @@ function createMcpServer() {
   server.registerTool(
     "next_study_question",
     {
+      ...pluginSecurity,
       title: "Get next adaptive study question",
       description:
         "Return the next study target and question policy for an active InstantStudy session. Generate exactly one question from the provided concept/source excerpt and follow the mode-specific policy.",
@@ -378,6 +395,7 @@ function createMcpServer() {
       },
     },
     async ({ studySessionId }) => {
+      await checkPluginSessionOwnership(studySessionId, principal);
       return toolResult(await studyEngine.next(studySessionId));
     },
   );
@@ -385,6 +403,7 @@ function createMcpServer() {
   server.registerTool(
     "submit_study_answer",
     {
+      ...pluginSecurity,
       title: "Record a learner answer",
       description:
         "After the learner answers an InstantStudy question, semantically evaluate it against the source and submit the result. correctness/completeness are 0..1. Use missingConcepts for important omissions. InstantStudy updates mastery and difficulty consistently across LLM hosts.",
@@ -414,6 +433,7 @@ function createMcpServer() {
       userAnswer,
       feedback,
     }) => {
+      await checkPluginSessionOwnership(studySessionId, principal);
       return toolResult(
         await studyEngine.submit(studySessionId, conceptId, {
           correctness,
@@ -430,6 +450,7 @@ function createMcpServer() {
   server.registerTool(
     "finish_study_session",
     {
+      ...pluginSecurity,
       title: "Finish InstantStudy session",
       description:
         "Finish an active study session and return a concise mastery/weakness summary.",
@@ -443,6 +464,7 @@ function createMcpServer() {
       },
     },
     async ({ studySessionId }) => {
+      await checkPluginSessionOwnership(studySessionId, principal);
       return toolResult(await studyEngine.finish(studySessionId));
     },
   );
@@ -450,6 +472,7 @@ function createMcpServer() {
   server.registerTool(
     "get_due_reviews",
     {
+      ...pluginSecurity,
       title: "Get due InstantStudy reviews",
       description:
         "Return concepts that are due for retrieval practice for a stable learnerId. Use this to start short retention sessions from prior learning without requiring the learner to re-upload the original material.",
@@ -466,11 +489,14 @@ function createMcpServer() {
     },
     async ({ learnerId, before, limit }) => {
       return toolResult(
-        await studyEngine.dueReviews(learnerId, { before, limit }),
+        await studyEngine.dueReviews(resolveLearnerId(learnerId, principal)!, { before, limit }),
       );
     },
   );
 
+  // Global Anki bridge and pricing experiments are legacy/trusted-client only.
+  // Do not expose either capability to authenticated multi-tenant ChatGPT users.
+  if (!principal) {
   server.registerTool(
     "anki_status",
     {
@@ -669,7 +695,16 @@ function createMcpServer() {
     },
   );
 
+  }
   return server;
+}
+
+async function checkPluginSessionOwnership(id: string, principal?: PluginPrincipal) {
+  if (!principal) return;
+  const session = await studyEngine.get(id);
+  if (!session || session.learnerId !== principal.learnerId) {
+    throw new Error("Study session not found.");
+  }
 }
 
 const app = express();
@@ -1600,18 +1635,21 @@ app.post("/bridge/result", (req, res) => {
   res.status(accepted ? 200 : 404).json({ accepted });
 });
 
-app.all("/mcp", async (req, res) => {
-  if (!mcpAuthorized(req)) {
-    res.setHeader("WWW-Authenticate", 'Bearer realm="InstantStudy MCP"');
-    res.status(401).json({
-      jsonrpc: "2.0",
-      error: { code: -32001, message: "Unauthorized" },
-      id: null,
-    });
+app.get("/.well-known/oauth-protected-resource", (_req, res) => {
+  const config = oauthConfig();
+  if (!config) {
+    res.status(503).json({ error: "plugin_oauth_not_configured" });
     return;
   }
+  res.json(protectedResourceMetadata(config));
+});
 
-  const server = createMcpServer();
+async function handleMcpRequest(
+  req: express.Request,
+  res: express.Response,
+  principal?: PluginPrincipal,
+) {
+  const server = createMcpServer(principal);
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
   });
@@ -1631,13 +1669,56 @@ app.all("/mcp", async (req, res) => {
         jsonrpc: "2.0",
         error: {
           code: -32603,
-          message:
-            error instanceof Error ? error.message : "Internal server error",
+          message: "Internal server error",
         },
         id: null,
       });
     }
   }
+}
+
+// OAuth-only public plugin route. It is intentionally DISABLED until
+// the trusted account issuer, JWKS and resource audience are configured.
+app.all("/mcp/chatgpt", async (req, res) => {
+  const config = oauthConfig();
+  if (!config) {
+    res.status(503).json({ error: "plugin_oauth_not_configured" });
+    return;
+  }
+
+  let principal: PluginPrincipal;
+  try {
+    principal = await verifyOauthBearer(req.header("authorization"), config);
+  } catch {
+    res.setHeader("WWW-Authenticate", oauthChallenge(config));
+    res.status(401).json({ error: "oauth_authorization_required" });
+    return;
+  }
+
+  try {
+    const entitlement = await studyEntitlements.getStatus(principal.learnerId);
+    assertPaidPlan(entitlement.plan);
+  } catch {
+    res.status(403).json({ error: "existing_paid_entitlement_required" });
+    return;
+  }
+
+  await handleMcpRequest(req, res, principal);
+});
+
+// Backward-compatible, private single-tenant MCP route for trusted clients.
+// Never point the public ChatGPT plugin manifest at this bearer-key route.
+app.all("/mcp", async (req, res) => {
+  if (!mcpAuthorized(req)) {
+    res.setHeader("WWW-Authenticate", 'Bearer realm="InstantStudy MCP"');
+    res.status(401).json({
+      jsonrpc: "2.0",
+      error: { code: -32001, message: "Unauthorized" },
+      id: null,
+    });
+    return;
+  }
+  await handleMcpRequest(req, res);
 });
 
 export default app;
