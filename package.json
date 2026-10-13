@@ -16,8 +16,10 @@
     "build:pay": "npm --workspace apps/pay run build",
     "security:audit": "npm audit --omit=dev --audit-level=high",
     "build": "npm run build:web && npm run build:pay",
-    "test": "npm --workspace apps/mcp-server run test && npm --workspace apps/pay run test",
+    "test": "npm run test:auth0 && npm --workspace apps/mcp-server run test && npm --workspace apps/pay run test",
     "plugin:check": "node scripts/check-plugin-package.mjs",
-    "plugin:release-check": "node scripts/check-plugin-package.mjs --release"
+    "plugin:release-check": "node scripts/check-plugin-package.mjs --release",
+    "auth0:check": "node scripts/check-auth0-discovery.mjs",
+    "test:auth0": "node --test integrations/auth0/instantstudy-post-login.test.cjs"
   }
 }
