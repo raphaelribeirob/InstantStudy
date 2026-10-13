@@ -106,11 +106,12 @@ export class UsageLimitError extends Error {
 
 interface EntitlementStore {
   get(learnerId: string): Promise<UsageRow>;
-  saveUsage(row: UsageRow): Promise<void>;
+  /** Admit and increment within one database statement, null if quota exhausted. */
+  consume(learnerId: string, mode: StudyMode): Promise<UsageRow | null>;
   setPlan(learnerId: string, plan: StudyPlan): Promise<void>;
 }
 
-class MemoryEntitlementStore implements EntitlementStore {
+export class MemoryEntitlementStore implements EntitlementStore {
   private plans = new Map<string, StudyPlan>();
   private usage = new Map<string, UsageRow>();
 
@@ -137,8 +138,18 @@ class MemoryEntitlementStore implements EntitlementStore {
     return row;
   }
 
-  async saveUsage(row: UsageRow) {
+  async consume(learnerId: string, mode: StudyMode) {
+    const row = await this.get(learnerId);
+    const caps = limits(row.plan);
+    if (mode === "learn") {
+      if (caps.learnRounds !== null && row.learnRounds >= caps.learnRounds) return null;
+      row.learnRounds++;
+    } else if (mode === "test") {
+      if (caps.practiceTests !== null && row.practiceTests >= caps.practiceTests) return null;
+      row.practiceTests++;
+    }
     this.usage.set(`${row.learnerId}:${row.period}`, { ...row });
+    return row;
   }
 
   async setPlan(learnerId: string, plan: StudyPlan) {
@@ -208,28 +219,65 @@ class NeonEntitlementStore implements EntitlementStore {
     };
   }
 
-  async saveUsage(row: UsageRow) {
+  async consume(learnerId: string, mode: StudyMode) {
     await this.ready;
-    await this.sql`
-      INSERT INTO instantstudy_usage (
-        learner_id,
-        period,
-        learn_rounds,
-        practice_tests,
-        updated_at
-      )
-      VALUES (
-        ${row.learnerId},
-        ${row.period},
-        ${row.learnRounds},
-        ${row.practiceTests},
-        now()
-      )
-      ON CONFLICT (learner_id, period) DO UPDATE SET
-        learn_rounds = EXCLUDED.learn_rounds,
-        practice_tests = EXCLUDED.practice_tests,
-        updated_at = now()
-    `;
+    if (mode !== "learn" && mode !== "test") return this.get(learnerId);
+    const period = periodKey();
+    const freeLearn = Math.max(0, Number.isFinite(FREE_LEARN_LIMIT) ? FREE_LEARN_LIMIT : 0);
+    const freeTest = Math.max(0, Number.isFinite(FREE_TEST_LIMIT) ? FREE_TEST_LIMIT : 0);
+    // The cap comes from the durable authoritative plan, never the client.
+    // One INSERT..ON CONFLICT..UPDATE locks the counter row and prevents
+    // concurrent attempts reading the same available quota.
+    const rows = mode === "learn"
+      ? await this.sql`
+          INSERT INTO instantstudy_usage (learner_id, period, learn_rounds, practice_tests)
+          SELECT ${learnerId}, ${period}, 1, 0
+          WHERE COALESCE(
+            (SELECT plan FROM instantstudy_entitlements WHERE learner_id = ${learnerId}),
+            'free'
+          ) IN ('plus', 'unlimited') OR ${freeLearn} > 0
+          ON CONFLICT (learner_id, period) DO UPDATE
+          SET learn_rounds = instantstudy_usage.learn_rounds + 1,
+              updated_at = now()
+          WHERE instantstudy_usage.learn_rounds <
+            CASE COALESCE(
+              (SELECT plan FROM instantstudy_entitlements WHERE learner_id = ${learnerId}),
+              'free'
+            )
+              WHEN 'unlimited' THEN 2147483647
+              WHEN 'plus' THEN ${PLUS_LEARN_LIMIT}
+              ELSE ${freeLearn}
+            END
+          RETURNING learn_rounds, practice_tests
+        `
+      : await this.sql`
+          INSERT INTO instantstudy_usage (learner_id, period, learn_rounds, practice_tests)
+          SELECT ${learnerId}, ${period}, 0, 1
+          WHERE COALESCE(
+            (SELECT plan FROM instantstudy_entitlements WHERE learner_id = ${learnerId}),
+            'free'
+          ) IN ('plus', 'unlimited') OR ${freeTest} > 0
+          ON CONFLICT (learner_id, period) DO UPDATE
+          SET practice_tests = instantstudy_usage.practice_tests + 1,
+              updated_at = now()
+          WHERE instantstudy_usage.practice_tests <
+            CASE COALESCE(
+              (SELECT plan FROM instantstudy_entitlements WHERE learner_id = ${learnerId}),
+              'free'
+            )
+              WHEN 'unlimited' THEN 2147483647
+              WHEN 'plus' THEN ${PLUS_TEST_LIMIT}
+              ELSE ${freeTest}
+            END
+          RETURNING learn_rounds, practice_tests
+        `;
+    if (!rows.length) return null;
+    const current = await this.get(learnerId);
+    return {
+      ...current,
+      learnRounds: Number(rows[0].learn_rounds),
+      practiceTests: Number(rows[0].practice_tests),
+    };
   }
 
   async setPlan(learnerId: string, plan: StudyPlan) {
@@ -253,7 +301,7 @@ class UnavailableEntitlementStore implements EntitlementStore {
     return this.unavailable();
   }
 
-  async saveUsage(_row: UsageRow) {
+  async consume(_learnerId: string, _mode: StudyMode): Promise<UsageRow | null> {
     return this.unavailable();
   }
 
@@ -281,31 +329,11 @@ export class EntitlementService {
   }
 
   async consume(learnerId: string, mode: StudyMode) {
+    const admitted = await this.store.consume(learnerId, mode);
+    if (admitted) return status(admitted);
     const row = await this.store.get(learnerId);
-    const before = status(row);
-
-    if (mode === "learn") {
-      if (
-        before.limits.learnRounds !== null &&
-        row.learnRounds >= before.limits.learnRounds
-      ) {
-        throw new UsageLimitError("learn_rounds", before);
-      }
-      row.learnRounds += 1;
-    }
-
-    if (mode === "test") {
-      if (
-        before.limits.practiceTests !== null &&
-        row.practiceTests >= before.limits.practiceTests
-      ) {
-        throw new UsageLimitError("practice_tests", before);
-      }
-      row.practiceTests += 1;
-    }
-
-    await this.store.saveUsage(row);
-    return status(row);
+    const metric = mode === "test" ? "practice_tests" : "learn_rounds";
+    throw new UsageLimitError(metric, status(row));
   }
 
   async setPlan(learnerId: string, plan: StudyPlan) {
