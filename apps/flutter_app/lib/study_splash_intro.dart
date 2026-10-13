@@ -25,7 +25,7 @@ class _StudySplashIntroState extends State<StudySplashIntro>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 1050),
     )..addStatusListener((status) {
         if (status == AnimationStatus.completed) _finish();
       });
@@ -65,7 +65,7 @@ class _StudySplashIntroState extends State<StudySplashIntro>
     );
   }
 
-  Widget _wordmark(String initial, String name, double size) {
+  Widget _wordmark(String initial, String name, double size, Color ink) {
     return FittedBox(
       fit: BoxFit.scaleDown,
       child: Text.rich(
@@ -74,7 +74,7 @@ class _StudySplashIntroState extends State<StudySplashIntro>
             fontFamily: 'LeagueSpartan',
             fontSize: size,
             height: 1,
-            color: Colors.black,
+            color: ink,
             letterSpacing: -size * .045,
           ),
           children: [
@@ -93,7 +93,7 @@ class _StudySplashIntroState extends State<StudySplashIntro>
                 child: Text(
                   '™',
                   style: TextStyle(
-                    color: Colors.black,
+                    color: ink,
                     fontFamily: 'LeagueSpartan',
                     fontSize: size * .31,
                     fontWeight: FontWeight.w400,
@@ -111,8 +111,10 @@ class _StudySplashIntroState extends State<StudySplashIntro>
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final pt = Localizations.localeOf(context).languageCode == 'pt';
     return ColoredBox(
-      color: const Color(0xFFFDFCFC),
+      color: colors.surface,
       child: LayoutBuilder(builder: (context, constraints) {
         final startWidth = math.min(constraints.maxWidth * .86, 650.0);
         final endWidth = math.min(constraints.maxWidth * .62, 360.0);
@@ -137,15 +139,15 @@ class _StudySplashIntroState extends State<StudySplashIntro>
             return Stack(children: [
               Center(
                 child: Semantics(
-                  label: 'InstantStudy becomes IStudy',
+                  label: pt ? 'InstantStudy se transforma em IStudy' : 'InstantStudy becomes IStudy',
                   image: true,
                   child: Container(
                     width: width,
                     height: pillHeight,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFDFCFC),
+                      color: colors.surface,
                       borderRadius: BorderRadius.circular(1000),
-                      border: Border.all(color: Colors.black, width: 4),
+                      border: Border.all(color: colors.onSurface, width: 4),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -161,7 +163,7 @@ class _StudySplashIntroState extends State<StudySplashIntro>
                               ),
                               child: Transform.scale(
                                 scaleX: 1 - fullFade * .31,
-                                child: _wordmark('Instant', 'Study', typeSize),
+                                child: _wordmark('Instant', 'Study', typeSize, colors.onSurface),
                               ),
                             ),
                           ),
@@ -174,7 +176,7 @@ class _StudySplashIntroState extends State<StudySplashIntro>
                               ),
                               child: Transform.scale(
                                 scaleX: .85 + shortFade * .15,
-                                child: _wordmark('I', 'Study', typeSize),
+                                child: _wordmark('I', 'Study', typeSize, colors.onSurface),
                               ),
                             ),
                           ),
@@ -190,9 +192,9 @@ class _StudySplashIntroState extends State<StudySplashIntro>
                 child: TextButton(
                   onPressed: _finish,
                   style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF777169),
+                    foregroundColor: colors.onSurfaceVariant,
                   ),
-                  child: const Text('Skip', style: TextStyle(fontSize: 12)),
+                  child: Text(pt ? 'Pular' : 'Skip', style: const TextStyle(fontSize: 14)),
                 ),
               ),
             ]);

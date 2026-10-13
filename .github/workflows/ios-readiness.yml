@@ -1,0 +1,45 @@
+name: Apple iOS readiness (manual)
+
+# Runs on macOS only when explicitly requested from GitHub Actions.
+# A successful unsigned archive does not verify IAP, privacy or App Review.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unsigned-ios:
+    runs-on: macos-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Check native Apple project exists
+        run: |
+          test -f apps/flutter_app/ios/Runner/Info.plist || {
+            echo "::error::iOS Runner/Info.plist missing. Create/commit the platform project before App Store readiness."
+            exit 1
+          }
+          test -f apps/flutter_app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json || {
+            echo "::error::iOS AppIcon asset catalog missing."
+            exit 1
+          }
+      - name: Resolve dependencies
+        working-directory: apps/flutter_app
+        run: flutter pub get
+      - name: Static analysis
+        working-directory: apps/flutter_app
+        run: flutter analyze
+      - name: Flutter widget tests
+        working-directory: apps/flutter_app
+        run: flutter test
+      - name: Build unsigned iOS release
+        working-directory: apps/flutter_app
+        run: flutter build ios --release --no-codesign
+      - name: Explain certification boundary
+        run: |
+          echo "::notice::Unsigned build passed. StoreKit server validation, restore, consent, VoiceOver, Apple signing and TestFlight remain independent release gates."

@@ -44,7 +44,7 @@ class OrbitalHome extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('INSTANTSTUDY™ / ÓRBITA', style: TextStyle(
-          fontSize: 10, color: graphite, fontWeight: FontWeight.w500, letterSpacing: 2,
+          fontSize: 13, color: graphite, fontWeight: FontWeight.w500, letterSpacing: 2,
         )),
         const SizedBox(height: 20),
         Text(
@@ -56,7 +56,7 @@ class OrbitalHome extends StatelessWidget {
         Text(tr(
           'Importe qualquer material, converse, aprenda, pratique e revise em uma única experiência.',
           'Import anything, learn, practice and review in a single experience.',
-        ), style: const TextStyle(fontSize: 14, height: 1.5, color: smoke)),
+        ), style: const TextStyle(fontSize: 16, height: 1.5, color: smoke)),
         const SizedBox(height: 24),
         Container(
           width: double.infinity,
@@ -68,14 +68,14 @@ class OrbitalHome extends StatelessWidget {
             children: [
               const Align(alignment: Alignment.centerLeft,
                 child: Text('THE FUTURE OF LEARNING.', style: TextStyle(
-                  fontSize: 9, color: graphite, letterSpacing: 1.2))),
+                  fontSize: 12, color: graphite, letterSpacing: 1.2))),
               const SizedBox(height: 6),
               const OrbitalSphere(size: 228),
               const SizedBox(height: 8),
               Text(
                 hasMaterial ? tr('Pronta para estudar', 'Ready to study')
                     : tr('Adicione seu primeiro material', 'Add your first material'),
-                style: const TextStyle(fontSize: 13, color: graphite, fontWeight: FontWeight.w500),
+                style: const TextStyle(fontSize: 15, color: graphite, fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 14),
               if (hasMaterial && materialTitle != null)
@@ -83,7 +83,7 @@ class OrbitalHome extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 14),
                   child: Text(materialTitle!, textAlign: TextAlign.center,
                     maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, color: smoke)),
+                    style: const TextStyle(fontSize: 14, color: smoke)),
                 ),
               SizedBox(
                 width: double.infinity,
@@ -100,7 +100,7 @@ class OrbitalHome extends StatelessWidget {
               const SizedBox(height: 8),
               Text(tr('A Órbita é visual. As avaliações são registradas pelo motor de estudo.',
                 'The Orb is visual. Grades are recorded by the study engine.'),
-                textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: smoke)),
+                textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: smoke)),
             ],
           ),
         ),
@@ -118,49 +118,89 @@ class OrbitalHome extends StatelessWidget {
           ),
         ]),
         const SizedBox(height: 14),
-        LayoutBuilder(builder: (context, constraints) {
-          final columns = constraints.maxWidth > 650 ? 3 : 2;
-          final gap = 10.0;
-          final tileWidth = (constraints.maxWidth - gap * (columns - 1)) / columns;
-          return Wrap(
-            spacing: gap, runSpacing: gap,
-            children: modes.map((mode) => SizedBox(
-              width: tileWidth,
-              child: Material(
-                color: taupe,
-                borderRadius: BorderRadius.circular(20),
-                child: InkWell(
-                  onTap: () => onAction(mode.key),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    constraints: const BoxConstraints(minHeight: 132),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: stone),
-                      borderRadius: BorderRadius.circular(20)),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Icon(mode.icon, color: graphite, size: 23),
-                      const SizedBox(height: 16),
-                      Text(mode.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 14, color: ink,
-                          fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 5),
-                      Text(mode.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 10, color: smoke, height: 1.3)),
-                    ]),
-                  ),
-                ),
-              ),
-            )).toList(),
-          );
-        }),
+        // First use: show the four core learning actions. Keep all other
+        // supported tools discoverable without overwhelming the learner.
+        _OrbitalModeGrid(modes: modes.take(4).toList(), onAction: onAction),
+        const SizedBox(height: 8),
+        ExpansionTile(
+          key: const PageStorageKey<String>('instantstudy-more-tools'),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+          childrenPadding: const EdgeInsets.only(bottom: 10),
+          title: Text(tr('Mais ferramentas', 'More tools'),
+            style: const TextStyle(fontSize: 17, color: ink)),
+          subtitle: Text(tr('Perguntar, cartões, biblioteca e mais',
+            'Ask, flashcards, library and more'),
+            style: const TextStyle(fontSize: 16, color: graphite)),
+          children: [
+            _OrbitalModeGrid(modes: modes.skip(4).toList(), onAction: onAction),
+          ],
+        ),
         const SizedBox(height: 20),
         Text(tr(
           'Voz OpenAI Realtime: disponível na versão web mediante conta elegível. O Flutter não simula conversas de voz.',
           'OpenAI Realtime voice: available on eligible web accounts. Flutter does not simulate AI voice calls.',
-        ), style: const TextStyle(fontSize: 11, color: smoke, height: 1.5)),
+        ), style: const TextStyle(fontSize: 13, color: smoke, height: 1.5)),
       ],
     );
+  }
+}
+
+/// Dynamic-height tiles retain the full mode list while prioritizing Learn.
+class _OrbitalModeGrid extends StatelessWidget {
+  const _OrbitalModeGrid({required this.modes, required this.onAction});
+  final List<_OrbitMode> modes;
+  final ValueChanged<String> onAction;
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final columns = constraints.maxWidth > 650 ? 3 : 2;
+      const gap = 10.0;
+      final tileWidth = (constraints.maxWidth - gap * (columns - 1)) / columns;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: modes.map((mode) => SizedBox(
+          width: tileWidth,
+          child: Material(
+            color: OrbitalHome.taupe,
+            borderRadius: BorderRadius.circular(20),
+            child: Semantics(
+              button: true,
+              label: mode.title,
+              hint: mode.subtitle,
+              child: InkWell(
+                onTap: () => onAction(mode.key),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 132),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: OrbitalHome.stone),
+                    borderRadius: BorderRadius.circular(20)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(mode.icon, color: OrbitalHome.graphite, size: 24),
+                      const SizedBox(height: 12),
+                      Text(mode.title,
+                        softWrap: true,
+                        style: const TextStyle(fontSize: 16,
+                          color: OrbitalHome.ink, fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 5),
+                      Text(mode.subtitle,
+                        softWrap: true,
+                        style: const TextStyle(fontSize: 15,
+                          color: OrbitalHome.graphite, height: 1.35)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        )).toList(),
+      );
+    });
   }
 }
 

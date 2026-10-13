@@ -1,46 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:instantstudy/main.dart';
+import 'package:instantstudy/native_hard_paywall.dart';
 import 'package:instantstudy/orbital_home.dart';
 import 'package:instantstudy/study_splash_intro.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('opens the native Orbital OS and routes import', (tester) async {
+  testWidgets('native purchase gate is fail-closed after splash', (tester) async {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(const InstantStudyApp());
-    // The one-shot splash must finish before the underlying UI accepts taps.
     await tester.pump();
     expect(find.byType(StudySplashIntro), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 1750));
     expect(find.byType(StudySplashIntro), findsNothing);
-    // OrbitalSphere loops continuously; do not use pumpAndSettle.
+    expect(find.byType(NativeHardPaywall), findsOneWidget);
+    expect(find.byType(OrbitalHome), findsNothing);
+    expect(find.byType(OrbitalSphere), findsNothing);
+    expect(find.text('In-app subscriptions are temporarily unavailable.'),
+      findsOneWidget);
+  });
 
-    expect(find.text('InstantStudy™'), findsOneWidget);
-    expect(find.text('Put your mind\nin orbit.'), findsOneWidget);
-    expect(find.byType(OrbitalSphere), findsWidgets);
-    expect(find.byType(AppBar), findsNothing);
-    expect(find.byType(SegmentedButton<String>), findsNothing);
+  testWidgets('subscription gate remains readable at 200% text on compact iPhone',
+      (tester) async {
+    tester.view.physicalSize = const Size(640, 1136);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(MaterialApp(
+      home: MediaQuery(
+        data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+        child: const NativeHardPaywall(),
+      ),
+    ));
+    await tester.pump();
+    expect(find.text('In-app subscriptions are temporarily unavailable.'),
+      findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
-    await tester.tap(find.byIcon(Icons.language).first);
-    await tester.pump(const Duration(milliseconds: 250));
-
-    expect(find.text('Sua mente,\nem órbita.'), findsOneWidget);
-
-    await tester.ensureVisible(find.text('Adicionar material').first);
-    await tester.pump(const Duration(milliseconds: 120));
-    await tester.tap(find.text('Adicionar material').first);
-    await tester.pump(const Duration(milliseconds: 380));
-    expect(find.text('Aprenda com\nqualquer coisa.'), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.text('Começar InstantStudy'),
-      280,
-      scrollable: find.byType(Scrollable).first,
+  testWidgets('native paywall uses host light or dark semantic colors',
+      (tester) async {
+    const dark = ColorScheme.dark(
+      surface: Color(0xFF181818),
+      onSurface: Color(0xFFF2F2F2),
     );
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('Começar InstantStudy'), findsOneWidget);
-    expect(find.byIcon(Icons.upload_file_outlined), findsOneWidget);
+    await tester.pumpWidget(MaterialApp(
+      theme: ThemeData(colorScheme: dark),
+      home: const NativeHardPaywall(),
+    ));
+    expect(tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor,
+        dark.surface);
+    expect(find.byType(Semantics), findsWidgets);
   });
 
   testWidgets('opening wordmarks use bundled League Spartan Regular 400',
@@ -89,7 +100,8 @@ void main() {
     await tester.tap(find.text('Skip'));
     await tester.pump();
     expect(find.byType(StudySplashIntro), findsNothing);
-    expect(find.byType(OrbitalSphere), findsWidgets);
+    expect(find.byType(NativeHardPaywall), findsOneWidget);
+    expect(find.byType(OrbitalSphere), findsNothing);
   });
 
 }
