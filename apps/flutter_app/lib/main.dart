@@ -101,6 +101,19 @@ class _InstantStudyAppState extends State<InstantStudyApp> {
         ),
         useMaterial3: true,
       ),
+      // Honor appearance preferences in Material widgets. Screens that hardcode
+      // light colors still need a separate high-contrast visual audit.
+      darkTheme: ThemeData(
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFFE6E4E0),
+          secondary: Color(0xFFFF8454),
+          surface: Color(0xFF191917),
+          onSurface: Color(0xFFF6F4F0),
+        ),
+        scaffoldBackgroundColor: const Color(0xFF151513),
+        useMaterial3: true,
+      ),
+      themeMode: ThemeMode.system,
       home: _StartupGate(onLocaleChanged: _setLocale),
     );
   }
@@ -808,13 +821,13 @@ class _StudyHomeState extends State<StudyHome> {
   Widget _nativeHeading(String title, String caption) => Column(
     crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Text('INSTANTSTUDY / ÓRBITA',style: TextStyle(
-        color: InstantStudyApp.muted,fontSize:10,letterSpacing:1.6)),
+        color: InstantStudyApp.muted,fontSize: 13,letterSpacing:1.6)),
       const SizedBox(height:14),
       Text(title,style: const TextStyle(color: InstantStudyApp.ink,
         fontSize:35,fontWeight:FontWeight.w300,height:1.12,letterSpacing:-.7)),
       const SizedBox(height:12),
       Text(caption,style: const TextStyle(
-        color: InstantStudyApp.muted,fontSize:14,height:1.5)),
+        color: InstantStudyApp.muted,fontSize: 16,height:1.5)),
       const SizedBox(height:22),
     ]);
 
@@ -902,18 +915,18 @@ class _StudyHomeState extends State<StudyHome> {
         TextButton.icon(onPressed:_busy?null:_editNativeMaterial,icon:const Icon(Icons.edit_outlined),label:Text(_txt('Editar material','Edit study set'))),
         Container(width:double.infinity,padding:const EdgeInsets.all(22),
           decoration:BoxDecoration(color:OrbitalHome.taupe,borderRadius:BorderRadius.circular(20)),
-          child:Text(assets['summary']?.toString()??'',style:const TextStyle(fontSize:15,height:1.6))),
+          child:Text(assets['summary']?.toString()??'',style:const TextStyle(fontSize: 17,height:1.6))),
         const SizedBox(height:20),
         ...outline.asMap().entries.map((part)=>Padding(
           padding:const EdgeInsets.only(bottom:12),
           child:Text((part.key+1).toString()+'. '+part.value,
-            style:const TextStyle(fontSize:14,height:1.5)))),
+            style:const TextStyle(fontSize: 16,height:1.5)))),
         Wrap(spacing:6,runSpacing:6,children:terms.map((term)=>
           Chip(label:Text(term),backgroundColor:OrbitalHome.taupe,
             shape:const StadiumBorder(side:BorderSide(color:OrbitalHome.stone)))).toList()),
         const SizedBox(height:14),
         Text(_txt('Resumo extrativo: confira o texto original.','Extractive summary: verify against the source.'),
-          style:const TextStyle(fontSize:11,color:OrbitalHome.smoke)),
+          style:const TextStyle(fontSize: 13,color:OrbitalHome.smoke)),
       ]
     ]);
   }
@@ -941,7 +954,7 @@ class _StudyHomeState extends State<StudyHome> {
               alignment:Alignment.center,padding:const EdgeInsets.all(25),
               child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
                 Text(_cardFlipped?'ANSWER':'QUESTION',
-                  style:const TextStyle(color:OrbitalHome.smoke,fontSize:10,letterSpacing:1.5)),
+                  style:const TextStyle(color:OrbitalHome.smoke,fontSize: 13,letterSpacing:1.5)),
                 const SizedBox(height:22),
                 Text(card[_cardFlipped?'back':'front']?.toString()??'',
                   textAlign:TextAlign.center,style:const TextStyle(
@@ -974,7 +987,7 @@ class _StudyHomeState extends State<StudyHome> {
       const SizedBox(height:20),
       Container(padding:const EdgeInsets.all(22),
         decoration:BoxDecoration(color:OrbitalHome.taupe,borderRadius:BorderRadius.circular(20)),
-        child:SelectableText(_askResponse!,style:const TextStyle(fontSize:15,height:1.6))),
+        child:SelectableText(_askResponse!,style:const TextStyle(fontSize: 17,height:1.6))),
     ],
   ]);
 
@@ -1011,7 +1024,7 @@ class _StudyHomeState extends State<StudyHome> {
       onPressed:_busy?null:_joinStudyRoom),
     if(_roomMessage!=null)...[
       const SizedBox(height:18),
-      SelectableText(_roomMessage!,style:const TextStyle(fontSize:14,color:OrbitalHome.graphite)),
+      SelectableText(_roomMessage!,style:const TextStyle(fontSize: 16,color:OrbitalHome.graphite)),
     ],
   ]);
 
@@ -1048,7 +1061,7 @@ class _StudyHomeState extends State<StudyHome> {
           context.tr('futureLearning'),
           style: const TextStyle(
             color: InstantStudyApp.orange,
-            fontSize: 10,
+            fontSize: 13,
             fontWeight: FontWeight.w700,
             letterSpacing: 1.5,
           ),
@@ -1153,7 +1166,7 @@ class _StudyHomeState extends State<StudyHome> {
           Text(
             context.tr('knowledgeUpdated'),
             style: const TextStyle(
-              fontSize: 10,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.4,
             ),
@@ -1238,7 +1251,7 @@ class _StudyHomeState extends State<StudyHome> {
                           const SizedBox(width: 12),
                           Expanded(child: Text(_txt(
                             'Estudando com sua Órbita', 'Learning in your orbit'),
-                            style: const TextStyle(fontSize: 13,
+                            style: const TextStyle(fontSize: 15,
                               color: InstantStudyApp.muted))),
                           TextButton.icon(
                             onPressed: _busy ? null : () => setState(() {
@@ -1337,7 +1350,7 @@ class _ProductMasthead extends StatelessWidget {
             context.tr('product'),
             style: const TextStyle(
               color: InstantStudyApp.ink,
-              fontSize: 14,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
               letterSpacing: -.4,
             ),
@@ -1354,7 +1367,7 @@ class _ProductMasthead extends StatelessWidget {
             ),
             child: Text(
               context.tr('insights'),
-              style: const TextStyle(fontSize: 10, letterSpacing: .4),
+              style: const TextStyle(fontSize: 13, letterSpacing: .4),
             ),
           ),
           IconButton(
@@ -1464,11 +1477,16 @@ class _ModeRail extends StatelessWidget {
         children: modes.map((mode) {
           final active = selected == mode;
           return Expanded(
-            child: InkWell(
+            child: Semantics(
+              button: true,
+              selected: active,
+              label: context.tr(mode),
+              child: InkWell(
               onTap: () => onSelected(mode),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                constraints: const BoxConstraints(minHeight: 46),
+                duration: MediaQuery.maybeOf(context)?.disableAnimations == true
+                    ? Duration.zero : const Duration(milliseconds: 180),
+                constraints: const BoxConstraints(minHeight: 48),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: active ? InstantStudyApp.ink : Colors.transparent,
@@ -1480,15 +1498,17 @@ class _ModeRail extends StatelessWidget {
                 ),
                 child: Text(
                   context.tr(mode),
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     color: active
                         ? InstantStudyApp.paper
                         : InstantStudyApp.muted,
-                    fontSize: 9,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: .9,
+                    letterSpacing: .3,
                   ),
                 ),
+              ),
               ),
             ),
           );
@@ -1572,7 +1592,7 @@ class _ChoiceSelect extends StatelessWidget {
                   child: Text(
                     '${label.toUpperCase()} · ${formatter(item)}',
                     style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: 13,
                       letterSpacing: .5,
                     ),
                   ),
@@ -1694,7 +1714,7 @@ class _SignalButton extends StatelessWidget {
                 label,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 10,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   letterSpacing: .4,
                 ),
@@ -1748,7 +1768,7 @@ class _ChoiceRow extends StatelessWidget {
                 label,
                 style: const TextStyle(
                   color: InstantStudyApp.ink,
-                  fontSize: 10,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -1795,7 +1815,7 @@ class _DarkStudyScene extends StatelessWidget {
             eyebrow,
             style: const TextStyle(
               color: InstantStudyApp.orangeSoft,
-              fontSize: 9,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.1,
             ),
@@ -1859,7 +1879,7 @@ class _SectionRule extends StatelessWidget {
         label,
         style: const TextStyle(
           color: InstantStudyApp.muted,
-          fontSize: 9,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.2,
         ),
@@ -1906,7 +1926,7 @@ class _InsightsScene extends StatelessWidget {
                   Text(
                     context.tr('knowledgeState'),
                     style: const TextStyle(
-                      fontSize: 9,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.2,
                     ),
@@ -1933,7 +1953,7 @@ class _InsightsScene extends StatelessWidget {
                 context.tr('overallMastery'),
                 style: const TextStyle(
                   color: InstantStudyApp.muted,
-                  fontSize: 12,
+                  fontSize: 14,
                 ),
               ),
               const SizedBox(height: 36),
@@ -2010,14 +2030,14 @@ class _MetricLine extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(fontSize: 12),
+              style: const TextStyle(fontSize: 14),
             ),
           ),
           Text(
             value,
             style: const TextStyle(
               color: InstantStudyApp.muted,
-              fontSize: 12,
+              fontSize: 14,
             ),
           ),
         ],
@@ -2051,7 +2071,7 @@ class _ConceptLine extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(fontSize: 13),
+              style: const TextStyle(fontSize: 15),
             ),
           ),
           SizedBox(
@@ -2072,7 +2092,7 @@ class _ConceptLine extends StatelessWidget {
               textAlign: TextAlign.right,
               style: const TextStyle(
                 color: InstantStudyApp.muted,
-                fontSize: 10,
+                fontSize: 13,
               ),
             ),
           ),
@@ -2112,7 +2132,7 @@ class _PodcastScene extends StatelessWidget {
                 context.tr('podcastKicker'),
                 style: const TextStyle(
                   color: InstantStudyApp.orangeSoft,
-                  fontSize: 9,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.2,
                 ),
@@ -2157,7 +2177,7 @@ class _PodcastScene extends StatelessWidget {
                           color: coach
                               ? InstantStudyApp.ink
                               : const Color(0xFF77736B),
-                          fontSize: 9,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.1,
                         ),
@@ -2259,7 +2279,7 @@ class _StudyGameSceneState extends State<_StudyGameScene> {
                 context.tr('gameKicker'),
                 style: const TextStyle(
                   color: InstantStudyApp.orange,
-                  fontSize: 9,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.2,
                 ),
@@ -2313,7 +2333,7 @@ class _StudyGameSceneState extends State<_StudyGameScene> {
                               color: open
                                   ? InstantStudyApp.orange
                                   : const Color(0xFF77736B),
-                              fontSize: 9,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 1,
                             ),
