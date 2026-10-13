@@ -1016,3 +1016,33 @@ button,input,textarea{font:inherit}
 .software-orbital-context-nav button.active{background:#e9eaff;color:#313ab9;border-color:#a6aeed}
 .software-orbital-context button:focus-visible{outline:3px solid #5b6cff;outline-offset:2px}
 @media(max-width:620px){.software-orbital-context{padding:9px 13px;gap:8px}.software-orbital-center{padding:10px;font-size:0}.software-orbital-center svg{width:18px;height:18px}.software-orbital-context-nav button{padding:10px 12px}}
+
+
+/* First value, not a fake learning animation. All figures come from server grades. */
+.software-first-study-intro,.software-first-aha,.software-first-repair {
+  background: #fff;border: 1px solid var(--is-line);border-radius: 16px;
+  padding: 22px;margin-bottom: 18px;color: var(--is-ink);
+}
+.software-first-study-intro span,.software-first-aha span,.software-first-repair span{
+  display:block;font-size:10px;letter-spacing:.14em;font-weight:700;color:var(--is-blue);margin-bottom:10px;
+}
+.software-first-study-intro strong{display:block;font-size:clamp(19px,3vw,27px);line-height:1.18;letter-spacing:-.025em}
+.software-first-study-intro p,.software-first-aha p,.software-first-repair p{
+  color:var(--is-muted);line-height:1.55;margin:10px 0;
+}
+.software-first-aha {border-color: #a5c8b6;background:#f3f8f4}
+.software-first-aha h2,.software-first-repair h2{font-size:clamp(20px,3vw,29px);line-height:1.18;margin:0}
+.software-first-aha small{display:block;color:#53675b;margin:8px 0}
+.software-first-aha button,.software-first-repair button{
+  margin-top:12px;padding:11px 15px;background:#151515;color:#fff;border:0;border-radius:9px;
+  cursor:pointer;font:inherit;
+}
+.software-first-repair{width:100%;border-color:#decdbc;background:#fdfaf4}
+.software-first-repair blockquote{
+  margin:14px 0;padding:12px 14px;border-left:3px solid #c5ad85;background:#f5f1e8;
+  font-size:14px;line-height:1.55;color:#24211b;white-space:pre-wrap;
+}
+.software-first-aha:focus-within,.software-first-repair:focus-within{outline-offset:2px}
+@media(max-width:620px){
+  .software-first-study-intro,.software-first-aha,.software-first-repair{padding:18px}
+}
