@@ -21,6 +21,9 @@
     "audit:parity": "node scripts/check-quizlet-parity.mjs",
     "audit:neon-live": "node scripts/verify-neon-schema.mjs",
     "audit:release": "node scripts/require-100-certification.mjs",
-    "audit:apple-hig": "node scripts/audit-apple-hig.mjs"
+    "audit:apple-hig": "node scripts/audit-apple-hig.mjs",
+    "audit:neon-scale": "node scripts/check-neon-scale.mjs",
+    "audit:pay-schema-live": "node scripts/verify-pay-schema.mjs",
+    "backfill:neon:preview": "node scripts/backfill-neon-progress.mjs"
   }
 }
