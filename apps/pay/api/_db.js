@@ -29,7 +29,7 @@ export async function ensureSchema() {
           event_type TEXT NOT NULL,
           occurred_at TIMESTAMPTZ,
           payload JSONB NOT NULL,
-          processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          processed_at TIMESTAMPTZ DEFAULT NOW(),
           processing_status TEXT NOT NULL DEFAULT 'pending',
           processing_started_at TIMESTAMPTZ,
           attempt_count INTEGER NOT NULL DEFAULT 0,
