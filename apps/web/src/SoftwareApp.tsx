@@ -374,6 +374,17 @@ export function SoftwareApp() {
       });
 
       const testMode = session.mode === "test";
+      if (!firstAnswerSubmitted) {
+        // AHA is the first real answer, not an upload or prepared session.
+        // No answers, source text or learner IDs are included in the event.
+        window.dispatchEvent(new CustomEvent("instantstudy:product", {
+          detail: {
+            name: "first_answer_submitted",
+            mode: session.mode,
+            at: new Date().toISOString(),
+          },
+        }));
+      }
       setFirstAnswerSubmitted(true);
       setFeedback(
         testMode
@@ -1014,6 +1025,7 @@ export function SoftwareApp() {
                               ))}
                             </div>
                           ) : null}
+                          <button onClick={() => void startMode("learn")}>{t("software.practiceAgain")}</button>
                           <button onClick={() => { setSession(null); setSummary(null); }}>{t("software.startAnother")}</button>
                         </div>
                       ) : session?.next?.concept ? (
