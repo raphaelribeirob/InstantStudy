@@ -1425,6 +1425,20 @@ async function authorizeOwnedSession(res: express.Response, sessionId: string, l
   return false;
 }
 
+app.post("/api/v1/activation/presented", async (req, res) => {
+  try {
+    const input = z.object({
+      learnerId: z.string().min(3).max(200),
+      studySessionId: z.string().uuid(),
+    }).strict().parse(req.body ?? {});
+    if (!await authorizeOwnedSession(res, input.studySessionId, input.learnerId)) return;
+    const first = await studyEngine.recordFirstQuestionPresented(input.studySessionId, input.learnerId);
+    if (first) await captureVerifiedActivation(input.learnerId, "first_question_presented",
+      { mode: "learn" });
+    res.json({ recorded: first });
+  } catch (error) { sendApiError(res, error); }
+});
+
 app.post("/api/v1/study/prepare", async (req, res) => {
   try {
     const input = prepareStudySchema.parse(req.body ?? {});
