@@ -8,6 +8,7 @@ import {
 } from "./studyPersistence.js";
 import { generateQuestion } from "./questionGenerator.js";
 import { buildRetentionInsights } from "./offerLayer.js";
+import { firstAhaEvidence } from "./ahaAnalytics.js";
 
 export type TestQuestionType =
   | "multiple_choice"
@@ -247,6 +248,15 @@ function chooseConcept(session: AdaptiveStudySession) {
     return ordered.find(concept => (counts.get(concept.id) ?? 0) === minCount)!;
   }
 
+  // The first unsuccessful Learn answer is followed by a targeted retest.
+  // One forced retry only; avoid trapping a struggling learner in a loop.
+  const last = session.attempts.at(-1);
+  if (session.mode === "learn" && last &&
+      last.correctness * 0.65 + last.completeness * 0.35 < 0.65 &&
+      session.attempts.filter(item => item.conceptId === last.conceptId).length === 1) {
+    const retry = session.concepts.find(item => item.id === last.conceptId);
+    if (retry) return retry;
+  }
   return ordered[0];
 }
 
@@ -557,6 +567,7 @@ export class StudyEngine {
 
     session.attempts.push(attempt);
     session.questionIndex += 1;
+    const aha = firstAhaEvidence(session.attempts, session.mode, session.createdAt);
 
     const needsRepair = performance < 0.65;
     const testExpired =
@@ -580,6 +591,7 @@ export class StudyEngine {
       sessionId: session.id,
       activationEvent:
         session.attempts.length === 1 ? "first_answer_submitted" : undefined,
+      aha: aha ?? undefined,
       evaluation:
         session.mode === "test"
           ? {
