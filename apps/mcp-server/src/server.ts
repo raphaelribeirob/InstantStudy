@@ -235,6 +235,30 @@ function createMcpServer(principal?: PluginPrincipal) {
     version: "0.1.0",
   });
 
+  // Allow ChatGPT to distinguish linked accounts without exposing email.
+  if (principal) {
+    server.registerTool(
+      "get_profile",
+      {
+        title: "Get connected InstantStudy account",
+        description: "Identify the currently authenticated InstantStudy account.",
+        inputSchema: {},
+        outputSchema: { id: z.string(), nickname: z.string() },
+        securitySchemes: [{ type: "oauth2", scopes: ["study:read", "study:write"] }],
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+        },
+        _meta: { "openai/profile": true },
+      },
+      async () => toolResult({
+        id: principal.learnerId,
+        nickname: "InstantStudy — " + principal.learnerId.slice(0, 8),
+      }),
+    );
+  }
+
   server.registerTool(
     "prepare_study",
     {
