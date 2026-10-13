@@ -80,6 +80,7 @@ export type AdaptiveStudySession = {
   goal?: string;
   createdAt: string;
   completedAt?: string;
+  firstQuestionPresentedAt?: string;
   status: "active" | "completed";
   completionReason?: "all_questions" | "mastery_reached" | "time_expired";
   questionIndex: number;
@@ -400,6 +401,18 @@ export class StudyEngine {
     this.cache.set(session.id, session);
     await this.persistence.save(session);
     return session;
+  }
+
+  /** A client-render signal for the first question, never evidence of learning.
+   * Session ownership and the actual question index are checked server-side.
+   */
+  async recordFirstQuestionPresented(sessionId: string, learnerId: string) {
+    const session = await this.get(sessionId);
+    if (!session || session.learnerId !== learnerId || session.mode !== "learn" ||
+        session.questionIndex !== 0 || session.firstQuestionPresentedAt) return false;
+    session.firstQuestionPresentedAt = new Date().toISOString();
+    await this.persistence.save(session);
+    return true;
   }
 
   async get(sessionId: string) {
