@@ -115,7 +115,7 @@ export class MemoryEntitlementStore implements EntitlementStore {
   private plans = new Map<string, StudyPlan>();
   private usage = new Map<string, UsageRow>();
 
-  async get(learnerId: string) {
+  private getRow(learnerId: string) {
     const period = periodKey();
     const key = `${learnerId}:${period}`;
     const existing = this.usage.get(key);
@@ -138,8 +138,13 @@ export class MemoryEntitlementStore implements EntitlementStore {
     return row;
   }
 
+  async get(learnerId: string) {
+    return this.getRow(learnerId);
+  }
+
   async consume(learnerId: string, mode: StudyMode) {
-    const row = await this.get(learnerId);
+    // No await between reading and updating the development adapter.
+    const row = this.getRow(learnerId);
     const caps = limits(row.plan);
     if (mode === "learn") {
       if (caps.learnRounds !== null && row.learnRounds >= caps.learnRounds) return null;
