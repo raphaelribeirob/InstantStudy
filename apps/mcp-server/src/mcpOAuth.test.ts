@@ -94,4 +94,14 @@ test("JWT issuer, audience, scopes and canonical account binding are enforced", 
     }, "https://different.example"), config, jwks),
   );
   await assert.rejects(verifyOauthBearer(undefined, config, jwks), /missing_token/);
+  const noExpiry = await new SignJWT({
+    scope: "study:read study:write", instantstudy_learner_id: "account-A",
+  })
+    .setProtectedHeader({ alg: "RS256", kid: "instantstudy-test" })
+    .setIssuer(config.issuer).setAudience(config.resource).setSubject("user-A")
+    .setIssuedAt().sign(privateKey);
+  await assert.rejects(
+    verifyOauthBearer("Bearer " + noExpiry, config, jwks),
+    /invalid_token_lifetime/,
+  );
 });
