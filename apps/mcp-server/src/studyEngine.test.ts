@@ -350,3 +350,25 @@ test("two independent good Learn answers yield honest mastery AHA, not simulated
   });
   assert.equal(two.aha?.variant, "demonstrated_mastery");
 });
+
+test("first question presentation is acknowledged once, only by its actual learner", async () => {
+  const source = new ContentSessionStore().create({
+    title: "Cells", mode: "learn",
+    contentText: "A cell membrane selectively controls entry into the cell.",
+  });
+  const engine = new StudyEngine();
+  const session = await engine.start(source, {
+    learnerId: "owner-aha", mode: "learn",
+    concepts: [{ label: "Cell membrane",
+      sourceExcerpt: "A cell membrane selectively controls entry into the cell." }],
+  });
+  assert.equal(await engine.recordFirstQuestionPresented(session.id, "intruder"), false);
+  assert.equal(await engine.recordFirstQuestionPresented(session.id, "owner-aha"), true);
+  assert.equal(await engine.recordFirstQuestionPresented(session.id, "owner-aha"), false);
+  const current = await engine.next(session.id);
+  if (current.done) throw new Error("no first question");
+  await engine.submit(session.id, current.concept.id, {
+    correctness: 0.8, completeness: 0.8, confidence: 0.9,
+  });
+  assert.equal(await engine.recordFirstQuestionPresented(session.id, "owner-aha"), false);
+});
