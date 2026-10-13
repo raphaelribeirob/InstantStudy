@@ -955,3 +955,10 @@ button,input,textarea{font:inherit}
   .software-family-add{grid-template-columns:1fr}
   .software-family-members article{grid-template-columns:1fr}.software-family-members article{padding:14px 0}
 }
+
+/* Unique offer: evidence-first activation without claiming unshipped cloud sync. */
+.software-continuity-note{display:block;max-width:660px;margin-top:13px;color:#615d56;font-size:12px;line-height:1.55;position:relative;z-index:1}
+.software-source-note{color:var(--is-muted);font-size:12px;line-height:1.55;max-width:680px;margin:5px 0 12px}
+.software-answer-evidence{display:flex;align-items:flex-start;gap:10px;width:100%;max-width:720px;border:1px solid #bed2c0;background:#eef5ef;color:#235b35;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;margin:10px 0}
+.software-answer-evidence svg{flex:0 0 17px;margin-top:1px}
+@media(max-width:620px){.software-continuity-note{max-width:100%}.software-answer-evidence{align-items:flex-start}}
