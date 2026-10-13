@@ -17,8 +17,41 @@ void main() {
     expect(find.byType(NativeHardPaywall), findsOneWidget);
     expect(find.byType(OrbitalHome), findsNothing);
     expect(find.byType(OrbitalSphere), findsNothing);
-    expect(find.text('Assinaturas nativas ainda não estão configuradas.'),
+    expect(find.text('In-app subscriptions are temporarily unavailable.'),
       findsOneWidget);
+  });
+
+  testWidgets('subscription gate remains readable at 200% text on compact iPhone',
+      (tester) async {
+    tester.view.physicalSize = const Size(640, 1136);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(MaterialApp(
+      home: MediaQuery(
+        data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+        child: const NativeHardPaywall(),
+      ),
+    ));
+    await tester.pump();
+    expect(find.text('In-app subscriptions are temporarily unavailable.'),
+      findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('native paywall uses host light or dark semantic colors',
+      (tester) async {
+    const dark = ColorScheme.dark(
+      surface: Color(0xFF181818),
+      onSurface: Color(0xFFF2F2F2),
+    );
+    await tester.pumpWidget(MaterialApp(
+      theme: ThemeData(colorScheme: dark),
+      home: const NativeHardPaywall(),
+    ));
+    expect(tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor,
+        dark.surface);
+    expect(find.byType(Semantics), findsWidgets);
   });
 
   testWidgets('opening wordmarks use bundled League Spartan Regular 400',
