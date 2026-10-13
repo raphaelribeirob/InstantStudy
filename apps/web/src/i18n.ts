@@ -135,7 +135,8 @@ const resources = {
         evaluating: "Evaluating…",
         sessionComplete: "SESSION COMPLETE",
         roundComplete: "Round complete",
-        startAnother: "Start another round",
+        startAnother: "Choose another round",
+        practiceAgain: "Practice this material again",
         askAnything: "Ask anything about this material.",
         askBody:
           "Explanations stay grounded in your material and can lead directly back into active study.",
@@ -385,7 +386,8 @@ const resources = {
         evaluating: "Avaliando…",
         sessionComplete: "SESSÃO CONCLUÍDA",
         roundComplete: "Rodada concluída",
-        startAnother: "Começar outra rodada",
+        startAnother: "Escolher outra rodada",
+        practiceAgain: "Praticar este material novamente",
         askAnything: "Pergunte qualquer coisa sobre este material.",
         askBody:
           "As explicações permanecem baseadas no seu material e podem levar diretamente à prática ativa.",
