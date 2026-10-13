@@ -1,3 +1,4 @@
+import { schemaManagedExternally } from "./databasePolicy.js";
 import { createHash } from "node:crypto";
 import { neon } from "@neondatabase/serverless";
 import { databaseUrl } from "./databasePolicy.js";
@@ -16,7 +17,7 @@ export async function consumeRealtimeVoiceStart(learnerId: string) {
     Number.parseInt(process.env.INSTANTSTUDY_REALTIME_SESSIONS_PER_DAY || "3", 10) || 3));
   const identityHash = createHash("sha256").update(learnerId).digest("hex");
   const day = new Date().toISOString().slice(0, 10);
-  await sql`
+  if (!schemaManagedExternally()) await sql`
     CREATE TABLE IF NOT EXISTS instantstudy_realtime_quota (
       learner_hash text NOT NULL,
       day date NOT NULL,
