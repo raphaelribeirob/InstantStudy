@@ -1,3 +1,4 @@
+import { schemaManagedExternally } from "./databasePolicy.js";
 import { randomUUID } from "node:crypto";
 import { neon } from "@neondatabase/serverless";
 import {
@@ -84,6 +85,7 @@ class NeonMaterialStore implements MaterialStore {
   }
 
   private async init() {
+    if (schemaManagedExternally()) return;
     await this.sql`
       CREATE TABLE IF NOT EXISTS instantstudy_materials (
         id uuid PRIMARY KEY,
