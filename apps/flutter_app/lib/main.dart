@@ -87,7 +87,7 @@ class _InstantStudyAppState extends State<InstantStudyApp> {
         return const Locale('en');
       },
       theme: ThemeData(
-        fontFamily: 'Inter',
+        // System typography for readable text; LeagueSpartan stays on the brand.
         scaffoldBackgroundColor: InstantStudyApp.paper2,
         colorScheme: const ColorScheme.light(
           primary: InstantStudyApp.ink,
@@ -117,11 +117,9 @@ class _StartupGate extends StatefulWidget {
 }
 
 class _StartupGateState extends State<_StartupGate> {
-  // Never enable before verified StoreKit / Play Billing and restoration exist.
-  static const _nativePaywallEnabled = bool.fromEnvironment(
-    'INSTANTSTUDY_NATIVE_HARD_PAYWALL_ENABLED',
-    defaultValue: false,
-  );
+  // Never grant paid access through a build-time flag or anonymous Flutter ID.
+  // StudyHome requires a future server-verified entitlement + authenticated
+  // account binding; no such bridge exists yet in this native client.
   bool _opening = true;
 
   @override
@@ -131,9 +129,7 @@ class _StartupGateState extends State<_StartupGate> {
         excluding: _opening,
         child: AbsorbPointer(
           absorbing: _opening,
-          child: _nativePaywallEnabled
-            ? const NativeHardPaywall()
-            : StudyHome(onLocaleChanged: widget.onLocaleChanged),
+          child: const NativeHardPaywall(),
         ),
       ),
       if (_opening)
