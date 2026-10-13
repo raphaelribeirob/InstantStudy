@@ -244,7 +244,7 @@ function createMcpServer(principal?: PluginPrincipal) {
         description: "Identify the currently authenticated InstantStudy account.",
         inputSchema: {},
         outputSchema: { id: z.string(), nickname: z.string() },
-        securitySchemes: [{ type: "oauth2", scopes: ["study:read", "study:write"] }],
+        ...pluginSecurity,
         annotations: {
           readOnlyHint: true,
           destructiveHint: false,
