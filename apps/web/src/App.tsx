@@ -338,11 +338,8 @@ function ConnectAgent() {
     <section className="connect-band" id="connect">
       <div className="connect-intro">
         <p className="eyebrow light">Learning, native to AI</p>
-        <h2>The study engine follows you into the AI you already use.</h2>
-        <p>
-          Your AI keeps the conversation. InstantStudy adds the adaptive learning
-          loop behind it.
-        </p>
+        <h2>{t("landing.aiConnectionTitle")}</h2>
+        <p>{t("landing.aiConnectionNotice")}</p>
         <div className="agent-list">
           {agentPresets.map((agent) => (
             <button
@@ -587,11 +584,7 @@ export function App() {
         </div>
 
         <div className="future-intro">
-          <p>
-            Your AI already knows how to explain. InstantStudy™ adds the system
-            that makes learning stick: adaptive practice, exam rehearsal,
-            mastery and right-time review.
-          </p>
+          <p>{t("landing.uniqueOfferBody")}</p>
           <div className="hero-actions">
             <a className="hero-primary" href="/app">
               {t("landing.openSoftware")} <ArrowRight size={17} />
@@ -606,7 +599,7 @@ export function App() {
 
       <section className="trust-strip future-strip">
         <span>{t("landing.oneSystem")}</span>
-        <strong>ChatGPT</strong><strong>Claude</strong><strong>Cursor</strong><strong>Codex</strong><strong>Study Rooms</strong><strong>Any MCP agent</strong>
+        <span>{t("landing.aiConnectionNotice")}</span>
       </section>
 
       <section className="feature-band learn-band" id="learn">
