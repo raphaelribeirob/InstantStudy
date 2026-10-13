@@ -16,9 +16,10 @@ import {
 } from "./mcpOAuth.js";
 
 const config = {
-  issuer: "https://auth.instantstudy.example",
+  issuer: "https://auth.instantstudy.example/",
   resource: "https://instantstudy.example",
   jwksUrl: "https://auth.instantstudy.example/jwks",
+  learnerClaim: "https://instantstudy.example/learner_id",
 };
 
 test("OAuth configuration fails closed without a complete HTTPS issuer/resource/JWKS", () => {
@@ -33,6 +34,17 @@ test("OAuth configuration fails closed without a complete HTTPS issuer/resource/
     INSTANTSTUDY_OAUTH_RESOURCE: config.resource,
     INSTANTSTUDY_OAUTH_JWKS_URL: config.jwksUrl,
   }), config);
+  assert.deepEqual(oauthConfig({
+    INSTANTSTUDY_OAUTH_ISSUER: "https://auth.instantstudy.example",
+    INSTANTSTUDY_OAUTH_RESOURCE: config.resource,
+    INSTANTSTUDY_OAUTH_JWKS_URL: config.jwksUrl,
+  }), config, "Auth0 issuer must retain its trailing slash");
+  assert.equal(oauthConfig({
+    INSTANTSTUDY_OAUTH_ISSUER: config.issuer,
+    INSTANTSTUDY_OAUTH_RESOURCE: config.resource,
+    INSTANTSTUDY_OAUTH_JWKS_URL: config.jwksUrl,
+    INSTANTSTUDY_OAUTH_LEARNER_CLAIM: "instantstudy_learner_id",
+  }), null, "Never accept an unnamespaced custom claim");
 });
 
 test("Protected-resource discovery advertises correct issuer and OAuth scopes", () => {
@@ -42,6 +54,7 @@ test("Protected-resource discovery advertises correct issuer and OAuth scopes", 
     scopes_supported: ["study:read", "study:write"],
   });
   assert.match(oauthChallenge(config), /oauth-protected-resource/);
+  assert.match(oauthChallenge(config), /scope="study:read study:write"/);
 });
 
 test("Requested learner IDs cannot override the signed account identity", () => {
@@ -70,7 +83,7 @@ test("JWT issuer, audience, scopes and canonical account binding are enforced", 
 
   const valid = await token({
     scope: "study:read study:write",
-    instantstudy_learner_id: "account-A",
+    [config.learnerClaim]: "account-A",
   });
   assert.deepEqual(await verifyOauthBearer("Bearer " + valid, config, jwks), {
     learnerId: "account-A",
@@ -78,7 +91,7 @@ test("JWT issuer, audience, scopes and canonical account binding are enforced", 
   });
   await assert.rejects(
     verifyOauthBearer("Bearer " + await token({
-      scope: "study:read", instantstudy_learner_id: "account-A",
+      scope: "study:read", [config.learnerClaim]: "account-A",
     }), config, jwks),
     /insufficient_scope/,
   );
@@ -90,12 +103,26 @@ test("JWT issuer, audience, scopes and canonical account binding are enforced", 
   );
   await assert.rejects(
     verifyOauthBearer("Bearer " + await token({
-      scope: "study:read study:write", instantstudy_learner_id: "account-A",
+      scope: "study:read study:write",
+      instantstudy_learner_id: "account-A",
+    }), config, jwks),
+    /missing_account_binding/,
+  );
+  assert.equal(
+    (await verifyOauthBearer("Bearer " + await token({
+      scope: "study:read study:write",
+      [config.learnerClaim]: "account-B",
+    }), config, jwks)).learnerId,
+    "account-B",
+  );
+  await assert.rejects(
+    verifyOauthBearer("Bearer " + await token({
+      scope: "study:read study:write", [config.learnerClaim]: "account-A",
     }, "https://different.example"), config, jwks),
   );
   await assert.rejects(verifyOauthBearer(undefined, config, jwks), /missing_token/);
   const noExpiry = await new SignJWT({
-    scope: "study:read study:write", instantstudy_learner_id: "account-A",
+    scope: "study:read study:write", [config.learnerClaim]: "account-A",
   })
     .setProtectedHeader({ alg: "RS256", kid: "instantstudy-test" })
     .setIssuer(config.issuer).setAudience(config.resource).setSubject("user-A")
