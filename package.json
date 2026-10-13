@@ -20,6 +20,7 @@
     "audit:database": "node scripts/assert-neon-only.mjs",
     "audit:parity": "node scripts/check-quizlet-parity.mjs",
     "audit:neon-live": "node scripts/verify-neon-schema.mjs",
-    "audit:release": "node scripts/require-100-certification.mjs"
+    "audit:release": "node scripts/require-100-certification.mjs",
+    "audit:apple-hig": "node scripts/audit-apple-hig.mjs"
   }
 }
