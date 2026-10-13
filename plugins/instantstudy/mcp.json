@@ -11,7 +11,10 @@
             "baseScopes": [
               "study:read",
               "study:write"
-            ]
+            ],
+            "client": {
+              "mode": "dcr"
+            }
           }
         }
       }
