@@ -1,3 +1,4 @@
+import { schemaManagedExternally } from "./databasePolicy.js";
 import { neon } from "@neondatabase/serverless";
 import {
   databaseUrl,
@@ -172,6 +173,7 @@ class NeonEntitlementStore implements EntitlementStore {
   }
 
   private async init() {
+    if (schemaManagedExternally()) return;
     await this.sql`
       CREATE TABLE IF NOT EXISTS instantstudy_entitlements (
         learner_id text PRIMARY KEY,
