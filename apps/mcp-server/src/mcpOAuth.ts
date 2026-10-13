@@ -1,4 +1,5 @@
 import {
+  createLocalJWKSet,
   createRemoteJWKSet,
   jwtVerify,
 } from "jose";
@@ -15,7 +16,7 @@ export type OAuthConfig = {
 };
 
 type Environment = Record<string, string | undefined>;
-type JwksResolver = ReturnType<typeof createRemoteJWKSet>;
+type JwksResolver = ReturnType<typeof createRemoteJWKSet> | ReturnType<typeof createLocalJWKSet>;
 
 const requiredScopes = ["study:read", "study:write"] as const;
 const remoteJwks = new Map<string, JwksResolver>();
