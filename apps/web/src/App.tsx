@@ -321,6 +321,7 @@ function RetentionPreview() {
 }
 
 function ConnectAgent() {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<AgentId>("codex");
   const [copied, setCopied] = useState(false);
   const endpoint = mcpUrl();
