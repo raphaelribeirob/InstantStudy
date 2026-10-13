@@ -15,19 +15,23 @@
     "com.openai": {
       "interface": {
         "displayName": "InstantStudy",
-        "shortDescription": "Turn study material into adaptive learning sessions.",
+        "shortDescription": "Practice and remember anything",
         "longDescription": "Start source-grounded Learn, Review, Quiz, and Test sessions from notes or extracted material, answer one question at a time, and save learning progress through InstantStudy.",
         "developerName": "InstantStudy",
-        "category": "Productivity",
+        "category": "Education & Research",
         "capabilities": [
-          "Read",
-          "Write"
+          "Study notes with active recall",
+          "Track learning mastery",
+          "Review concepts over time"
         ],
         "defaultPrompt": [
           "Use InstantStudy to quiz me on these notes.",
           "Study this material with active recall.",
           "Review my weak concepts with InstantStudy."
-        ]
+        ],
+        "logo": "./assets/instantstudy-icon.svg",
+        "composerIcon": "./assets/instantstudy-icon.svg",
+        "websiteURL": "https://instantstudy-web.vercel.app"
       },
       "onboardingSkill": "./skills/setup/SKILL.md"
     }
