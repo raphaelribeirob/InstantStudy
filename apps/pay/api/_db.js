@@ -116,13 +116,15 @@ export async function claimEvent({ eventId, eventType, occurredAt, payload }) {
 export async function markEventApplied(eventId, claimToken) {
   await ensureSchema();
   const q = sql();
-  await q`
+  const rows = await q`
     UPDATE billing_events
     SET processing_status = 'applied', processed_at = NOW(),
         processing_started_at = NULL, last_error = NULL
     WHERE event_id = ${eventId} AND processing_status = 'processing'
       AND claim_token = ${claimToken}::uuid
+    RETURNING event_id
   `;
+  return rows.length > 0;
 }
 
 export async function markEventFailed(eventId, claimToken) {
