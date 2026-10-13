@@ -1,3 +1,4 @@
+import { schemaManagedExternally } from "./databasePolicy.js";
 import { neon } from "@neondatabase/serverless";
 import { databaseUrl } from "./databasePolicy.js";
 
@@ -13,6 +14,7 @@ function sqlClient() {
 }
 
 async function ensureTables(sql: ReturnType<typeof sqlClient>) {
+  if (schemaManagedExternally()) return;
   await sql`
     CREATE TABLE IF NOT EXISTS instantstudy_large_audio_uploads (
       upload_id uuid PRIMARY KEY,
