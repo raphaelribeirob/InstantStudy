@@ -21,7 +21,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 360));
     expect(find.text('Ask'), findsOneWidget);
     await tester.ensureVisible(find.text('Ask'));
+    // Ensure the outer scrollable has completed its layout/position update
+    // before testing the actual pointer target; do not silence missed taps.
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.text('Ask'));
+    await tester.pump(const Duration(milliseconds: 100));
     expect(action, 'ask');
   });
 
