@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless";
+import { randomUUID } from "node:crypto";
 
 let sqlClient;
 let schemaPromise;
@@ -32,6 +33,7 @@ export async function ensureSchema() {
           processing_status TEXT NOT NULL DEFAULT 'pending',
           processing_started_at TIMESTAMPTZ,
           attempt_count INTEGER NOT NULL DEFAULT 0,
+          claim_token UUID,
           last_error TEXT
         )
       `;
@@ -82,33 +84,36 @@ export async function ensureSchema() {
 export async function claimEvent({ eventId, eventType, occurredAt, payload }) {
   await ensureSchema();
   const q = sql();
+  const claimToken = randomUUID();
   const rows = await q`
     INSERT INTO billing_events (
       event_id, event_type, occurred_at, payload, processed_at,
-      processing_status, processing_started_at, attempt_count
+      processing_status, processing_started_at, attempt_count, claim_token
     )
     VALUES (
       ${eventId}, ${eventType}, ${occurredAt || null},
-      ${JSON.stringify(payload)}::jsonb, NULL, 'processing', NOW(), 1
+      ${JSON.stringify(payload)}::jsonb, NULL, 'processing', NOW(), 1,
+      ${claimToken}::uuid
     )
     ON CONFLICT (event_id) DO UPDATE SET
       processing_status = 'processing',
       processing_started_at = NOW(),
       attempt_count = billing_events.attempt_count + 1,
+      claim_token = EXCLUDED.claim_token,
       last_error = NULL
     WHERE billing_events.processing_status IN ('failed', 'pending')
       OR (billing_events.processing_status = 'processing'
           AND billing_events.processing_started_at < NOW() - INTERVAL '90 seconds')
     RETURNING event_id
   `;
-  if (rows.length) return { claimed: true, state: "processing" };
+  if (rows.length) return { claimed: true, state: "processing", claimToken };
   const existing = await q`
     SELECT processing_status FROM billing_events WHERE event_id = ${eventId} LIMIT 1
   `;
   return { claimed: false, state: String(existing[0]?.processing_status || "processing") };
 }
 
-export async function markEventApplied(eventId) {
+export async function markEventApplied(eventId, claimToken) {
   await ensureSchema();
   const q = sql();
   await q`
@@ -116,10 +121,11 @@ export async function markEventApplied(eventId) {
     SET processing_status = 'applied', processed_at = NOW(),
         processing_started_at = NULL, last_error = NULL
     WHERE event_id = ${eventId} AND processing_status = 'processing'
+      AND claim_token = ${claimToken}::uuid
   `;
 }
 
-export async function markEventFailed(eventId) {
+export async function markEventFailed(eventId, claimToken) {
   await ensureSchema();
   const q = sql();
   await q`
@@ -127,6 +133,7 @@ export async function markEventFailed(eventId) {
     SET processing_status = 'failed', processing_started_at = NULL,
         last_error = 'delivery_failed'
     WHERE event_id = ${eventId} AND processing_status = 'processing'
+      AND claim_token = ${claimToken}::uuid
   `;
 }
 
