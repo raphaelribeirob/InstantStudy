@@ -51,7 +51,8 @@ export async function applyVerifiedPaddleEvent(event, actions) {
         throw new Error("unmatched_subscription_event");
       }
     }
-    await actions.applied(eventId, claim.claimToken);
+    const marked = await actions.applied(eventId, claim.claimToken);
+    if (!marked) throw new Error("webhook_claim_expired_retry");
     return { duplicate: false };
   } catch (error) {
     try { await actions.failed(eventId, claim.claimToken); } catch {
