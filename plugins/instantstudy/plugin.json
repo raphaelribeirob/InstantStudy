@@ -1,0 +1,35 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "instantstudy",
+  "version": "0.1.0",
+  "description": "Adaptive, source-grounded study sessions with quizzes, reviews, and mastery tracking using the InstantStudy backend.",
+  "repository": "https://github.com/raphaelribeirob/InstantStudy",
+  "keywords": [
+    "education",
+    "study",
+    "active-recall",
+    "quiz",
+    "spaced-repetition"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "InstantStudy",
+        "shortDescription": "Turn study material into adaptive learning sessions.",
+        "longDescription": "Start source-grounded Learn, Review, Quiz, and Test sessions from notes or extracted material, answer one question at a time, and save learning progress through InstantStudy.",
+        "developerName": "InstantStudy",
+        "category": "Productivity",
+        "capabilities": [
+          "Read",
+          "Write"
+        ],
+        "defaultPrompt": [
+          "Use InstantStudy to quiz me on these notes.",
+          "Study this material with active recall.",
+          "Review my weak concepts with InstantStudy."
+        ]
+      },
+      "onboardingSkill": "./skills/setup/SKILL.md"
+    }
+  }
+}
