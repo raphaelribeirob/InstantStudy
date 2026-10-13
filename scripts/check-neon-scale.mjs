@@ -9,6 +9,7 @@ const required=[
   "database/migrations/0003_orbital_agents_and_quotas.sql",
   "database/migrations/0004_concept_progress.sql",
   "database/migrations/0005_flashcard_progress.sql",
+  "database/migrations/0006_material_pagination.sql",
   "apps/pay/migrations/0000_core_billing.sql",
   "apps/pay/migrations/20261012_billing_inbox.sql",
 ];
