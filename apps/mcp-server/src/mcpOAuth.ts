@@ -99,6 +99,14 @@ export async function verifyOauthBearer(
     clockTolerance: "5s",
   });
 
+  // jose validates exp and nbf when present; require expiry explicitly so
+  // a signed token without exp cannot become a permanent account credential.
+  if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp) ||
+      typeof payload.iat !== "number" || !Number.isFinite(payload.iat) ||
+      payload.exp <= payload.iat) {
+    throw new Error("invalid_token_lifetime");
+  }
+
   const scopes = typeof payload.scope === "string"
     ? payload.scope.split(/\s+/)
     : Array.isArray(payload.scp) ? payload.scp : [];
