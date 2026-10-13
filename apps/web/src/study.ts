@@ -486,6 +486,22 @@ export async function duplicateStudyMaterial(materialId: string) {
   return (await request(identified({ action: "material_duplicate", materialId }))) as { material: StudyMaterial };
 }
 
+export type StudyMaterialSummary = Omit<StudyMaterial, "content" | "assets">;
+export type StudyMaterialCursor = { updatedAt: string; id: string };
+/** New scalable listing API. Full material stays behind getStudyMaterial().
+ * Existing full-list method remains for backward-compatible UIs.
+ */
+export async function listStudyMaterialSummaries(
+  query = "", limit = 30, cursor?: StudyMaterialCursor,
+) {
+  return await request(identified({
+    action: "material_list_summary", query, limit, cursor,
+  })) as {
+    materials: StudyMaterialSummary[];
+    nextCursor: StudyMaterialCursor | null;
+  };
+}
+
 export async function listStudyMaterials(query = "") {
   return (await request(
     identified({
