@@ -1,3 +1,4 @@
+import { schemaManagedExternally } from "./databasePolicy.js";
 import { createHash } from "node:crypto";
 import { neon } from "@neondatabase/serverless";
 import { databaseUrl } from "./databasePolicy.js";
@@ -13,7 +14,7 @@ export async function tryConsumeAssetGeneration(learnerId: string): Promise<bool
   const hashed = createHash("sha256").update(learnerId).digest("hex");
   const day = new Date().toISOString().slice(0, 10);
   try {
-    await sql`
+    if (!schemaManagedExternally()) await sql`
       CREATE TABLE IF NOT EXISTS instantstudy_ai_assets_quota (
         learner_hash text NOT NULL,
         day date NOT NULL,
