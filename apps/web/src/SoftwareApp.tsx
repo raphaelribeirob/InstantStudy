@@ -133,6 +133,7 @@ export function SoftwareApp() {
   const [session, setSession] = useState<Awaited<ReturnType<typeof prepareStudy>> | null>(null);
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [firstAnswerSubmitted, setFirstAnswerSubmitted] = useState(false);
   const [summary, setSummary] = useState<StudySummary | null>(null);
   const [question, setQuestion] = useState("");
   const [askAnswer, setAskAnswer] = useState("");
@@ -343,6 +344,7 @@ export function SoftwareApp() {
     setSummary(null);
     setAnswer("");
     setFeedback("");
+    setFirstAnswerSubmitted(false);
     try {
       setSession(await prepareStudy({
         contentText: material.content,
@@ -372,6 +374,7 @@ export function SoftwareApp() {
       });
 
       const testMode = session.mode === "test";
+      setFirstAnswerSubmitted(true);
       setFeedback(
         testMode
           ? result.submission?.done
@@ -741,6 +744,7 @@ export function SoftwareApp() {
               <h1>{t("software.homeTitle")}</h1>
               <span>{t("software.homeBody")}</span>
               <button onClick={() => setView("create")}><Sparkles size={17}/> {t("software.createMaterial")}</button>
+              <small className="software-continuity-note">{t("software.continuityNotice")}</small>
             </div>
 
             <div className="software-section-head"><h2>{t("software.continueStudying")}</h2><button onClick={() => setView("library")}>{t("software.viewLibrary")}</button></div>
@@ -1018,6 +1022,13 @@ export function SoftwareApp() {
                             {t("software.questionProgress", { current: session.next.questionIndex ?? "–", total: session.next.totalPlanned ?? "–" })} · {session.next.questionPolicy?.type || "adaptive"}
                           </span>
                           <h2>{session.next.question?.prompt || session.next.concept.label}</h2>
+                          <p className="software-source-note">{t("software.questionGroundingNote")}</p>
+                          {firstAnswerSubmitted && session.mode !== "test" ? (
+                            <div className="software-answer-evidence" role="status">
+                              <CheckCircle2 size={17}/>
+                              <span>{t("software.firstAnswerEvidence")}</span>
+                            </div>
+                          ) : null}
                           {feedback ? <div className="software-feedback">{feedback}</div> : null}
 
                           {session.next.question?.choices?.length ? (
