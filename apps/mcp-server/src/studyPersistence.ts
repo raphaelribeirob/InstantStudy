@@ -1,3 +1,4 @@
+import { schemaManagedExternally } from "./databasePolicy.js";
 import { neon } from "@neondatabase/serverless";
 import {
   databaseUrl,
@@ -170,6 +171,7 @@ class NeonStudyPersistence implements StudyPersistence {
   }
 
   private async init() {
+    if (schemaManagedExternally()) return;
     await this.sql`
       CREATE TABLE IF NOT EXISTS instantstudy_sessions (
         id uuid PRIMARY KEY,
