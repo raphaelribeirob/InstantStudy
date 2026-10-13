@@ -81,6 +81,13 @@ export type AnswerResult = {
     recorded?: boolean;
   };
   submission?: {
+    aha?: {
+      variant: "recovery" | "demonstrated_mastery";
+      attemptNumber: number;
+      scoreBefore?: number;
+      scoreAfter: number;
+      elapsedSeconds: number;
+    };
     done?: boolean;
     nextPolicy?: string;
     concept?: {
@@ -318,6 +325,13 @@ export async function prepareStudy(input: {
         concepts: input.concepts,
       }),
     )) as PreparedStudy;
+}
+
+/** Only the paid authenticated UI may signal that it rendered a real first question. */
+export async function recordFirstQuestionPresented(studySessionId: string) {
+  return (await request(identified({
+    action: "activation_presented", studySessionId,
+  }))) as { recorded: boolean };
 }
 
 export async function submitStudyAnswer(input: {

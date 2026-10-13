@@ -97,7 +97,7 @@ function Logo() {
 }
 
 function StudyGenerator() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [source, setSource] = useState<"paste" | "upload" | "drive" | "audio" | "scan">("upload");
 
   const labels = {
@@ -147,9 +147,17 @@ function StudyGenerator() {
             <p>
               {t("landing.supportedSources")}
             </p>
-            <button type="button">
-              {source === "paste" ? t("landing.paste") : source === "drive" ? t("landing.chooseFile") : source === "audio" ? t("landing.audio") : source === "scan" ? t("landing.scan") : t("landing.browseFiles")}
+            <button type="button" onClick={() => {
+              event("landing_import_intent", { source });
+              // Source selection is preserved across the existing hard paywall.
+              // Files/text are collected ONLY after a verified subscription.
+              window.location.assign(`/app?start=${encodeURIComponent(source)}`);
+            }}>
+              {i18n.language.startsWith("pt") ? "Continuar no aplicativo" : "Continue in the app"}
             </button>
+            <small>{i18n.language.startsWith("pt")
+              ? "O envio do material acontece depois de entrar e assinar."
+              : "Materials are uploaded after sign-in and subscription."}</small>
           </div>
 
           <div className="generated-stack">

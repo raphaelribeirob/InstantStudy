@@ -8,6 +8,7 @@ import {
 } from "./studyPersistence.js";
 import { generateQuestion } from "./questionGenerator.js";
 import { buildRetentionInsights } from "./offerLayer.js";
+import { firstAhaEvidence } from "./ahaAnalytics.js";
 
 export type TestQuestionType =
   | "multiple_choice"
@@ -79,6 +80,7 @@ export type AdaptiveStudySession = {
   goal?: string;
   createdAt: string;
   completedAt?: string;
+  firstQuestionPresentedAt?: string;
   status: "active" | "completed";
   completionReason?: "all_questions" | "mastery_reached" | "time_expired";
   questionIndex: number;
@@ -204,6 +206,10 @@ function questionType(
   }
 
   if (session.mode === "review") return "free_recall";
+  // The second question tests recall rather than memorization of a choice.
+  if (session.mode === "learn" &&
+      session.attempts.some(attempt => attempt.conceptId === concept.id &&
+        attempt.correctness * 0.65 + attempt.completeness * 0.35 < 0.65)) return "short_answer";
   if (concept.difficulty <= 1) return "multiple_choice";
   if (concept.difficulty === 2) return "short_answer";
   if (concept.difficulty === 3) return "free_recall";
@@ -247,6 +253,15 @@ function chooseConcept(session: AdaptiveStudySession) {
     return ordered.find(concept => (counts.get(concept.id) ?? 0) === minCount)!;
   }
 
+  // The first unsuccessful Learn answer is followed by a targeted retest.
+  // One forced retry only; avoid trapping a struggling learner in a loop.
+  const last = session.attempts.at(-1);
+  if (session.mode === "learn" && last &&
+      last.correctness * 0.65 + last.completeness * 0.35 < 0.65 &&
+      session.attempts.filter(item => item.conceptId === last.conceptId).length === 1) {
+    const retry = session.concepts.find(item => item.id === last.conceptId);
+    if (retry) return retry;
+  }
   return ordered[0];
 }
 
@@ -386,6 +401,18 @@ export class StudyEngine {
     this.cache.set(session.id, session);
     await this.persistence.save(session);
     return session;
+  }
+
+  /** A client-render signal for the first question, never evidence of learning.
+   * Session ownership and the actual question index are checked server-side.
+   */
+  async recordFirstQuestionPresented(sessionId: string, learnerId: string) {
+    const session = await this.get(sessionId);
+    if (!session || session.learnerId !== learnerId || session.mode !== "learn" ||
+        session.questionIndex !== 0 || session.firstQuestionPresentedAt) return false;
+    session.firstQuestionPresentedAt = new Date().toISOString();
+    await this.persistence.save(session);
+    return true;
   }
 
   async get(sessionId: string) {
@@ -557,6 +584,7 @@ export class StudyEngine {
 
     session.attempts.push(attempt);
     session.questionIndex += 1;
+    const aha = firstAhaEvidence(session.attempts, session.mode, session.createdAt);
 
     const needsRepair = performance < 0.65;
     const testExpired =
@@ -580,6 +608,7 @@ export class StudyEngine {
       sessionId: session.id,
       activationEvent:
         session.attempts.length === 1 ? "first_answer_submitted" : undefined,
+      aha: aha ?? undefined,
       evaluation:
         session.mode === "test"
           ? {

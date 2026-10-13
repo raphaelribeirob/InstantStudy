@@ -45,6 +45,7 @@ import {
   joinStudyRoom,
   listStudyMaterials,
   prepareStudy,
+  recordFirstQuestionPresented,
   createStudyRoom,
   submitStudyAnswer,
   updateStudyRoomProgress,
@@ -121,10 +122,21 @@ function dueLabel(value: string, t: TFunction) {
 export function SoftwareApp() {
   const { t, i18n } = useTranslation();
   const [view, setView] = useState<View>("home");
+  const [recovery, setRecovery] = useState<{ feedback: string; excerpt: string } | null>(null);
+  const [ahaEvidence, setAhaEvidence] = useState<{
+    variant: "recovery" | "demonstrated_mastery";
+    scoreBefore?: number;
+    scoreAfter: number;
+    elapsedSeconds: number;
+  } | null>(null);
   const [showTools, setShowTools] = useState(false);
   const [library, setLibrary] = useState<StudyMaterial[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [sourceType, setSourceType] = useState<SourceType>("paste");
+  const [sourceType, setSourceType] = useState<SourceType>(() => {
+    const input = new URLSearchParams(window.location.search).get("start");
+    return input && ["paste", "upload", "drive", "audio", "scan"].includes(input)
+      ? input as SourceType : "paste";
+  });
   const [draft, setDraft] = useState("");
   const [title, setTitle] = useState("");
   const [driveUrl, setDriveUrl] = useState("");
@@ -133,6 +145,7 @@ export function SoftwareApp() {
   const [createError, setCreateError] = useState("");
   const [audioImportProgress, setAudioImportProgress] = useState<number | null>(null);
   const [session, setSession] = useState<Awaited<ReturnType<typeof prepareStudy>> | null>(null);
+  const firstQuestionSeen = useRef<Set<string>>(new Set());
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState("");
   const [summary, setSummary] = useState<StudySummary | null>(null);
@@ -199,6 +212,8 @@ export function SoftwareApp() {
     setAskAnswer("");
     setQuestion("");
     setAskBusy(false);
+    setRecovery(null);
+    setAhaEvidence(null);
   }, [selected?.id]);
 
   function materialFromRoom(value: StudyRoom): StudyMaterial {
@@ -243,12 +258,27 @@ export function SoftwareApp() {
         if (!active) return;
         setLibrary(materials);
         setSelectedId(materials[0]?.id ?? null);
+        // The first paid visit leads to creating one's first real study material.
+        // Returning learners continue from their library unless they requested import.
+        const requested = new URLSearchParams(window.location.search).has("start");
+        if (!materials.length || requested)
+          setView(current => current === "home" ? "create" : current);
       })
       .catch(() => {
         if (active) { setLibrary([]); setSelectedId(null); }
       });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    const id = session?.studySessionId;
+    if (view !== "learn" || busy || !id || session?.next?.questionIndex !== 1 ||
+        firstQuestionSeen.current.has(id)) return;
+    firstQuestionSeen.current.add(id);
+    void recordFirstQuestionPresented(id).catch(() => {
+      firstQuestionSeen.current.delete(id);
+    });
+  }, [view, busy, session?.studySessionId, session?.next?.questionIndex]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -405,6 +435,8 @@ export function SoftwareApp() {
     setSummary(null);
     setAnswer("");
     setFeedback("");
+    setRecovery(null);
+    setAhaEvidence(null);
     try {
       setSession(await prepareStudy({
         contentText: material.content,
@@ -451,6 +483,17 @@ export function SoftwareApp() {
           : result.grade?.feedback || "Answer recorded.",
       );
       setAnswer("");
+      const needsRepair = !testMode &&
+        result.submission?.nextPolicy === "repair_then_retest" &&
+        result.next?.concept?.id === conceptId;
+      setRecovery(needsRepair ? {
+        feedback: result.grade?.feedback || "",
+        excerpt: session.next?.concept?.sourceExcerpt?.slice(0, 450) || "",
+      } : null);
+      if (!testMode && result.submission?.aha) {
+        setAhaEvidence(result.submission.aha);
+        setRecovery(null);
+      }
 
       if (result.submission?.summary) {
         setSummary(result.submission.summary);
@@ -959,6 +1002,17 @@ export function SoftwareApp() {
 
         {view === "create" && (
           <section className="software-page software-create-page">
+            {library.length === 0 && (
+              <div className="software-first-study-intro" role="status">
+                <span>{i18n.language.startsWith("pt") ? "SEU PRIMEIRO ESTUDO" : "YOUR FIRST STUDY"}</span>
+                <strong>{i18n.language.startsWith("pt")
+                  ? "Envie um material. A Órbita começa com uma pergunta."
+                  : "Add your material. Your Orb starts with one question."}</strong>
+                <p>{i18n.language.startsWith("pt")
+                  ? "Responda, entenda seus erros e tente novamente. Seu progresso será medido em respostas reais."
+                  : "Answer, learn from mistakes and try again. Progress is based on real graded answers."}</p>
+              </div>
+            )}
             <div className="software-title-row"><div><p>{t("software.createKicker")}</p><h1>{t("software.createTitle")}</h1></div></div>
             <div className="software-import-tabs">
               {(["paste","upload","drive","audio","scan"] as SourceType[]).map((type) => (
@@ -1199,6 +1253,27 @@ export function SoftwareApp() {
                   </div>
                 )}
 
+                {view === "learn" && ahaEvidence && (
+                  <section className="software-first-aha" role="status" aria-live="polite">
+                    <span>{i18n.language.startsWith("pt") ? "PRIMEIRO RESULTADO COMPROVADO" : "YOUR FIRST VERIFIED RESULT"}</span>
+                    <h2>{ahaEvidence.variant === "recovery"
+                      ? i18n.language.startsWith("pt") ? "Você melhorou no reteste." : "You improved on your retest."
+                      : i18n.language.startsWith("pt") ? "Você demonstrou domínio inicial." : "You demonstrated early proficiency."}</h2>
+                    <p>{ahaEvidence.variant === "recovery" && ahaEvidence.scoreBefore !== undefined
+                      ? i18n.language.startsWith("pt")
+                        ? `Desempenho avaliado: ${Math.round(ahaEvidence.scoreBefore * 100)}% → ${Math.round(ahaEvidence.scoreAfter * 100)}% no mesmo conceito.`
+                        : `Assessed performance: ${Math.round(ahaEvidence.scoreBefore * 100)}% → ${Math.round(ahaEvidence.scoreAfter * 100)}% on the same concept.`
+                      : i18n.language.startsWith("pt")
+                        ? "Duas respostas de conceitos distintos foram avaliadas com bom desempenho."
+                        : "Two different concepts were graded with strong performance."}</p>
+                    <small>{i18n.language.startsWith("pt")
+                      ? "É uma melhora nesta sessão, não uma garantia de retenção futura."
+                      : "This is a session result, not a guarantee of long-term retention."}</small>
+                    <button type="button" onClick={() => setAhaEvidence(null)}>
+                      {i18n.language.startsWith("pt") ? "Continuar estudando" : "Continue studying"}
+                    </button>
+                  </section>
+                )}
                 {(view === "learn" || view === "test") && (session || busy || summary) && (
                   <div className="software-study-stage">
                     {view === "test" && !summary ? (
@@ -1215,7 +1290,17 @@ export function SoftwareApp() {
                       </aside>
                     )}
                     <article>
-                      {busy ? <div className="software-loading">{t("software.buildingSession")}</div> : summary ? (
+                      {busy ? <div className="software-loading">{t("software.buildingSession")}</div> : recovery && view === "learn" ? (
+                        <div className="software-first-repair" role="status">
+                          <span>{i18n.language.startsWith("pt") ? "REVISÃO DIRECIONADA" : "TARGETED REVIEW"}</span>
+                          <h2>{i18n.language.startsWith("pt") ? "Entenda antes de tentar novamente." : "Review the source, then retry."}</h2>
+                          <p>{recovery.feedback}</p>
+                          {recovery.excerpt && <blockquote>{recovery.excerpt}</blockquote>}
+                          <button type="button" onClick={() => { setRecovery(null); setFeedback(""); }}>
+                            {i18n.language.startsWith("pt") ? "Entendi — tentar de novo" : "Got it — retest me"}
+                          </button>
+                        </div>
+                      ) : summary ? (
                         <div className="software-test-result">
                           <span>{t("software.sessionComplete")}</span>
                           <h2>{summary.testResult ? `${summary.testResult.scorePercent ?? 0}%` : t("software.roundComplete")}</h2>

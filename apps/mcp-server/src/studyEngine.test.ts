@@ -283,3 +283,92 @@ test("practice test covers all concepts before repeating one", async () => {
   const counts = new Map(seen.map(id=>[id,seen.filter(value=>value===id).length]));
   assert.deepEqual([...counts.values()].sort(),[2,2,2]);
 });
+
+test("first Learn mistake receives same-concept written retest and a graded AHA", async () => {
+  const source = new ContentSessionStore().create({
+    title: "Cells", mode: "learn",
+    contentText: "Chloroplasts convert light into chemical energy. Mitochondria make ATP.",
+  });
+  const engine = new StudyEngine();
+  const session = await engine.start(source, {
+    learnerId: "test-aha-learner", mode: "learn", maxQuestions: 3,
+    concepts: [
+      { label: "Chloroplasts", sourceExcerpt: "Chloroplasts convert light into chemical energy." },
+      { label: "Mitochondria", sourceExcerpt: "Mitochondria generate ATP for cells." },
+    ],
+  });
+  const first = await engine.next(session.id);
+  if (first.done) throw new Error("missing first question");
+  const wrong = await engine.submit(session.id, first.concept.id, {
+    correctness: 0.12, completeness: 0.1, confidence: 0.98, userAnswer: "Unknown",
+  });
+  assert.equal(wrong.nextPolicy, "repair_then_retest");
+  assert.equal(wrong.aha, undefined);
+  const retry = await engine.next(session.id);
+  if (retry.done) throw new Error("missing retest");
+  assert.equal(retry.concept.id, first.concept.id, "AHA recovery targets same concept");
+  assert.equal(retry.questionPolicy.type, "short_answer", "Retest must not repeat a multiple-choice guess");
+  const improved = await engine.submit(session.id, retry.concept.id, {
+    correctness: 0.95, completeness: 0.95, confidence: 0.94,
+    userAnswer: "It converts sunlight into stored chemical energy.",
+  });
+  assert.equal(improved.aha?.variant, "recovery");
+  assert.ok((improved.aha?.scoreAfter ?? 0) > (improved.aha?.scoreBefore ?? 1));
+  const subsequent = await engine.next(session.id);
+  if (!subsequent.done) {
+    const after = await engine.submit(session.id, subsequent.concept.id, {
+      correctness: 0.95, completeness: 0.95, confidence: 0.94,
+      userAnswer: "Another graded answer",
+    });
+    assert.equal(after.aha, undefined, "Do not count the first AHA again");
+  }
+});
+
+test("two independent good Learn answers yield honest mastery AHA, not simulated recovery", async () => {
+  const source = new ContentSessionStore().create({
+    title: "Cells", mode: "learn",
+    contentText: "Chloroplasts capture light. Mitochondria produce ATP.",
+  });
+  const engine = new StudyEngine();
+  const session = await engine.start(source, {
+    mode: "learn", maxQuestions: 2, concepts: [
+      { label: "Chloroplasts", sourceExcerpt: "Chloroplasts capture light." },
+      { label: "Mitochondria", sourceExcerpt: "Mitochondria produce ATP." },
+    ],
+  });
+  const first = await engine.next(session.id);
+  if (first.done) throw new Error("missing first");
+  const one = await engine.submit(session.id, first.concept.id, {
+    correctness: 0.95, completeness: 0.94, confidence: 0.95,
+  });
+  assert.equal(one.aha, undefined);
+  const second = await engine.next(session.id);
+  if (second.done) throw new Error("missing second");
+  assert.notEqual(second.concept.id, first.concept.id);
+  const two = await engine.submit(session.id, second.concept.id, {
+    correctness: 0.97, completeness: 0.95, confidence: 0.95,
+  });
+  assert.equal(two.aha?.variant, "demonstrated_mastery");
+});
+
+test("first question presentation is acknowledged once, only by its actual learner", async () => {
+  const source = new ContentSessionStore().create({
+    title: "Cells", mode: "learn",
+    contentText: "A cell membrane selectively controls entry into the cell.",
+  });
+  const engine = new StudyEngine();
+  const session = await engine.start(source, {
+    learnerId: "owner-aha", mode: "learn",
+    concepts: [{ label: "Cell membrane",
+      sourceExcerpt: "A cell membrane selectively controls entry into the cell." }],
+  });
+  assert.equal(await engine.recordFirstQuestionPresented(session.id, "intruder"), false);
+  assert.equal(await engine.recordFirstQuestionPresented(session.id, "owner-aha"), true);
+  assert.equal(await engine.recordFirstQuestionPresented(session.id, "owner-aha"), false);
+  const current = await engine.next(session.id);
+  if (current.done) throw new Error("no first question");
+  await engine.submit(session.id, current.concept.id, {
+    correctness: 0.8, completeness: 0.8, confidence: 0.9,
+  });
+  assert.equal(await engine.recordFirstQuestionPresented(session.id, "owner-aha"), false);
+});
