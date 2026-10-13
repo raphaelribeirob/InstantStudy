@@ -24,6 +24,8 @@ jobs:
       - run: npm install
       - name: Assert Neon-only storage
         run: npm run audit:database
+      - name: Validate Neon scalability contracts and migration inventory
+        run: npm run audit:neon-scale
       - name: Validate Quizlet parity inventory (not release certification)
         run: npm run audit:parity
       - name: Verify iOS Apple HIG wiring (not App Store certification)
