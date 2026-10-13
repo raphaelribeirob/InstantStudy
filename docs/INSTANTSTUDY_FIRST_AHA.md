@@ -18,8 +18,8 @@ Date: 2026-10-12 | Status: development branch, **NOT production certified**.
 - Not equivalent to educational efficacy; that requires retention testing days later.
 
 ## Event funnel (backend-only)
-Server emits: `study_material_imported`, `first_question_prepared`, `first_answer_graded`, `learning_gap_detected`, `learning_gap_retested`, `learning_aha_achieved`.
-- *Prepared* means backend generated the question. It does **not** prove the client rendered it. A future `first_question_presented` event requires authenticated client display instrumentation.
+Server emits: `study_material_imported`, `first_question_prepared`, `first_question_presented`, `first_answer_graded`, `learning_gap_detected`, `learning_gap_retested`, `learning_aha_achieved`.
+- *Prepared* means backend generated the question. *Presented* is a paid-client render acknowledgement, recorded only for the owned first Learn question, once per study session. It does not prove that the student actually read the screen.
 - Use the verified `learning_aha_achieved` event as activation numerator; denominator is new paid accounts imported successfully. Segment by source type/device/locale only where actually captured.
 - Landing dispatches existing `instantstudy:marketing` event and dataLayer `landing_import_intent`; does not claim paid activation.
 
@@ -40,6 +40,7 @@ Server emits: `study_material_imported`, `first_question_prepared`, `first_answe
 - [x] Correct-on-first answer still needs second concept to qualify.
 - [x] Hard paywall remains a prerequisite; no preview of paid engine.
 - [x] Server event tracking avoids sensitive study content.
+- [x] Paid client reports first question render through an owner-checked, single-use backend marker.
 - [ ] Live PostHog project credentials/consent and verified ingestion.
 - [ ] Browser real-device E2E/visual/accessibility tests.
 - [ ] Metrics from actual student cohorts (time to first question, time to AHA, adoption and D7 retention).
