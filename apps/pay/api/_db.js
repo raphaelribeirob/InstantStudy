@@ -20,6 +20,9 @@ export function databaseConfigured() {
 }
 
 export async function ensureSchema() {
+  // Migration-managed deployments must use the independently verified Pay
+  // schema. Runtime DDL is an explicit legacy/dev compatibility path only.
+  if (process.env.INSTANTPAY_SCHEMA_MANAGED === "true") return;
   if (!schemaPromise) {
     schemaPromise = (async () => {
       const q = sql();
