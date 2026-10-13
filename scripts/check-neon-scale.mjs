@@ -28,6 +28,34 @@ const guards=[
   ["quota tests", "apps/mcp-server/src/neonScalability.test.ts", ["concurrent Learn admissions","indexed due projection"]],
   ["webhook replay tests", "apps/pay/api/webhookLifecycle.test.js", ["in-progress duplicate","event isn't acknowledged"]],
 ];
+// Phase 2 is opt-in. All migration-managed study services must skip DDL.
+const managedStudyFiles=[
+  "aiAssetQuota.ts","largeAudioUpload.ts","realtimeQuota.ts",
+  "offerAgent.ts","studyRoomStore.ts","materialStore.ts",
+  "entitlements.ts","studyPersistence.ts","flashcardProgress.ts",
+];
+for(const name of managedStudyFiles){
+  const path=`apps/mcp-server/src/${name}`;
+  if(!read(path).includes("schemaManagedExternally()")){
+    console.error("FAIL managed schema guard:",path);failures++;
+  }
+}
+const phase2=[
+  ["billing managed schema", "apps/pay/api/_db.js", ['INSTANTPAY_SCHEMA_MANAGED === "true"']],
+  ["session ownership", "apps/mcp-server/src/studyPersistence.ts",
+    ["getOwned(sessionId: string, learnerId: string)", "AND learner_id = ${learnerId}"]],
+  ["secure route", "apps/mcp-server/src/server.ts",
+    ["studyEngine.getOwned(sessionId, learnerId)"]],
+  ["metadata pagination", "apps/mcp-server/src/materialStore.ts",
+    ["async listSummaries(", "ORDER BY updated_at DESC, id DESC"]],
+  ["paginated endpoint", "apps/mcp-server/src/server.ts",
+    ["/api/v1/materials/list-summary"]],
+  ["authenticated BFF", "apps/web/api/study.js",
+    ["material_list_summary", "verifiedLearner(body)"]],
+  ["phase 2 tests", "apps/mcp-server/src/neonPhase2.test.ts",
+    ["metadata-only library excludes", "keyset material pages"]],
+];
+guards.push(...phase2);
 for(const [label,path,terms]of guards){
   if(!existsSync(resolve(process.cwd(),path))){console.error("MISSING",path);failures++;continue;}
   const content=read(path);
