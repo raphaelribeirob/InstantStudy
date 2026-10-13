@@ -10,7 +10,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('InstantStudy™'), findsOneWidget);
-    expect(find.text('Turn notes into\npractice.'), findsOneWidget);
+    expect(find.text('Understand.\nPractice.'), findsOneWidget);
     expect(find.text('Cross-device and ChatGPT account sync is not active yet.'), findsOneWidget);
     expect(find.text('Insights'), findsOneWidget);
     expect(find.byIcon(Icons.headphones_outlined), findsOneWidget);
@@ -23,7 +23,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.language));
     await tester.pumpAndSettle();
 
-    expect(find.text('Transforme notas\nem prática.'), findsOneWidget);
+    expect(find.text('Entenda.\nPratique.'), findsOneWidget);
     expect(find.text('A sincronização da conta entre dispositivos e ChatGPT ainda não está ativa.'), findsOneWidget);
     expect(find.text('MODO DE ESTUDO'), findsOneWidget);
 
