@@ -265,7 +265,7 @@ function createMcpServer(principal?: PluginPrincipal) {
       ...pluginSecurity,
       title: "Start InstantStudy from content",
       description:
-        "PRIMARY CONTENT-FIRST ENTRY. Use immediately when the learner pastes notes, provides content in the conversation, or uploads files and asks to study, learn, review, quiz, test, or 'InstantStudy' them. Create the study session before asking onboarding questions. Do not require Anki. If the host can read the supplied file, also pass the relevant extracted text in contentText. After this tool returns, begin the first study question immediately.",
+        "Create a personalized study session from notes, provided text, or user-supplied study files when requested. Supports Learn, Review, Quiz and Test modes, with source-grounded questions and progress recording. Pass extracted text in contentText when it is available. Does not require an Anki connection.",
       inputSchema: prepareStudySchema,
       annotations: {
         readOnlyHint: false,
