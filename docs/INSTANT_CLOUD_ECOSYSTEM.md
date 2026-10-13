@@ -66,7 +66,11 @@ iOS Speak       iOS Bible       Study app       ChatGPT plugins
 
 **V0 — implemented in draft PR:** Identity verification, /me, progress
 event append, deduplication, summary and cursor sync endpoints; tests; Neon
-migration *file* without applying it.
+migration *file* without applying it. A pure, server-only InstantPay entitlement
+projection (`src/access.js`) recognizes individual plans, family membership,
+and `instant_one.all`, while denying expired or revoked access. The actual
+trusted payment-to-identity link and entitlement endpoint are NOT implemented.
+The identity-link ledger migration is staged but not operational.
 
 **V1 — not yet completed:** Provision dedicated Neon preview database; configure
 Auth0; verified legacy account linking; payment bridge; product event adapter
