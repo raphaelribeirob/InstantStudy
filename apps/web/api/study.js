@@ -199,6 +199,7 @@ export default async function handler(req, res) {
     "due",
     "material_import",
     "material_list",
+    "material_list_summary",
     "material_get",
     "material_update",
     "material_duplicate",
@@ -704,6 +705,21 @@ export default async function handler(req, res) {
         code,
         progress,
         attempts,
+      });
+    } else if (action === "material_list_summary") {
+      const learnerId = await verifiedLearner(body);
+      if (!learnerId) return json(res, 401, { error: "learner_identity_required" });
+      const cursor = body.cursor &&
+        typeof body.cursor.updatedAt === "string" &&
+        !Number.isNaN(Date.parse(body.cursor.updatedAt)) &&
+        /^[a-f0-9-]{36}$/i.test(String(body.cursor.id || ""))
+          ? { updatedAt: new Date(body.cursor.updatedAt).toISOString(), id: body.cursor.id }
+          : undefined;
+      result = await upstream(base, apiKey, "/api/v1/materials/list-summary", {
+        learnerId,
+        query: typeof body.query === "string" ? body.query.slice(0, 200) : "",
+        limit: Number.isInteger(body.limit) ? Math.max(1, Math.min(body.limit, 50)) : 30,
+        cursor,
       });
     } else if (action === "material_list") {
       const learnerId = await verifiedLearner(body);
