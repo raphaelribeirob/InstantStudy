@@ -1457,10 +1457,7 @@ class _InstantOrb extends StatelessWidget {
 }
 
 class _ModeRail extends StatelessWidget {
-  const _ModeRail({
-    required this.selected,
-    required this.onSelected,
-  });
+  const _ModeRail({required this.selected, required this.onSelected});
 
   final String selected;
   final ValueChanged<String> onSelected;
@@ -1469,52 +1466,65 @@ class _ModeRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0x2E11110F)),
-      ),
-      child: Row(
-        children: modes.map((mode) {
-          final active = selected == mode;
-          return Expanded(
-            child: Semantics(
-              button: true,
-              selected: active,
-              label: context.tr(mode),
-              child: InkWell(
-              onTap: () => onSelected(mode),
-              child: AnimatedContainer(
-                duration: MediaQuery.maybeOf(context)?.disableAnimations == true
-                    ? Duration.zero : const Duration(milliseconds: 180),
-                constraints: const BoxConstraints(minHeight: 48),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: active ? InstantStudyApp.ink : Colors.transparent,
-                  border: Border(
-                    right: mode == modes.last
-                        ? BorderSide.none
-                        : const BorderSide(color: Color(0x2E11110F)),
+    final reducedMotion = MediaQuery.maybeOf(context)?.disableAnimations == true;
+    return LayoutBuilder(builder: (context, constraints) {
+      // At 200% Dynamic Type the four labels must scroll, never clip or
+      // shrink the user's accessibility font size.
+      final scaledFont = MediaQuery.textScalerOf(context).scale(13);
+      final itemWidth = max(constraints.maxWidth / modes.length,
+          max(80.0, scaledFont * 7.5));
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0x2E11110F)),
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: modes.map((mode) {
+              final active = selected == mode;
+              return SizedBox(
+                width: itemWidth,
+                child: Semantics(
+                  button: true,
+                  selected: active,
+                  label: context.tr(mode),
+                  child: InkWell(
+                    onTap: () => onSelected(mode),
+                    child: AnimatedContainer(
+                      duration: reducedMotion ? Duration.zero
+                          : const Duration(milliseconds: 180),
+                      constraints: const BoxConstraints(minHeight: 48),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 9),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: active ? InstantStudyApp.ink : Colors.transparent,
+                        border: Border(
+                          right: mode == modes.last
+                              ? BorderSide.none
+                              : const BorderSide(color: Color(0x2E11110F)),
+                        ),
+                      ),
+                      child: Text(
+                        context.tr(mode),
+                        textAlign: TextAlign.center,
+                        softWrap: false,
+                        style: TextStyle(
+                          color: active ? InstantStudyApp.paper
+                              : InstantStudyApp.muted,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: .3,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                child: Text(
-                  context.tr(mode),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: active
-                        ? InstantStudyApp.paper
-                        : InstantStudyApp.muted,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: .3,
-                  ),
-                ),
-              ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
+              );
+            }).toList(),
+          ),
+        ),
+      );
+    });
   }
 }
 
