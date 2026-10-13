@@ -26,6 +26,8 @@ jobs:
         run: npm run audit:database
       - name: Validate Quizlet parity inventory (not release certification)
         run: npm run audit:parity
+      - name: Verify iOS Apple HIG wiring (not App Store certification)
+        run: npm run audit:apple-hig
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
