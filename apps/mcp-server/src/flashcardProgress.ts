@@ -1,3 +1,4 @@
+import { schemaManagedExternally } from "./databasePolicy.js";
 import { neon } from "@neondatabase/serverless";
 import { databaseUrl, durableDatabaseRequired, DurableDatabaseRequiredError } from "./databasePolicy.js";
 
@@ -33,6 +34,7 @@ class NeonFlashcardProgressStore implements FlashcardProgressStore {
     this.ready = this.init();
   }
   private async init() {
+    if (schemaManagedExternally()) return;
     await this.sql`
       CREATE TABLE IF NOT EXISTS instantstudy_flashcard_progress (
         learner_id text NOT NULL,

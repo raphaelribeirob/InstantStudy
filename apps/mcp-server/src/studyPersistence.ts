@@ -1,3 +1,4 @@
+import { schemaManagedExternally } from "./databasePolicy.js";
 import { neon } from "@neondatabase/serverless";
 import {
   databaseUrl,
@@ -21,6 +22,7 @@ export type DueReview = {
 
 export interface StudyPersistence {
   get(sessionId: string): Promise<AdaptiveStudySession | null>;
+  getOwned(sessionId: string, learnerId: string): Promise<AdaptiveStudySession | null>;
   save(session: AdaptiveStudySession): Promise<void>;
   priorConcepts(
     learnerId: string,
@@ -85,6 +87,11 @@ class MemoryStudyPersistence implements StudyPersistence {
 
   async get(sessionId: string) {
     return this.sessions.get(sessionId) ?? null;
+  }
+
+  async getOwned(sessionId: string, learnerId: string) {
+    const session = this.sessions.get(sessionId);
+    return session?.learnerId === learnerId ? structuredClone(session) : null;
   }
 
   async save(session: AdaptiveStudySession) {
@@ -170,6 +177,7 @@ class NeonStudyPersistence implements StudyPersistence {
   }
 
   private async init() {
+    if (schemaManagedExternally()) return;
     await this.sql`
       CREATE TABLE IF NOT EXISTS instantstudy_sessions (
         id uuid PRIMARY KEY,
@@ -196,7 +204,17 @@ class NeonStudyPersistence implements StudyPersistence {
       WHERE id = ${sessionId}::uuid
       LIMIT 1
     `;
+    return (rows[0]?.session_json as AdaptiveStudySession | undefined) ?? null;
+  }
 
+  async getOwned(sessionId: string, learnerId: string) {
+    await this.ready;
+    const rows = await this.sql`
+      SELECT session_json
+      FROM instantstudy_sessions
+      WHERE id = ${sessionId}::uuid AND learner_id = ${learnerId}
+      LIMIT 1
+    `;
     return (rows[0]?.session_json as AdaptiveStudySession | undefined) ?? null;
   }
 
@@ -395,6 +413,9 @@ class UnavailableStudyPersistence implements StudyPersistence {
   }
 
   async get(_sessionId: string) {
+    return this.unavailable();
+  }
+  async getOwned(_sessionId: string, _learnerId: string) {
     return this.unavailable();
   }
 

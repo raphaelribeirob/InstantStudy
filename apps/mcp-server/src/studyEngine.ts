@@ -415,6 +415,17 @@ export class StudyEngine {
     return true;
   }
 
+  /** No UUID alone authorizes the caller. Even cache hits are owner-scoped;
+   * durable loads include learner_id in the SQL WHERE clause.
+   */
+  async getOwned(sessionId: string, learnerId: string) {
+    const cached = this.cache.get(sessionId);
+    if (cached) return cached.learnerId === learnerId ? cached : null;
+    const persisted = await this.persistence.getOwned(sessionId, learnerId);
+    if (persisted) this.cache.set(sessionId, persisted);
+    return persisted;
+  }
+
   async get(sessionId: string) {
     const cached = this.cache.get(sessionId);
     if (cached) return cached;

@@ -38,3 +38,11 @@ export function requireDurableDatabase() {
     throw new DurableDatabaseRequiredError();
   }
 }
+
+/** Opt-in managed schema: when migrations have been explicitly applied by an
+ * independent release job, runtime services must NEVER issue DDL. This flag
+ * stays disabled until the preview schema and release contract are verified.
+ */
+export function schemaManagedExternally() {
+  return process.env.INSTANTSTUDY_SCHEMA_MANAGED === "true";
+}

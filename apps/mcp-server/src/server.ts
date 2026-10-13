@@ -1015,6 +1015,26 @@ app.post("/api/v1/materials/list", async (req, res) => {
   }
 });
 
+/** Lightweight library page: title-only search, no source text or AI assets.
+ * The existing full list route remains for backward-compatible clients.
+ */
+app.post("/api/v1/materials/list-summary", async (req, res) => {
+  try {
+    const input = z.object({
+      learnerId: z.string().min(3).max(200),
+      query: z.string().max(200).default(""),
+      limit: z.number().int().min(1).max(50).default(30),
+      cursor: z.object({
+        updatedAt: z.string().datetime(),
+        id: z.string().uuid(),
+      }).optional(),
+    }).strict().parse(req.body ?? {});
+    res.json(await materialStore.listSummaries(
+      input.learnerId, input.query, input.limit, input.cursor,
+    ));
+  } catch (error) { sendApiError(res, error); }
+});
+
 app.post("/api/v1/materials/get", async (req, res) => {
   try {
     const input = z
@@ -1419,7 +1439,7 @@ app.post("/api/v1/rooms/progress", async (req, res) => {
 
 async function authorizeOwnedSession(res: express.Response, sessionId: string, learnerId?: string) {
   if (!hardPaywallServiceEnabled()) return true;
-  const session = await studyEngine.get(sessionId);
+  const session = learnerId ? await studyEngine.getOwned(sessionId, learnerId) : null;
   if (ownsStudySession(session, learnerId, true)) return true;
   res.status(404).json({ error: "study_session_not_found" });
   return false;
