@@ -1419,7 +1419,7 @@ app.post("/api/v1/rooms/progress", async (req, res) => {
 
 async function authorizeOwnedSession(res: express.Response, sessionId: string, learnerId?: string) {
   if (!hardPaywallServiceEnabled()) return true;
-  const session = await studyEngine.get(sessionId);
+  const session = learnerId ? await studyEngine.getOwned(sessionId, learnerId) : null;
   if (ownsStudySession(session, learnerId, true)) return true;
   res.status(404).json({ error: "study_session_not_found" });
   return false;
