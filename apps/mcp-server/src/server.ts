@@ -320,9 +320,9 @@ function createMcpServer(principal?: PluginPrincipal) {
       ...pluginSecurity,
       title: "Get InstantStudy plan and usage",
       description:
-        "Return the learner's current Free, Plus, or Unlimited entitlement and the remaining monthly Learn/Test allowance.",
+        "Return the authenticated learner's current entitlement and remaining usage.",
       inputSchema: z.object({
-        learnerId: z.string().min(3).max(200),
+        learnerId: z.string().min(3).max(200).optional(),
       }),
       annotations: {
         readOnlyHint: true,
@@ -331,7 +331,9 @@ function createMcpServer(principal?: PluginPrincipal) {
       },
     },
     async ({ learnerId }) => {
-      return toolResult(await studyEntitlements.getStatus(resolveLearnerId(learnerId, principal)!));
+      const id = resolveLearnerId(learnerId, principal);
+      if (!id) throw new Error("Authenticated learner required.");
+      return toolResult(await studyEntitlements.getStatus(id));
     },
   );
 
@@ -475,9 +477,9 @@ function createMcpServer(principal?: PluginPrincipal) {
       ...pluginSecurity,
       title: "Get due InstantStudy reviews",
       description:
-        "Return concepts that are due for retrieval practice for a stable learnerId. Use this to start short retention sessions from prior learning without requiring the learner to re-upload the original material.",
+        "Return due concepts belonging to the authenticated learner.",
       inputSchema: z.object({
-        learnerId: z.string().min(3).max(200),
+        learnerId: z.string().min(3).max(200).optional(),
         before: z.string().datetime().optional(),
         limit: z.number().int().min(1).max(100).default(20),
       }),
@@ -488,9 +490,9 @@ function createMcpServer(principal?: PluginPrincipal) {
       },
     },
     async ({ learnerId, before, limit }) => {
-      return toolResult(
-        await studyEngine.dueReviews(resolveLearnerId(learnerId, principal)!, { before, limit }),
-      );
+      const id = resolveLearnerId(learnerId, principal);
+      if (!id) throw new Error("Authenticated learner required.");
+      return toolResult(await studyEngine.dueReviews(id, { before, limit }));
     },
   );
 
