@@ -45,6 +45,7 @@ import {
   joinStudyRoom,
   listStudyMaterials,
   prepareStudy,
+  recordFirstQuestionPresented,
   createStudyRoom,
   submitStudyAnswer,
   updateStudyRoomProgress,
@@ -144,6 +145,7 @@ export function SoftwareApp() {
   const [createError, setCreateError] = useState("");
   const [audioImportProgress, setAudioImportProgress] = useState<number | null>(null);
   const [session, setSession] = useState<Awaited<ReturnType<typeof prepareStudy>> | null>(null);
+  const firstQuestionSeen = useRef<Set<string>>(new Set());
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState("");
   const [summary, setSummary] = useState<StudySummary | null>(null);
@@ -267,6 +269,16 @@ export function SoftwareApp() {
       });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    const id = session?.studySessionId;
+    if (view !== "learn" || busy || !id || session?.next?.questionIndex !== 1 ||
+        firstQuestionSeen.current.has(id)) return;
+    firstQuestionSeen.current.add(id);
+    void recordFirstQuestionPresented(id).catch(() => {
+      firstQuestionSeen.current.delete(id);
+    });
+  }, [view, busy, session?.studySessionId, session?.next?.questionIndex]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
