@@ -13,6 +13,7 @@ import { ContentSessionStore } from "./contentSessions.js";
 import { StudyEngine } from "./studyEngine.js";
 import { correctChoiceForQuestion } from "./questionGenerator.js";
 import { hardPaywallServiceEnabled, isSignedBffRequest } from "./hardPaywallSignature.js";
+import { captureVerifiedActivation } from "./ahaAnalytics.js";
 import { ingestFiles } from "./ingest.js";
 import { studyEntitlements, UsageLimitError } from "./entitlements.js";
 import { answerFromSource, gradeStudyAnswer } from "./learningIntelligence.js";
@@ -984,6 +985,9 @@ app.post("/api/v1/materials/import", async (req, res) => {
       assets,
     });
 
+    await captureVerifiedActivation(input.learnerId, "study_material_imported", {
+      source_type: input.sourceType,
+    });
     res.json({ material, ingestion: ingested.files });
   } catch (error) {
     sendApiError(res, error);
@@ -1466,6 +1470,11 @@ app.post("/api/v1/study/prepare", async (req, res) => {
       concepts: input.concepts,
     });
 
+    const firstQuestion = await studyEngine.next(studySession.id);
+    await captureVerifiedActivation(input.learnerId, "first_question_prepared", {
+      mode: studySession.mode,
+      question_count: studySession.maxQuestions,
+    });
     res.json({
       contentSessionId: contentSession.id,
       studySessionId: studySession.id,
@@ -1476,7 +1485,7 @@ app.post("/api/v1/study/prepare", async (req, res) => {
       conceptCount: studySession.concepts.length,
       ingestion: ingested.files,
       usage,
-      next: await studyEngine.next(studySession.id),
+      next: firstQuestion,
     });
   } catch (error) {
     sendApiError(res, error);
@@ -1617,6 +1626,7 @@ app.post("/api/v1/study/evaluate", async (req, res) => {
           userAnswer: normalizedAnswer,
         });
 
+    const previousAttempts = session.attempts.filter(attempt => attempt.conceptId === input.conceptId);
     const submission = await studyEngine.submit(
       input.studySessionId,
       input.conceptId,
@@ -1634,6 +1644,31 @@ app.post("/api/v1/study/evaluate", async (req, res) => {
       ? null
       : await studyEngine.next(input.studySessionId);
 
+    if (session.mode === "learn" && session.learnerId) {
+      if (submission.activationEvent) {
+        await captureVerifiedActivation(session.learnerId, "first_answer_graded",
+          { mode: session.mode, attempt_number: 1 });
+      }
+      if (submission.nextPolicy === "repair_then_retest") {
+        await captureVerifiedActivation(session.learnerId, "learning_gap_detected",
+          { mode: session.mode });
+      }
+      if (previousAttempts.some(attempt =>
+        attempt.correctness * 0.65 + attempt.completeness * 0.35 < 0.65)) {
+        await captureVerifiedActivation(session.learnerId, "learning_gap_retested",
+          { mode: session.mode });
+      }
+      if (submission.aha) {
+        await captureVerifiedActivation(session.learnerId, "learning_aha_achieved", {
+          mode: session.mode,
+          variant: submission.aha.variant,
+          attempt_number: submission.aha.attemptNumber,
+          elapsed_seconds: submission.aha.elapsedSeconds,
+          score_before: submission.aha.scoreBefore,
+          score_after: submission.aha.scoreAfter,
+        });
+      }
+    }
     res.json({
       grade:
         session.mode === "test"
