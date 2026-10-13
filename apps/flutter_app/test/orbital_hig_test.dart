@@ -21,9 +21,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 360));
     expect(find.text('Ask'), findsOneWidget);
     await tester.ensureVisible(find.text('Ask'));
-    // Ensure the outer scrollable has completed its layout/position update
-    // before testing the actual pointer target; do not silence missed taps.
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 100));
+    // On the test's compact viewport ensureVisible places the card exactly
+    // against the lower clipping edge. Scroll it fully into the hit-test area.
+    await tester.drag(find.byType(SingleChildScrollView).first,
+      const Offset(0, -180));
+    await tester.pump(const Duration(milliseconds: 120));
     await tester.tap(find.text('Ask'));
     await tester.pump(const Duration(milliseconds: 100));
     expect(action, 'ask');
