@@ -26,7 +26,7 @@ function mock() {
       return true;
     },
     async provision(){calls.push("provision");return provisionResult;},
-    async applied(){calls.push("applied");state="applied";},
+    async applied(){calls.push("applied");state="applied";return true;},
     async failed(){calls.push("failed");state="failed";},
     expiration:()=>null,
     activeSubscription: status => ["active","trialing"].includes(status),
