@@ -124,6 +124,7 @@ class _StudyHomeState extends State<StudyHome> {
 
   String _mode = 'learn';
   bool _busy = false;
+  bool _firstAnswerSubmitted = false;
   String? _error;
   String? _feedback;
   String? _sourceLabel;
@@ -251,6 +252,7 @@ class _StudyHomeState extends State<StudyHome> {
       _error = null;
       _feedback = null;
       _summary = null;
+      _firstAnswerSubmitted = false;
     });
     try {
       if (_materialId == null) {
@@ -314,9 +316,12 @@ class _StudyHomeState extends State<StudyHome> {
       final grade = result['grade'];
       final submission = result['submission'];
       final next = result['next'];
+      final isFirstAnswer = !_firstAnswerSubmitted;
+      final confirmation = context.tr('firstAnswerEvidence');
 
       setState(() {
         _answer.clear();
+        _firstAnswerSubmitted = true;
         _feedback = _mode == 'test'
             ? (submission is Map && submission['done'] == true
                 ? 'Practice test complete.'
@@ -324,6 +329,9 @@ class _StudyHomeState extends State<StudyHome> {
             : grade is Map
                 ? grade['feedback']?.toString() ?? 'Answer recorded.'
                 : 'Answer recorded.';
+        if (isFirstAnswer && _mode != 'test') {
+          _feedback = '${_feedback ?? ''}\n$confirmation';
+        }
 
         if (submission is Map && submission['summary'] is Map) {
           _summary =
@@ -561,7 +569,16 @@ class _StudyHomeState extends State<StudyHome> {
             letterSpacing: -.35,
           ),
         ),
-        const SizedBox(height: 36),
+        const SizedBox(height: 16),
+        Text(
+          context.tr('continuityNote'),
+          style: const TextStyle(
+            color: InstantStudyApp.muted,
+            fontSize: 12,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 30),
         _SectionRule(label: context.tr('yourMaterial')),
         _LineField(
           controller: _title,
@@ -613,8 +630,19 @@ class _StudyHomeState extends State<StudyHome> {
         ? '${testResult['scorePercent'] ?? 0}%'
         : context.tr('complete');
     final copy = testResult is Map
-        ? '${testResult['answered'] ?? 0} of ${testResult['totalQuestions'] ?? _testQuestions} questions answered.'
-        : 'Your knowledge state has been updated. Review will bring concepts back when they begin to fade.';
+        ? context.tr('testAnswerCount', {
+            'answered': testResult['answered'] ?? 0,
+            'total': testResult['totalQuestions'] ?? _testQuestions,
+          })
+        : context.tr('summaryPracticeCopy');
+    final weakConcepts = _summary?['weakConcepts'] is List
+        ? (_summary!['weakConcepts'] as List)
+            .whereType<Map>()
+            .map((value) => value['label']?.toString() ?? '')
+            .where((value) => value.isNotEmpty)
+            .take(5)
+            .toList(growable: false)
+        : <String>[];
 
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 34, 24, 30),
@@ -651,7 +679,32 @@ class _StudyHomeState extends State<StudyHome> {
               color: InstantStudyApp.muted,
             ),
           ),
-          const SizedBox(height: 34),
+          if (weakConcepts.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Text(
+              context.tr('weakConcepts'),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            ...weakConcepts.map((name) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(name, style: const TextStyle(fontSize: 15)),
+            )),
+          ],
+          const SizedBox(height: 28),
+          _SignalButton(
+            label: context.tr('summaryReview'),
+            onPressed: _busy ? null : () {
+              setState(() {
+                _mode = 'review';
+                _session = null;
+                _summary = null;
+                _feedback = null;
+              });
+              _start();
+            },
+          ),
+          const SizedBox(height: 12),
           _SignalButton(
             label: context.tr('studyAnother'),
             onPressed: () => setState(() {
@@ -659,6 +712,7 @@ class _StudyHomeState extends State<StudyHome> {
               _summary = null;
               _feedback = null;
             }),
+            outlined: true,
           ),
         ],
       ),
