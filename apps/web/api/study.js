@@ -191,6 +191,7 @@ export default async function handler(req, res) {
 
   const allowedActions = [
     "prepare",
+    "activation_presented",
     "answer",
     "ask",
     "next",
@@ -290,6 +291,13 @@ export default async function handler(req, res) {
         testQuestionTypes: testQuestionTypes?.length ? testQuestionTypes : undefined,
         concepts: concepts?.length ? concepts : undefined,
       });
+    } else if (action === "activation_presented") {
+      const learnerId = await verifiedLearner(body);
+      const studySessionId = cleanId(body.studySessionId, 64);
+      if (!learnerId || ANON_ID.test(learnerId)) return json(res, 401, { error: "learner_identity_required" });
+      if (!/^[a-f0-9-]{36}$/i.test(studySessionId)) return json(res, 400, { error: "session_invalid" });
+      result = await upstream(base, apiKey, "/api/v1/activation/presented",
+        { learnerId, studySessionId });
     } else if (action === "answer") {
       const studySessionId = cleanId(body.studySessionId, 64);
       const conceptId = cleanId(body.conceptId, 64);
