@@ -20,7 +20,18 @@ export type StudyMaterial = {
   updatedAt: string;
 };
 
+export type MaterialSummary = Omit<StudyMaterial, "content" | "assets">;
+export type MaterialCursor = { updatedAt: string; id: string };
+export type MaterialSummaryPage = { materials: MaterialSummary[]; nextCursor: MaterialCursor | null };
+
+function summary(material: StudyMaterial): MaterialSummary {
+  const { content: _content, assets: _assets, ...rest } = material;
+  return rest;
+}
+
 export interface MaterialStore {
+  listSummaries(learnerId: string, query?: string, limit?: number,
+    cursor?: MaterialCursor): Promise<MaterialSummaryPage>;
   save(input: Omit<StudyMaterial, "id" | "createdAt" | "updatedAt">): Promise<StudyMaterial>;
   list(learnerId: string, query?: string, limit?: number): Promise<StudyMaterial[]>;
   get(learnerId: string, id: string): Promise<StudyMaterial | null>;
@@ -54,6 +65,22 @@ export class MemoryMaterialStore implements MaterialStore {
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .slice(0, limit)
       .map((row) => structuredClone(row));
+  }
+
+  async listSummaries(learnerId: string, query = "", limit = 30,
+    cursor?: MaterialCursor): Promise<MaterialSummaryPage> {
+    const max = Math.max(1, Math.min(limit, 50));
+    const needle = query.trim().toLocaleLowerCase();
+    const sorted = [...this.rows.values()].filter(row => row.learnerId === learnerId &&
+      (!needle || row.title.toLocaleLowerCase().includes(needle)))
+      .sort((a,b) => b.updatedAt.localeCompare(a.updatedAt) || b.id.localeCompare(a.id))
+      .filter(row => !cursor || row.updatedAt < cursor.updatedAt ||
+        (row.updatedAt === cursor.updatedAt && row.id < cursor.id));
+    const page = sorted.slice(0,max);
+    const last = page.at(-1);
+    return { materials: page.map(row=>summary(structuredClone(row))),
+      nextCursor: sorted.length > max && last ?
+        {updatedAt: last.updatedAt, id: last.id} : null };
   }
 
   async get(learnerId: string, id: string) {
@@ -167,6 +194,39 @@ class NeonMaterialStore implements MaterialStore {
     return rows.map((row) => this.row(row));
   }
 
+  async listSummaries(learnerId: string, query = "", limit = 30,
+    cursor?: MaterialCursor): Promise<MaterialSummaryPage> {
+    await this.ready;
+    const max = Math.max(1, Math.min(limit, 50));
+    const needle = `%${query.trim()}%`;
+    const afterTime = cursor?.updatedAt ?? null;
+    const afterId = cursor?.id ?? null;
+    const rows = await this.sql`
+      SELECT id::text, learner_id, title, source_type, source_names,
+             created_at, updated_at
+      FROM instantstudy_materials
+      WHERE learner_id = ${learnerId}
+        AND title ILIKE ${needle}
+        AND (${afterTime}::timestamptz IS NULL OR
+          (updated_at,id) < (${afterTime}::timestamptz,${afterId}::uuid))
+      ORDER BY updated_at DESC, id DESC
+      LIMIT ${max + 1}
+    `;
+    const page = rows.slice(0,max).map(row => ({
+      id: String(row.id),
+      learnerId: String(row.learner_id),
+      title: String(row.title),
+      sourceType: String(row.source_type) as StudyMaterial["sourceType"],
+      sourceNames: Array.isArray(row.source_names) ? row.source_names.map(String) : [],
+      createdAt: new Date(String(row.created_at)).toISOString(),
+      updatedAt: new Date(String(row.updated_at)).toISOString(),
+    }));
+    const last = page.at(-1);
+    return {materials: page,
+      nextCursor: rows.length > max && last ?
+        {updatedAt:last.updatedAt, id:last.id}: null };
+  }
+
   async get(learnerId: string, id: string) {
     await this.ready;
     const rows = await this.sql`
@@ -227,6 +287,10 @@ class UnavailableMaterialStore implements MaterialStore {
     return this.unavailable();
   }
 
+  async listSummaries(_learnerId: string, _query = "", _limit = 30,
+    _cursor?: MaterialCursor): Promise<MaterialSummaryPage> {
+    return this.unavailable();
+  }
   async get(_learnerId: string, _id: string) {
     return this.unavailable();
   }
