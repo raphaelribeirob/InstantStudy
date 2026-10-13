@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS billing_events (
   event_type text NOT NULL,
   occurred_at timestamptz,
   payload jsonb NOT NULL,
-  processed_at timestamptz NOT NULL DEFAULT NOW()
+  processed_at timestamptz DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS billing_entitlements (
   entitlement_id text PRIMARY KEY,
