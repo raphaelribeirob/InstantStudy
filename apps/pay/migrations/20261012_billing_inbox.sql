@@ -4,6 +4,9 @@
 -- Do not execute this directly from a request handler.
 BEGIN;
 
+-- NULL means received but not yet successfully applied.
+ALTER TABLE billing_events ALTER COLUMN processed_at DROP NOT NULL;
+
 ALTER TABLE billing_events
   ADD COLUMN IF NOT EXISTS processing_status text NOT NULL DEFAULT 'pending',
   ADD COLUMN IF NOT EXISTS processing_started_at timestamptz,
