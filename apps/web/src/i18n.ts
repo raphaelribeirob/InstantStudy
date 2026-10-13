@@ -34,7 +34,7 @@ const resources = {
       landing: {
         kicker: "THE FUTURE OF LEARNING",
         introduce: "Introducing InstantStudy™",
-        adaptivePersistent: "Adaptive learning · Persistent memory",
+        adaptivePersistent: "Active recall · Adaptive review",
         futureLine1: "Understand it.",
         futureLine2: "Practice it.",
         openSoftware: "Open the software",
@@ -42,7 +42,11 @@ const resources = {
         oneSystem: "Study in the app today. Connected AI learning is in development.",
         heroTitle: "Learn from anything.",
         heroBody:
-          "Turn any material into a living knowledge state: active practice, testing, mastery and right-time review.",
+          "Your material becomes questions, feedback and a reason to come back.",
+        uniqueOfferBody:
+          "Your AI explains. InstantStudy turns your source into practice: answer a question, examine the feedback and revisit weak concepts. Cross-device account syncing is not live yet.",
+        aiConnectionTitle: "Practice inside your AI — connection in development.",
+        aiConnectionNotice: "The ChatGPT plugin requires authenticated account linking before study history can move across platforms.",
         startOwn: "Start with your own material",
         generatorTitle: "Turn one source into a complete study loop.",
         generatorBody:
@@ -280,7 +284,7 @@ const resources = {
       landing: {
         kicker: "O FUTURO DO APRENDIZADO",
         introduce: "Apresentamos o InstantStudy™",
-        adaptivePersistent: "Aprendizado adaptativo · Memória persistente",
+        adaptivePersistent: "Recordação ativa · Revisão adaptativa",
         futureLine1: "Entenda.",
         futureLine2: "Pratique.",
         openSoftware: "Abrir o software",
@@ -288,7 +292,11 @@ const resources = {
         oneSystem: "Estude no aplicativo. A integração com IA está em desenvolvimento.",
         heroTitle: "Aprenda com qualquer coisa.",
         heroBody:
-          "Transforme qualquer material em um estado vivo de conhecimento: prática ativa, testes, domínio e revisão no momento certo.",
+          "Seu material vira perguntas, feedback e motivos para revisar.",
+        uniqueOfferBody:
+          "Sua IA explica. O InstantStudy transforma o conteúdo em prática: responda, confira o feedback e revise o que ficou difícil. A sincronização entre dispositivos ainda não está ativa.",
+        aiConnectionTitle: "Pratique na sua IA — integração em desenvolvimento.",
+        aiConnectionNotice: "O plugin ChatGPT precisa de autenticação e vinculação de conta antes de compartilhar o histórico entre plataformas.",
         startOwn: "Comece com seu próprio material",
         generatorTitle: "Transforme uma fonte em um ciclo completo de estudo.",
         generatorBody:
