@@ -327,6 +327,13 @@ export async function prepareStudy(input: {
     )) as PreparedStudy;
 }
 
+/** Only the paid authenticated UI may signal that it rendered a real first question. */
+export async function recordFirstQuestionPresented(studySessionId: string) {
+  return (await request(identified({
+    action: "activation_presented", studySessionId,
+  }))) as { recorded: boolean };
+}
+
 export async function submitStudyAnswer(input: {
   studySessionId: string;
   conceptId: string;
