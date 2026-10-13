@@ -60,6 +60,7 @@ export function firstAhaEvidence(
 const allowed = new Set([
   "study_material_imported",
   "first_question_prepared",
+  "first_question_presented",
   "first_answer_graded",
   "learning_gap_detected",
   "learning_gap_retested",
