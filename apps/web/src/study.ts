@@ -81,6 +81,13 @@ export type AnswerResult = {
     recorded?: boolean;
   };
   submission?: {
+    aha?: {
+      variant: "recovery" | "demonstrated_mastery";
+      attemptNumber: number;
+      scoreBefore?: number;
+      scoreAfter: number;
+      elapsedSeconds: number;
+    };
     done?: boolean;
     nextPolicy?: string;
     concept?: {
