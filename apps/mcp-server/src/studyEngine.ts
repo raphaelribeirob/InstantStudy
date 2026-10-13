@@ -205,6 +205,10 @@ function questionType(
   }
 
   if (session.mode === "review") return "free_recall";
+  // The second question tests recall rather than memorization of a choice.
+  if (session.mode === "learn" &&
+      session.attempts.some(attempt => attempt.conceptId === concept.id &&
+        attempt.correctness * 0.65 + attempt.completeness * 0.35 < 0.65)) return "short_answer";
   if (concept.difficulty <= 1) return "multiple_choice";
   if (concept.difficulty === 2) return "short_answer";
   if (concept.difficulty === 3) return "free_recall";
