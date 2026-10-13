@@ -55,3 +55,13 @@ test("Paddle: completed transaction alone doesn't grant a subscription",async()=
   assert.deepEqual(await applyVerifiedPaddleEvent(event("transaction.completed"),db),{duplicate:false});
   assert.equal(db.calls.some(x=>Array.isArray(x)&&x[0]==="update"),false);
 });
+
+test("Paddle: expired claim must not acknowledge applied side effects",async()=>{
+  const db=mock();
+  db.applied=async()=>false;
+  await assert.rejects(
+    applyVerifiedPaddleEvent(event("subscription.canceled"),db),
+    /webhook_claim_expired_retry/
+  );
+  assert.equal(db.calls.at(-1),"failed");
+});
