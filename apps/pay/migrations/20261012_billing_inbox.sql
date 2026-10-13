@@ -8,6 +8,7 @@ ALTER TABLE billing_events
   ADD COLUMN IF NOT EXISTS processing_status text NOT NULL DEFAULT 'pending',
   ADD COLUMN IF NOT EXISTS processing_started_at timestamptz,
   ADD COLUMN IF NOT EXISTS attempt_count integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS claim_token uuid,
   ADD COLUMN IF NOT EXISTS last_error text;
 
 ALTER TABLE billing_events
