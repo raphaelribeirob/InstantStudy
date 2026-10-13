@@ -13,6 +13,7 @@ export type OAuthConfig = {
   issuer: string;
   resource: string;
   jwksUrl: string;
+  learnerClaim: string;
 };
 
 type Environment = Record<string, string | undefined>;
@@ -21,25 +22,33 @@ type JwksResolver = ReturnType<typeof createRemoteJWKSet> | ReturnType<typeof cr
 const requiredScopes = ["study:read", "study:write"] as const;
 const remoteJwks = new Map<string, JwksResolver>();
 
-function canonicalHttps(value: string | undefined): string | null {
+function canonicalHttps(value: string | undefined, trailingSlash = false): string | null {
   try {
     if (!value) return null;
     const url = new URL(value);
-    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
+    if (url.protocol !== "https:" || url.username || url.password ||
+        url.search || url.hash || (url.port && url.port !== "443")) {
       return null;
     }
-    return url.toString().replace(/\/$/, "");
+    const pathname = url.pathname.replace(/\/+$/, "");
+    return url.origin + pathname + (trailingSlash ? "/" : "");
   } catch {
     return null;
   }
 }
 
 export function oauthConfig(env: Environment = process.env): OAuthConfig | null {
-  const issuer = canonicalHttps(env.INSTANTSTUDY_OAUTH_ISSUER);
+  // Auth0 signs access tokens with an issuer ending in "/". JWT issuer
+  // validation is an exact string comparison; stripping that slash breaks login.
+  const issuer = canonicalHttps(env.INSTANTSTUDY_OAUTH_ISSUER, true);
   const resource = canonicalHttps(env.INSTANTSTUDY_OAUTH_RESOURCE);
   const jwksUrl = canonicalHttps(env.INSTANTSTUDY_OAUTH_JWKS_URL);
-  if (!issuer || !resource || !jwksUrl) return null;
-  return { issuer, resource, jwksUrl };
+  const learnerClaim = env.INSTANTSTUDY_OAUTH_LEARNER_CLAIM ||
+    (resource ? resource + "/learner_id" : undefined);
+  if (!issuer || !resource || !jwksUrl ||
+      !learnerClaim || !canonicalHttps(learnerClaim) ||
+      !learnerClaim.includes("/learner_id")) return null;
+  return { issuer, resource, jwksUrl, learnerClaim };
 }
 
 export function protectedResourceMetadata(config: OAuthConfig) {
@@ -53,7 +62,8 @@ export function protectedResourceMetadata(config: OAuthConfig) {
 export function oauthChallenge(config: OAuthConfig) {
   const resourceMetadata = new URL("/.well-known/oauth-protected-resource", config.resource);
   return 'Bearer resource_metadata="' + resourceMetadata.toString() +
-    '", error="invalid_token", error_description="Valid InstantStudy account authorization required"';
+    '", scope="study:read study:write", error="invalid_token",' +
+    ' error_description="Valid InstantStudy account authorization required"';
 }
 
 export function resolveLearnerId(
@@ -116,7 +126,7 @@ export async function verifyOauthBearer(
 
   // This signed private claim MUST be minted by the trusted authorization server
   // from the canonical InstantStudy/InstantPay account, never from a model parameter.
-  const learnerId = payload.instantstudy_learner_id;
+  const learnerId = payload[config.learnerClaim];
   if (
     !payload.sub ||
     typeof learnerId !== "string" ||
