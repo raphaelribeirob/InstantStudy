@@ -36,6 +36,7 @@ assert(existsSync(resolve(root, "skills/study/SKILL.md")), "Missing study skill"
 assert(isHttps(server?.url) && server.url.endsWith("/mcp/chatgpt"),
   "Plugin must connect only to the OAuth-specific HTTPS MCP endpoint");
 assert(server?.type === "streamable-http", "MCP transport must be Streamable HTTP");
+assert(auth?.client?.mode === "dcr", "Auth0 ChatGPT MCP requires DCR registration");
 assert(auth?.type === "oauth" &&
   !JSON.stringify(auth).includes("api_key") &&
   !JSON.stringify(auth).includes("clientSecret"),
