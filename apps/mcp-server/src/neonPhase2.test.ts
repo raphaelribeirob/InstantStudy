@@ -5,7 +5,7 @@ import { schemaManagedExternally } from "./databasePolicy.js";
 
 function assets() {
   return { summary: "Summary", outline: [], keyConcepts: [], flashcards: [],
-    generatedBy: "test" };
+    generatedBy: "deterministic" as const };
 }
 
 test("metadata-only library excludes original content and AI assets", async () => {
