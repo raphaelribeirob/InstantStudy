@@ -372,3 +372,14 @@ test("first question presentation is acknowledged once, only by its actual learn
   });
   assert.equal(await engine.recordFirstQuestionPresented(session.id, "owner-aha"), false);
 });
+
+test("StudyEngine getOwned enforces learner identity on cached sessions", async () => {
+  const source = new ContentSessionStore().create({
+    title: "Ownership", mode: "learn", contentText: "Learning the concept of ownership.",
+  });
+  const engine = new StudyEngine();
+  const session = await engine.start(source, { learnerId: "owner-test-01" });
+  assert.equal((await engine.getOwned(session.id, "owner-test-01"))?.id, session.id);
+  assert.equal(await engine.getOwned(session.id, "someone-else"), null);
+  assert.equal(await engine.getOwned(session.id, ""), null);
+});
