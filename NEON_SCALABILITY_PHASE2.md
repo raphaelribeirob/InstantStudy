@@ -26,7 +26,7 @@
 ## 2. Preview-only activation sequence
 
 1. Confirm PR dependencies: [#55](https://github.com/raphaelribeirob/InstantStudy/pull/55) is the base of this PR. No blind merge with earlier product/UX PRs.
-2. In an **authorized, disposable Neon preview** with synthetic/anonymized data, compare the live schema with `database/migrations/0001..0005` and `apps/pay/migrations/0000..20261012`. Study and Pay must be verified separately.
+2. In an **authorized, disposable Neon preview** with synthetic/anonymized data, compare the live schema with `database/migrations/0001..0006` and `apps/pay/migrations/0000..20261012`. Study and Pay must be verified separately.
 3. Apply only missing migrations with a **dedicated migration role** through an independently reviewed migration process; do not run migrations from a request handler.
 4. Run **read-only** verification using `npm run audit:neon-live` for Study, `npm run audit:pay-schema-live` for Pay. Compare owner and quota rules and ensure the indexed FSRS backfill from Phase 1 is accurate.
 5. Turn on `INSTANTSTUDY_SCHEMA_MANAGED=true` and `INSTANTPAY_SCHEMA_MANAGED=true` **only in their appropriate preview services**, then run Web/API/Flutter E2E, Paddle replay and database rights tests.
