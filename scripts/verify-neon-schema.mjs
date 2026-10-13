@@ -14,10 +14,14 @@ try {
     to_regclass('public.instantstudy_materials')::text AS materials,
     to_regclass('public.instantstudy_sessions_learner_updated_idx')::text AS sessions_index,
     to_regclass('public.instantstudy_materials_learner_updated_idx')::text AS materials_index,
-    to_regclass('public.instantstudy_flashcard_progress')::text AS flashcard_progress`;
+    to_regclass('public.instantstudy_flashcard_progress')::text AS flashcard_progress,
+    to_regclass('public.instantstudy_concept_progress')::text AS concept_progress,
+    to_regclass('public.instantstudy_concept_due_idx')::text AS due_index`;
   const row = rows[0] ?? {};
-  const ready = Boolean(row.sessions && row.materials && row.sessions_index && row.materials_index &&
-    row.flashcard_progress);
+  const coreReady = Boolean(row.sessions && row.materials && row.sessions_index &&
+    row.materials_index && row.flashcard_progress);
+  const indexed = process.env.INSTANTSTUDY_INDEXED_REVIEW_ENABLED === "true";
+  const ready = coreReady && (!indexed || Boolean(row.concept_progress && row.due_index));
   console.log(JSON.stringify({ database: row.database || "unknown", storage: "neon", schemaReady: ready }));
   if (!ready) process.exitCode = 1;
 } catch {

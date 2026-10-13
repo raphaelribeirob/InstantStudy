@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless";
+import { randomUUID } from "node:crypto";
 
 let sqlClient;
 let schemaPromise;
@@ -28,7 +29,12 @@ export async function ensureSchema() {
           event_type TEXT NOT NULL,
           occurred_at TIMESTAMPTZ,
           payload JSONB NOT NULL,
-          processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          processed_at TIMESTAMPTZ DEFAULT NOW(),
+          processing_status TEXT NOT NULL DEFAULT 'pending',
+          processing_started_at TIMESTAMPTZ,
+          attempt_count INTEGER NOT NULL DEFAULT 0,
+          claim_token UUID,
+          last_error TEXT
         )
       `;
       await q`
@@ -45,7 +51,8 @@ export async function ensureSchema() {
           status TEXT NOT NULL,
           expires_at TIMESTAMPTZ,
           source TEXT,
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          provider_occurred_at TIMESTAMPTZ
         )
       `;
       await q`CREATE INDEX IF NOT EXISTS billing_entitlements_user_ref_idx ON billing_entitlements (user_ref)`;
@@ -70,16 +77,66 @@ export async function ensureSchema() {
   return schemaPromise;
 }
 
-export async function recordEvent({ eventId, eventType, occurredAt, payload }) {
+/** Claim exactly one signed Paddle delivery. A delivery is not a processed
+ * event until the ENTITLEMENT side effect has succeeded. Failed/abandoned
+ * claims can be retried, including after serverless process termination.
+ */
+export async function claimEvent({ eventId, eventType, occurredAt, payload }) {
+  await ensureSchema();
+  const q = sql();
+  const claimToken = randomUUID();
+  const rows = await q`
+    INSERT INTO billing_events (
+      event_id, event_type, occurred_at, payload, processed_at,
+      processing_status, processing_started_at, attempt_count, claim_token
+    )
+    VALUES (
+      ${eventId}, ${eventType}, ${occurredAt || null},
+      ${JSON.stringify(payload)}::jsonb, NULL, 'processing', NOW(), 1,
+      ${claimToken}::uuid
+    )
+    ON CONFLICT (event_id) DO UPDATE SET
+      processing_status = 'processing',
+      processing_started_at = NOW(),
+      attempt_count = billing_events.attempt_count + 1,
+      claim_token = EXCLUDED.claim_token,
+      last_error = NULL
+    WHERE billing_events.processing_status IN ('failed', 'pending')
+      OR (billing_events.processing_status = 'processing'
+          AND billing_events.processing_started_at < NOW() - INTERVAL '90 seconds')
+    RETURNING event_id
+  `;
+  if (rows.length) return { claimed: true, state: "processing", claimToken };
+  const existing = await q`
+    SELECT processing_status FROM billing_events WHERE event_id = ${eventId} LIMIT 1
+  `;
+  return { claimed: false, state: String(existing[0]?.processing_status || "processing") };
+}
+
+export async function markEventApplied(eventId, claimToken) {
   await ensureSchema();
   const q = sql();
   const rows = await q`
-    INSERT INTO billing_events (event_id, event_type, occurred_at, payload)
-    VALUES (${eventId}, ${eventType}, ${occurredAt || null}, ${JSON.stringify(payload)}::jsonb)
-    ON CONFLICT (event_id) DO NOTHING
+    UPDATE billing_events
+    SET processing_status = 'applied', processed_at = NOW(),
+        processing_started_at = NULL, last_error = NULL
+    WHERE event_id = ${eventId} AND processing_status = 'processing'
+      AND claim_token = ${claimToken}::uuid
     RETURNING event_id
   `;
   return rows.length > 0;
+}
+
+export async function markEventFailed(eventId, claimToken) {
+  await ensureSchema();
+  const q = sql();
+  await q`
+    UPDATE billing_events
+    SET processing_status = 'failed', processing_started_at = NULL,
+        last_error = 'delivery_failed'
+    WHERE event_id = ${eventId} AND processing_status = 'processing'
+      AND claim_token = ${claimToken}::uuid
+  `;
 }
 
 export async function upsertEntitlement(input) {
@@ -92,13 +149,15 @@ export async function upsertEntitlement(input) {
   await q`
     INSERT INTO billing_entitlements (
       entitlement_id, entitlement_key, product_key, plan_key, user_ref, email,
-      paddle_customer_id, paddle_subscription_id, active, status, expires_at, source, updated_at
+      paddle_customer_id, paddle_subscription_id, active, status, expires_at,
+      source, updated_at, provider_occurred_at
     )
     VALUES (
       ${entitlementId}, ${input.entitlementKey}, ${input.productKey}, ${input.planKey || null},
       ${input.userRef || null}, ${input.email || null}, ${input.paddleCustomerId || null},
       ${input.paddleSubscriptionId || null}, ${Boolean(input.active)}, ${input.status},
-      ${input.expiresAt || null}, ${input.source || null}, NOW()
+      ${input.expiresAt || null}, ${input.source || null}, NOW(),
+      ${input.occurredAt || null}::timestamptz
     )
     ON CONFLICT (entitlement_id) DO UPDATE SET
       product_key = EXCLUDED.product_key,
@@ -111,22 +170,39 @@ export async function upsertEntitlement(input) {
       status = EXCLUDED.status,
       expires_at = COALESCE(EXCLUDED.expires_at, billing_entitlements.expires_at),
       source = COALESCE(EXCLUDED.source, billing_entitlements.source),
-      updated_at = NOW()
+      updated_at = NOW(),
+      provider_occurred_at = COALESCE(EXCLUDED.provider_occurred_at, billing_entitlements.provider_occurred_at)
+    WHERE billing_entitlements.provider_occurred_at IS NULL
+       OR (
+         EXCLUDED.provider_occurred_at IS NOT NULL
+         AND EXCLUDED.provider_occurred_at >= billing_entitlements.provider_occurred_at
+       )
   `;
 }
 
-export async function updateSubscriptionState({ subscriptionId, active, status, expiresAt }) {
-  if (!subscriptionId) return;
+export async function updateSubscriptionState({ subscriptionId, active, status, expiresAt, occurredAt }) {
+  if (!subscriptionId) return false;
   await ensureSchema();
   const q = sql();
-  await q`
+  const rows = await q`
     UPDATE billing_entitlements
     SET active = ${Boolean(active)},
         status = ${status},
         expires_at = COALESCE(${expiresAt || null}, expires_at),
-        updated_at = NOW()
+        updated_at = NOW(),
+        provider_occurred_at = COALESCE(${occurredAt || null}::timestamptz, provider_occurred_at)
     WHERE paddle_subscription_id = ${subscriptionId}
+      AND (provider_occurred_at IS NULL
+        OR (${occurredAt || null}::timestamptz IS NOT NULL
+          AND provider_occurred_at <= ${occurredAt || null}::timestamptz))
+    RETURNING entitlement_id
   `;
+  if (rows.length) return true;
+  // Distinguish a stale event (already reconciled) from a missing subscription.
+  const known = await q`
+    SELECT 1 FROM billing_entitlements WHERE paddle_subscription_id = ${subscriptionId} LIMIT 1
+  `;
+  return known.length > 0;
 }
 
 export async function entitlementsForIdentity({ userRef, email }) {

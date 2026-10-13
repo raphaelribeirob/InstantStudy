@@ -1,6 +1,9 @@
 import { offerMetadata } from "./_catalog.js";
+import { applyVerifiedPaddleEvent } from "./webhookLifecycle.js";
 import {
-  recordEvent,
+  claimEvent,
+  markEventApplied,
+  markEventFailed,
   updateSubscriptionState,
   upsertEntitlement,
 } from "./_db.js";
@@ -41,13 +44,13 @@ async function identityFor(data) {
   };
 }
 
-async function provisionFromData(data, statusOverride) {
+async function provisionFromData(data, occurredAt) {
   const custom = data?.custom_data || {};
   const meta = offerMetadata(custom.offer_key);
   if (!meta) return false;
 
   const identity = await identityFor(data);
-  const status = statusOverride || String(data?.status || "unknown");
+  const status = String(data?.status || "unknown");
   const subscriptionId = String(
     data?.subscription_id || (String(data?.id || "").startsWith("sub_") ? data.id : "")
   ).trim() || null;
@@ -64,6 +67,7 @@ async function provisionFromData(data, statusOverride) {
     status,
     expiresAt: expiration(data),
     source: String(custom.source_app || "instant_pay"),
+    occurredAt,
   });
   return true;
 }
@@ -100,52 +104,19 @@ export default async function handler(req, res) {
   if (!eventId || !eventType) return json(res, 400, { error: "invalid_event" });
 
   try {
-    const inserted = await recordEvent({
-      eventId,
-      eventType,
-      occurredAt: event?.occurred_at || null,
-      payload: event,
+    const result = await applyVerifiedPaddleEvent(event, {
+      claim: claimEvent,
+      applied: markEventApplied,
+      failed: markEventFailed,
+      provision: provisionFromData,
+      update: updateSubscriptionState,
+      expiration,
+      activeSubscription,
     });
-    if (!inserted) return json(res, 200, { received: true, duplicate: true });
+    return json(res, 200, { received: true, duplicate: result.duplicate });
 
-    const data = event?.data || {};
-    if (eventType === "transaction.completed") {
-      // A paid transaction is NOT enough to prove an active recurring
-      // subscription. Subscription lifecycle events own access provision.
-      // Otherwise a transaction without subscription_id could remain active
-      // even after a later cancellation event.
-    } else if (
-      eventType === "subscription.created" ||
-      eventType === "subscription.activated" ||
-      eventType === "subscription.trialing"
-    ) {
-      const provisioned = await provisionFromData(data);
-      if (!provisioned) {
-        await updateSubscriptionState({
-          subscriptionId: data.id,
-          active: true,
-          status: String(data.status || "active"),
-          expiresAt: expiration(data),
-        });
-      }
-    } else if (
-      eventType === "subscription.updated" ||
-      eventType === "subscription.paused" ||
-      eventType === "subscription.resumed" ||
-      eventType === "subscription.canceled" ||
-      eventType === "subscription.past_due"
-    ) {
-      await updateSubscriptionState({
-        subscriptionId: data.id,
-        active: activeSubscription(String(data.status || "")),
-        status: String(data.status || eventType.split(".")[1] || "unknown"),
-        expiresAt: expiration(data),
-      });
-    }
-
-    return json(res, 200, { received: true, duplicate: false });
   } catch (error) {
     console.error("Paddle webhook processing failed", eventId, error?.message || "unknown");
-    return json(res, 500, { error: "webhook_processing_failed" });
+    return json(res, 503, { error: "webhook_processing_retryable" });
   }
 }
