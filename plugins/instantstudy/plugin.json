@@ -1,0 +1,39 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "instantstudy",
+  "version": "0.1.0",
+  "description": "Adaptive, source-grounded study sessions with quizzes, reviews, and mastery tracking using the InstantStudy backend.",
+  "repository": "https://github.com/raphaelribeirob/InstantStudy",
+  "keywords": [
+    "education",
+    "study",
+    "active-recall",
+    "quiz",
+    "spaced-repetition"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "InstantStudy",
+        "shortDescription": "Practice and remember anything",
+        "longDescription": "Start source-grounded Learn, Review, Quiz, and Test sessions from notes or extracted material, answer one question at a time, and save learning progress through InstantStudy.",
+        "developerName": "InstantStudy",
+        "category": "Education & Research",
+        "capabilities": [
+          "Study notes with active recall",
+          "Track learning mastery",
+          "Review concepts over time"
+        ],
+        "defaultPrompt": [
+          "Use InstantStudy to quiz me on these notes.",
+          "Study this material with active recall.",
+          "Review my weak concepts with InstantStudy."
+        ],
+        "logo": "./assets/instantstudy-icon.svg",
+        "composerIcon": "./assets/instantstudy-icon.svg",
+        "websiteURL": "https://instantstudy-web.vercel.app"
+      },
+      "onboardingSkill": "./skills/setup/SKILL.md"
+    }
+  }
+}

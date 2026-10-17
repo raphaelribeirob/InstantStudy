@@ -70,22 +70,26 @@ export const agentPresets: AgentPreset[] = [
     id: "chatgpt",
     name: "ChatGPT",
     label: "Plugin / MCP",
-    detail: "InstantStudy is designed as a remote MCP-backed plugin for ChatGPT.",
+    detail: "Public ChatGPT integration uses OAuth, not the shared private MCP key.",
     config: (url) =>
       JSON.stringify(
         {
           mcpServers: {
             instantstudy: {
-              type: "http",
-              url,
-              bearer_token_env_var: "INSTANTSTUDY_MCP_API_KEY",
+              type: "streamable-http",
+              url: url.replace(/\/mcp$/, "/mcp/chatgpt"),
+              extensions: {
+                "com.openai": {
+                  auth: { type: "oauth", baseScopes: ["study:read", "study:write"] },
+                },
+              },
             },
           },
         },
         null,
         2,
       ),
-    note: "Use this server configuration in the InstantStudy plugin package. Public ChatGPT installation requires the hosted MCP endpoint and plugin publication.",
+    note: "Requires a configured OAuth 2.1 issuer, signed account binding, active entitlement and plugin approval. This does not automatically install or publish the plugin.",
   },
   {
     id: "mcp",
